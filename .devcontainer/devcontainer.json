@@ -1,0 +1,17 @@
+{
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": [
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "streetsidesoftware.code-spell-checker",
+        "rust-lang.rust-analyzer",
+        "bierner.markdown-emoji",
+        "ms-vscode.hexeditor"
+      ]
+    }
+  }
+}
