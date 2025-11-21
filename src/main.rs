@@ -1,9 +1,17 @@
+use core::f64;
+
 use image;
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::{color::Color, ray::Ray, vector::Vector3};
+use crate::{
+    color::Color,
+    object::{Object, Sphere},
+    ray::Ray,
+    vector::Vector3,
+};
 
 pub mod color;
+pub mod object;
 pub mod ray;
 pub mod vector;
 
@@ -68,26 +76,16 @@ fn main() {
 }
 
 fn ray_color(ray: Ray) -> Color {
-    if let Some(t) = hit_sphere(Vector3::new(0.0, 0.0, -1.0), 0.5, &ray) {
-        let n = (ray.at(t) - Vector3::new(0.0, 0.0, -1.0)).unit();
+    let sphere = Sphere {
+        center: Vector3::new(0.0, 0.0, -1.0),
+        radius: 0.5,
+    };
+    if let Some(rec) = sphere.hit(&ray, 0.0, f64::INFINITY) {
+        let n = (ray.at(rec.t) - Vector3::new(0.0, 0.0, -1.0)).unit();
         return 0.5 * Color::new(n.x + 1.0, n.y + 1.0, n.z + 1.0);
     }
 
     let unit_direction = ray.direction.unit();
     let a = 0.5 * (unit_direction.y + 1.0);
     (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
-}
-
-fn hit_sphere(center: Vector3, radius: f64, ray: &Ray) -> Option<f64> {
-    let oc = center - ray.origin;
-    let a = ray.direction.length_squared();
-    let h = ray.direction.dot(&oc);
-    let c = oc.length_squared() - radius * radius;
-    let discriminant = h * h - a * c;
-    if discriminant < 0.0 {
-        None
-    } else {
-        let t = (h - discriminant.sqrt()) / a;
-        if t > 0.0 { Some(t) } else { None }
-    }
 }
