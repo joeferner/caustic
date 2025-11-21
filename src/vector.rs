@@ -1,5 +1,9 @@
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    ops::{Add, Div, Mul, Sub},
+};
 
+#[derive(Clone, Copy)]
 pub struct Vector3 {
     pub x: f64,
     pub y: f64,
@@ -7,6 +11,10 @@ pub struct Vector3 {
 }
 
 impl Vector3 {
+    pub fn new(x: f64, y: f64, z: f64) -> Self {
+        Vector3 { x, y, z }
+    }
+
     pub fn length(&self) -> f64 {
         self.length_squared().sqrt()
     }
@@ -24,6 +32,70 @@ impl Vector3 {
             x: self.y * other.z - self.z * other.y,
             y: self.z * other.x - self.x * other.z,
             z: self.x * other.y - self.y * other.x,
+        }
+    }
+
+    pub fn unit(&self) -> Vector3 {
+        *self / self.length()
+    }
+}
+
+impl Mul<f64> for Vector3 {
+    type Output = Self;
+
+    fn mul(self, rhs: f64) -> Self {
+        Vector3 {
+            x: self.x * rhs,
+            y: self.y * rhs,
+            z: self.z * rhs,
+        }
+    }
+}
+
+impl Mul<Vector3> for f64 {
+    type Output = Vector3;
+
+    fn mul(self, v: Vector3) -> Vector3 {
+        Vector3 {
+            x: v.x * self,
+            y: v.y * self,
+            z: v.z * self,
+        }
+    }
+}
+
+impl Div<f64> for Vector3 {
+    type Output = Self;
+
+    fn div(self, rhs: f64) -> Self {
+        Vector3 {
+            x: self.x / rhs,
+            y: self.y / rhs,
+            z: self.z / rhs,
+        }
+    }
+}
+
+impl Add for Vector3 {
+    type Output = Self;
+
+    fn add(self, rhs: Vector3) -> Self {
+        Vector3 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+            z: self.z + rhs.z,
+        }
+    }
+}
+
+impl Sub for Vector3 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        Vector3 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+            z: self.z - rhs.z,
         }
     }
 }
