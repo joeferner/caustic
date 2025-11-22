@@ -1,4 +1,6 @@
-use crate::{Interval, ray::Ray, vector::Vector3};
+use std::sync::Arc;
+
+use crate::{Interval, material::Material, ray::Ray, vector::Vector3};
 
 pub mod group;
 pub mod sphere;
@@ -11,6 +13,7 @@ pub struct HitRecord {
     pub normal: Vector3,
     pub t: f64,
     pub front_face: bool,
+    pub material: Arc<dyn Material>,
 }
 
 impl HitRecord {

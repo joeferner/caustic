@@ -1,5 +1,6 @@
 use std::ops::{Add, Mul};
 
+#[derive(Debug, Clone, Copy)]
 pub struct Color {
     pub r: f64,
     pub g: f64,
@@ -39,14 +40,26 @@ impl Mul<f64> for Color {
     }
 }
 
+impl Mul<Color> for Color {
+    type Output = Self;
+
+    fn mul(self, rhs: Color) -> Self {
+        Color {
+            r: self.r * rhs.r,
+            g: self.g * rhs.g,
+            b: self.b * rhs.b,
+        }
+    }
+}
+
 impl Mul<Color> for f64 {
     type Output = Color;
 
     fn mul(self, v: Color) -> Color {
         Color {
-            r: v.r * self,
-            g: v.g * self,
-            b: v.b * self,
+            r: self * v.r,
+            g: self * v.g,
+            b: self * v.b,
         }
     }
 }

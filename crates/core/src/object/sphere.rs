@@ -1,13 +1,18 @@
+use std::sync::Arc;
+
 use crate::{
     Interval,
+    material::Material,
     object::{HitRecord, Node},
     ray::Ray,
     vector::Vector3,
 };
 
+#[derive(Debug)]
 pub struct Sphere {
     pub center: Vector3,
     pub radius: f64,
+    pub material: Arc<dyn Material>,
 }
 
 impl Node for Sphere {
@@ -41,6 +46,7 @@ impl Node for Sphere {
             normal,
             t,
             front_face: false,
+            material: self.material.clone(),
         };
         rec.set_face_normal(ray, outward_normal);
 

@@ -3,26 +3,44 @@ use std::sync::Arc;
 use indicatif::{ProgressBar, ProgressStyle};
 use rust_raytracer_core::{
     Camera, Color, Random, RenderContext, Vector3,
+    material::{Lambertian, Metal},
     object::{Group, Sphere},
 };
 
 fn main() {
     let aspect_ratio = 16.0 / 9.0;
-    let image_height = 400;
+    let image_height = 600;
 
     let ctx = RenderContext {
         random: &RandRandom::new(),
     };
 
+    let material_ground = Arc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
+    let material_center = Arc::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
+    let material_left = Arc::new(Metal::new(Color::new(0.8, 0.8, 0.8)));
+    let material_right = Arc::new(Metal::new(Color::new(0.8, 0.6, 0.2)));
+
     // World
     let mut group = Group::new();
     group.push(Arc::new(Sphere {
-        center: Vector3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-    }));
-    group.push(Arc::new(Sphere {
         center: Vector3::new(0.0, -100.5, -1.0),
         radius: 100.0,
+        material: material_ground,
+    }));
+    group.push(Arc::new(Sphere {
+        center: Vector3::new(0.0, 0.0, -1.2),
+        radius: 0.5,
+        material: material_center,
+    }));
+    group.push(Arc::new(Sphere {
+        center: Vector3::new(-1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: material_left,
+    }));
+    group.push(Arc::new(Sphere {
+        center: Vector3::new(1.0, 0.0, -1.0),
+        radius: 0.5,
+        material: material_right,
     }));
 
     // Camera

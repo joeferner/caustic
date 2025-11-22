@@ -46,6 +46,7 @@ impl Camera {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn ray_color(&self, ctx: &RenderContext, ray: Ray, depth: u32, node: &dyn Node) -> Color {
         if depth == 0 {
             return Color::BLACK;
@@ -57,8 +58,12 @@ impl Camera {
         // approximation the hit function gives us. To address this raise the ray just a little bit off
         // the surface.
         if let Some(rec) = node.hit(&ray, Interval::new(0.00001, f64::INFINITY)) {
-            let direction = rec.normal + Vector3::random_unit(ctx);
-            return 0.5 * self.ray_color(ctx, Ray::new(rec.pt, direction), depth - 1, node);
+            if let Some(scatter) = rec.material.scatter(ctx, &ray, &rec) {
+                let c: Color = self.ray_color(ctx, scatter.scattered, depth - 1, node);
+                return scatter.attenuation * c;
+            }
+
+            return Color::BLACK;
         }
 
         // create a blue gradient sky

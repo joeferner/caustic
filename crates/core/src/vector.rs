@@ -5,7 +5,7 @@ use std::{
 
 use crate::RenderContext;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Vector3 {
     pub x: f64,
     pub y: f64,
@@ -71,6 +71,16 @@ impl Vector3 {
 
     pub fn unit(&self) -> Vector3 {
         *self / self.length()
+    }
+
+    /// Return true if the vector is close to zero in all dimensions.
+    pub fn is_near_near(&self) -> bool {
+        let s = 1e-8;
+        (self.x.abs() < s) && (self.y.abs() < s) && (self.z.abs() < s)
+    }
+
+    pub fn reflect(&self, n: Vector3) -> Vector3 {
+        *self - 2.0 * self.dot(&n) * n
     }
 }
 
