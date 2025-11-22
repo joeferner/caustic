@@ -4,10 +4,8 @@ use std::sync::Arc;
 use image;
 use indicatif::{ProgressBar, ProgressStyle};
 use rust_raytracer_core::{
-    color::Color,
+    Color, Interval, Ray, Vector3,
     object::{Group, Node, Sphere},
-    ray::Ray,
-    vector::Vector3,
 };
 
 fn main() {
@@ -82,7 +80,7 @@ fn main() {
 }
 
 fn ray_color(ray: Ray, node: &dyn Node) -> Color {
-    if let Some(rec) = node.hit(&ray, 0.0, f64::INFINITY) {
+    if let Some(rec) = node.hit(&ray, Interval::new(0.0, f64::INFINITY)) {
         let n = (ray.at(rec.t) - Vector3::new(0.0, 0.0, -1.0)).unit();
         return 0.5 * Color::new(n.x + 1.0, n.y + 1.0, n.z + 1.0);
     }

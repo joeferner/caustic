@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::object::{HitRecord, Node};
+use crate::{
+    Interval,
+    object::{HitRecord, Node},
+};
 
 pub struct Group {
     nodes: Vec<Arc<dyn Node>>,
@@ -17,13 +20,12 @@ impl Group {
 }
 
 impl Node for Group {
-    fn hit(&self, ray: &crate::ray::Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord> {
-        let mut closest_t = ray_tmax;
+    fn hit(&self, ray: &crate::ray::Ray, mut ray_t: Interval) -> Option<HitRecord> {
         let mut closest_hit: Option<HitRecord> = None;
 
         for node in &self.nodes {
-            if let Some(hit) = node.hit(ray, ray_tmin, closest_t) {
-                closest_t = hit.t;
+            if let Some(hit) = node.hit(ray, ray_t) {
+                ray_t.max = hit.t;
                 closest_hit = Some(hit);
             }
         }

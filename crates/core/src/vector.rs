@@ -1,5 +1,5 @@
 use std::{
-    fmt::{Debug, Display},
+    fmt::Display,
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
@@ -109,12 +109,6 @@ impl Neg for Vector3 {
             y: -self.y,
             z: -self.z,
         }
-    }
-}
-
-impl Debug for Vector3 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
     }
 }
 

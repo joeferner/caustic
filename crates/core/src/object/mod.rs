@@ -1,10 +1,10 @@
-use crate::{ray::Ray, vector::Vector3};
+use crate::{Interval, ray::Ray, vector::Vector3};
 
-pub mod sphere;
 pub mod group;
+pub mod sphere;
 
-pub use sphere::Sphere;
 pub use group::Group;
+pub use sphere::Sphere;
 
 pub struct HitRecord {
     pub pt: Vector3,
@@ -27,5 +27,5 @@ impl HitRecord {
 }
 
 pub trait Node {
-    fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, ray_t: Interval) -> Option<HitRecord>;
 }
