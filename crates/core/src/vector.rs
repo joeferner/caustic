@@ -3,7 +3,7 @@ use std::{
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
-use crate::RenderContext;
+use crate::Random;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Vector3 {
@@ -17,21 +17,21 @@ impl Vector3 {
         Vector3 { x, y, z }
     }
 
-    pub fn random(ctx: &RenderContext) -> Self {
-        Vector3::new(ctx.random.rand(), ctx.random.rand(), ctx.random.rand())
+    pub fn random(random: &dyn Random) -> Self {
+        Vector3::new(random.rand(), random.rand(), random.rand())
     }
 
-    pub fn random_interval(ctx: &RenderContext, min: f64, max: f64) -> Self {
+    pub fn random_interval(random: &dyn Random, min: f64, max: f64) -> Self {
         Vector3::new(
-            ctx.random.rand_interval(min, max),
-            ctx.random.rand_interval(min, max),
-            ctx.random.rand_interval(min, max),
+            random.rand_interval(min, max),
+            random.rand_interval(min, max),
+            random.rand_interval(min, max),
         )
     }
 
-    pub fn random_unit(ctx: &RenderContext) -> Self {
+    pub fn random_unit(random: &dyn Random) -> Self {
         loop {
-            let p = Self::random_interval(ctx, -1.0, 1.0);
+            let p = Self::random_interval(random, -1.0, 1.0);
             let len_sq = p.length_squared();
             if 1e-160 < len_sq && len_sq <= 1.0 {
                 return p / len_sq.sqrt();
@@ -39,14 +39,19 @@ impl Vector3 {
         }
     }
 
-    pub fn random_on_hemisphere(ctx: &RenderContext, normal: Vector3) -> Self {
-        let on_unit_sphere = Self::random_unit(ctx);
+    pub fn random_on_hemisphere(random: &dyn Random, normal: Vector3) -> Self {
+        let on_unit_sphere = Self::random_unit(random);
         // In the same hemisphere as the normal
         if on_unit_sphere.dot(&normal) > 0.0 {
             on_unit_sphere
         } else {
             -on_unit_sphere
         }
+    }
+
+    /// Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
+    pub fn sample_square(random: &dyn Random) -> Vector3 {
+        Vector3::new(random.rand() - 0.5, random.rand() - 0.5, 0.0)
     }
 
     pub fn length(&self) -> f64 {
