@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use image;
 use indicatif::{ProgressBar, ProgressStyle};
 use rust_raytracer_core::{
     Camera, Color, Random, RenderContext, Vector3,

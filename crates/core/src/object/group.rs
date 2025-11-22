@@ -19,6 +19,12 @@ impl Group {
     }
 }
 
+impl Default for Group {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Node for Group {
     fn hit(&self, ray: &crate::ray::Ray, mut ray_t: Interval) -> Option<HitRecord> {
         let mut closest_hit: Option<HitRecord> = None;
