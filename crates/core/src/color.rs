@@ -1,7 +1,5 @@
 use std::ops::{Add, Mul};
 
-use image;
-
 pub struct Color {
     pub r: f64,
     pub g: f64,
@@ -47,14 +45,5 @@ impl Add for Color {
             g: self.g + rhs.g,
             b: self.b + rhs.b,
         }
-    }
-}
-
-impl Into<image::Rgb<u8>> for Color {
-    fn into(self) -> image::Rgb<u8> {
-        let r = (self.r * 255.999) as u8;
-        let g = (self.g * 255.999) as u8;
-        let b = (self.b * 255.999) as u8;
-        image::Rgb([r, g, b])
     }
 }

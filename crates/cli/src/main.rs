@@ -2,18 +2,7 @@ use core::f64;
 
 use image;
 use indicatif::{ProgressBar, ProgressStyle};
-
-use crate::{
-    color::Color,
-    object::{Node, Sphere},
-    ray::Ray,
-    vector::Vector3,
-};
-
-pub mod color;
-pub mod object;
-pub mod ray;
-pub mod vector;
+use rust_raytracer_core::{color::Color, object::Node, object::Sphere, ray::Ray, vector::Vector3};
 
 fn main() {
     let aspect_ratio: f64 = 16.0 / 9.0;
@@ -65,13 +54,13 @@ fn main() {
                 let ray_direction = pixel_center - camera_center;
                 let r = Ray::new(camera_center, ray_direction);
                 let pixel_color = ray_color(r);
-                *pixel = pixel_color.into();
+                *pixel = color_to_image_rgb(pixel_color);
             }
         }
         pb.inc(1);
     }
 
-    img.save("target/out.png").unwrap();
+    img.save("../../target/out.png").unwrap();
     pb.finish_with_message("Done!");
 }
 
@@ -88,4 +77,11 @@ fn ray_color(ray: Ray) -> Color {
     let unit_direction = ray.direction.unit();
     let a = 0.5 * (unit_direction.y + 1.0);
     (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
+}
+
+fn color_to_image_rgb(color: Color) -> image::Rgb<u8> {
+    let r = (color.r * 255.999) as u8;
+    let g = (color.g * 255.999) as u8;
+    let b = (color.b * 255.999) as u8;
+    image::Rgb([r, g, b])
 }
