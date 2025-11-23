@@ -49,6 +49,19 @@ impl Vector3 {
         }
     }
 
+    pub fn random_in_unit_disk(random: &dyn Random) -> Vector3 {
+        loop {
+            let pt = Vector3::new(
+                random.rand_interval(-1.0, 1.0),
+                random.rand_interval(-1.0, 1.0),
+                0.0,
+            );
+            if pt.length_squared() < 1.0 {
+                return pt;
+            }
+        }
+    }
+
     /// Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
     pub fn sample_square(random: &dyn Random) -> Vector3 {
         Vector3::new(random.rand() - 0.5, random.rand() - 0.5, 0.0)
