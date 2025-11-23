@@ -26,11 +26,19 @@ impl Material for Refractive {
         };
 
         let unit_direction = r_in.direction.unit();
-        let refracted = unit_direction.refract(hit.normal, ri);
+        let cos_theta = (-unit_direction).dot(&hit.normal).min(1.0);
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+
+        let cannot_refract = ri * sin_theta > 1.0;
+        let direction = if cannot_refract {
+            unit_direction.reflect(hit.normal)
+        } else {
+            unit_direction.refract(hit.normal, ri)
+        };
 
         Some(ScatterResult {
             attenuation: Color::WHITE,
-            scattered: Ray::new(hit.pt, refracted),
+            scattered: Ray::new(hit.pt, direction),
         })
     }
 }
