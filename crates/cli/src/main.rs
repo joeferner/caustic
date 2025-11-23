@@ -17,7 +17,8 @@ fn main() {
 
     let material_ground = Arc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
     let material_center = Arc::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
-    let material_left = Arc::new(Refractive::new(1.0 / 1.33));
+    let material_left = Arc::new(Refractive::new(1.5));
+    let material_bubble = Arc::new(Refractive::new(1.0 / 1.5));
     let material_right = Arc::new(Metal::new(Color::new(0.8, 0.6, 0.2), 1.0));
 
     // World
@@ -36,6 +37,11 @@ fn main() {
         center: Vector3::new(-1.0, 0.0, -1.0),
         radius: 0.5,
         material: material_left,
+    }));
+    group.push(Arc::new(Sphere {
+        center: Vector3::new(-1.0, 0.0, -1.0),
+        radius: 0.4,
+        material: material_bubble,
     }));
     group.push(Arc::new(Sphere {
         center: Vector3::new(1.0, 0.0, -1.0),
