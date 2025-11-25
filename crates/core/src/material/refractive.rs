@@ -43,9 +43,12 @@ impl Material for Refractive {
             unit_direction.refract(hit.normal, ri)
         };
 
+        let mut scattered = Ray::new(hit.pt, direction);
+        scattered.time = r_in.time;
+
         Some(ScatterResult {
             attenuation: Color::WHITE,
-            scattered: Ray::new(hit.pt, direction),
+            scattered,
         })
     }
 }

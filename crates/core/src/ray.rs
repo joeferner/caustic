@@ -1,13 +1,19 @@
 use crate::vector::Vector3;
 
+#[derive(Debug)]
 pub struct Ray {
     pub origin: Vector3,
     pub direction: Vector3,
+    pub time: f64,
 }
 
 impl Ray {
     pub fn new(origin: Vector3, direction: Vector3) -> Self {
-        Ray { origin, direction }
+        Ray {
+            origin,
+            direction,
+            time: 0.0,
+        }
     }
 
     pub fn at(&self, t: f64) -> Vector3 {

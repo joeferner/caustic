@@ -167,8 +167,11 @@ impl Camera {
             self.defocus_disk_sample(ctx.random)
         };
         let ray_direction = pixel_sample - ray_origin;
+        let ray_time = ctx.random.rand();
 
-        Ray::new(ray_origin, ray_direction)
+        let mut ray = Ray::new(ray_origin, ray_direction);
+        ray.time = ray_time;
+        ray
     }
 
     // let pixel_center =

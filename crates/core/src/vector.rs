@@ -13,7 +13,9 @@ pub struct Vector3 {
 }
 
 impl Vector3 {
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub const ZERO: Vector3 = Vector3::new(0.0, 0.0, 0.0);
+
+    pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Vector3 { x, y, z }
     }
 

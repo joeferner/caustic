@@ -1,23 +1,23 @@
 use std::sync::Arc;
 
 use crate::{
-    Interval,
+    Interval, Vector3,
     material::Material,
     object::{HitRecord, Node},
     ray::Ray,
-    vector::Vector3,
 };
 
 #[derive(Debug)]
 pub struct Sphere {
-    pub center: Vector3,
+    pub center: Ray,
     pub radius: f64,
     pub material: Arc<dyn Material>,
 }
 
 impl Node for Sphere {
     fn hit(&self, ray: &Ray, ray_t: Interval) -> Option<HitRecord> {
-        let oc = self.center - ray.origin;
+        let current_center = self.center.at(ray.time);
+        let oc = current_center - ray.origin;
         let a = ray.direction.length_squared();
         let h = ray.direction.dot(&oc);
         let c = oc.length_squared() - self.radius * self.radius;
@@ -39,11 +39,10 @@ impl Node for Sphere {
 
         let t = root;
         let pt = ray.at(t);
-        let normal = (pt - self.center) / self.radius;
-        let outward_normal = (pt - self.center) / self.radius;
+        let outward_normal = (pt - current_center) / self.radius;
         let mut rec = HitRecord {
             pt,
-            normal,
+            normal: Vector3::ZERO, // set by set_face_normal
             t,
             front_face: false,
             material: self.material.clone(),

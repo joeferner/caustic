@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use rust_raytracer_core::{
-    Color, Random, RenderContext, Vector3,
+    Color, Random, Ray, RenderContext, Vector3,
     camera::CameraBuilder,
     material::{Lambertian, Metal, Refractive},
     object::{Group, Sphere},
@@ -17,7 +17,7 @@ fn main() {
 
     let ground_material = Arc::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
     world.push(Arc::new(Sphere {
-        center: Vector3::new(0.0, -1000.0, 0.0),
+        center: Ray::new(Vector3::new(0.0, -1000.0, 0.0), Vector3::ZERO),
         radius: 1000.0,
         material: ground_material,
     }));
@@ -37,7 +37,10 @@ fn main() {
                     let albedo = Color::random(ctx.random) * Color::random(ctx.random);
                     let sphere_material = Arc::new(Lambertian::new(albedo));
                     world.push(Arc::new(Sphere {
-                        center,
+                        center: Ray::new(
+                            center,
+                            Vector3::new(0.0, ctx.random.rand_interval(0.0, 0.5), 0.0),
+                        ),
                         radius: 0.2,
                         material: sphere_material,
                     }));
@@ -47,7 +50,7 @@ fn main() {
                     let fuzz = ctx.random.rand_interval(0.0, 0.5);
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
                     world.push(Arc::new(Sphere {
-                        center,
+                        center: Ray::new(center, Vector3::ZERO),
                         radius: 0.2,
                         material: sphere_material,
                     }));
@@ -55,7 +58,7 @@ fn main() {
                     // glass
                     let sphere_material = Arc::new(Refractive::new(1.5));
                     world.push(Arc::new(Sphere {
-                        center,
+                        center: Ray::new(center, Vector3::ZERO),
                         radius: 0.2,
                         material: sphere_material,
                     }));
@@ -66,21 +69,21 @@ fn main() {
 
     let material1 = Arc::new(Refractive::new(1.5));
     world.push(Arc::new(Sphere {
-        center: Vector3::new(0.0, 1.0, 0.0),
+        center: Ray::new(Vector3::new(0.0, 1.0, 0.0), Vector3::ZERO),
         radius: 1.0,
         material: material1,
     }));
 
     let material2 = Arc::new(Lambertian::new(Color::new(0.4, 0.2, 0.1)));
     world.push(Arc::new(Sphere {
-        center: Vector3::new(-4.0, 1.0, 0.0),
+        center: Ray::new(Vector3::new(-4.0, 1.0, 0.0), Vector3::ZERO),
         radius: 1.0,
         material: material2,
     }));
 
     let material3 = Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
     world.push(Arc::new(Sphere {
-        center: Vector3::new(4.0, 1.0, 0.0),
+        center: Ray::new(Vector3::new(4.0, 1.0, 0.0), Vector3::ZERO),
         radius: 1.0,
         material: material3,
     }));
@@ -123,7 +126,7 @@ fn main() {
     let mut camera_builder = CameraBuilder::new();
     camera_builder.aspect_ratio = 16.0 / 9.0;
     camera_builder.image_width = 300;
-    camera_builder.samples_per_pixel = 100;
+    camera_builder.samples_per_pixel = 30;
     camera_builder.max_depth = 50;
     camera_builder.vertical_fov = 20.0;
     camera_builder.look_from = Vector3::new(13.0, 2.0, 3.0);

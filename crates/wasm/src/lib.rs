@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Color, Random, RenderContext, Vector3,
+    Color, Random, Ray, RenderContext, Vector3,
     camera::CameraBuilder,
     material::{Lambertian, Metal},
     object::{Group, Sphere},
@@ -23,22 +23,22 @@ pub fn render(aspect_ratio: f64, image_width: u32, x: u32, y: u32) -> Result<JsV
     // World
     let mut group = Group::new();
     group.push(Arc::new(Sphere {
-        center: Vector3::new(0.0, -100.5, -1.0),
+        center: Ray::new(Vector3::new(0.0, -100.5, -1.0), Vector3::ZERO),
         radius: 100.0,
         material: material_ground,
     }));
     group.push(Arc::new(Sphere {
-        center: Vector3::new(0.0, 0.0, -1.2),
+        center: Ray::new(Vector3::new(0.0, 0.0, -1.2), Vector3::ZERO),
         radius: 0.5,
         material: material_center,
     }));
     group.push(Arc::new(Sphere {
-        center: Vector3::new(-1.0, 0.0, -1.0),
+        center: Ray::new(Vector3::new(-1.0, 0.0, -1.0), Vector3::ZERO),
         radius: 0.5,
         material: material_left,
     }));
     group.push(Arc::new(Sphere {
-        center: Vector3::new(1.0, 0.0, -1.0),
+        center: Ray::new(Vector3::new(1.0, 0.0, -1.0), Vector3::ZERO),
         radius: 0.5,
         material: material_right,
     }));
