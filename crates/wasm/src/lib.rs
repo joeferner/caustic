@@ -3,6 +3,7 @@ use std::sync::Arc;
 use rust_raytracer_core::{
     Color, RenderContext, Vector3,
     camera::CameraBuilder,
+    image_loader_new,
     material::{Lambertian, Metal},
     object::{Group, Sphere},
     random_new,
@@ -13,7 +14,8 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub fn render(aspect_ratio: f64, image_width: u32, x: u32, y: u32) -> Result<JsValue, JsValue> {
     let ctx = RenderContext {
-        random: &random_new(),
+        random: random_new(),
+        image_loader: image_loader_new(),
     };
 
     let material_ground = Arc::new(Lambertian::new_from_color(Color::new(0.8, 0.8, 0.0)));

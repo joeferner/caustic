@@ -9,7 +9,7 @@ use std::{
 };
 
 use indicatif::{ProgressBar, ProgressStyle};
-use rust_raytracer_core::{Camera, Color, RenderContext, object::Node, random_new};
+use rust_raytracer_core::{Camera, Color, Node, RenderContext, image_loader_new, random_new};
 use scene::Scene;
 
 use crate::scene::get_scene;
@@ -20,7 +20,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
 
-    let mut scene = Scene::CheckeredSpheres;
+    let mut scene = Scene::Earth;
     if let Some(scene_name) = args.get(1) {
         scene = if scene_name == "ThreeSpheres" {
             Scene::ThreeSpheres
@@ -28,14 +28,17 @@ fn main() {
             Scene::RandomSpheres
         } else if scene_name == "CheckeredSpheres" {
             Scene::CheckeredSpheres
+        } else if scene_name == "Earth" {
+            Scene::Earth
         } else {
             panic!("invalid scene name")
         }
     }
 
-    let ctx = RenderContext {
-        random: &random_new(),
-    };
+    let ctx = Arc::new(RenderContext {
+        random: random_new(),
+        image_loader: image_loader_new(),
+    });
 
     let (camera, world) = get_scene(&ctx, scene);
 
@@ -89,10 +92,8 @@ fn main() {
     for _ in 0..threads {
         let work = work.clone();
         let results_send = results_send.clone();
+        let ctx = ctx.clone();
         handles.push(thread::spawn(move || {
-            let ctx = RenderContext {
-                random: &random_new(),
-            };
             loop {
                 let item = { work.lock().unwrap().pop() };
                 match item {

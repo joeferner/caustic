@@ -8,7 +8,7 @@ use rust_raytracer_core::{
     texture::{CheckerTexture, SolidColor},
 };
 
-pub fn get_scene_three_spheres(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+pub fn create_three_spheres_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
     let material_ground = Arc::new(Lambertian::new(Arc::new(CheckerTexture::new(
         0.32,
         Arc::new(SolidColor::new(Color::new(0.2, 0.3, 0.1))),

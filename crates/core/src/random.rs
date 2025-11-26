@@ -1,3 +1,6 @@
+#[cfg(not(target_arch = "wasm32"))]
+use std::sync::Arc;
+
 pub trait Random: Send + Sync {
     fn rand(&self) -> f64;
     fn rand_int_interval(&self, min: i64, max: i64) -> i64;
@@ -5,10 +8,10 @@ pub trait Random: Send + Sync {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn random_new() -> impl Random {
+pub fn random_new() -> Arc<dyn Random> {
     use crate::random::rand::RandRandom;
 
-    RandRandom::new()
+    Arc::new(RandRandom::new())
 }
 
 #[cfg(not(target_arch = "wasm32"))]

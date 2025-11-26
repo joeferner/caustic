@@ -26,7 +26,7 @@ impl Lambertian {
 
 impl Material for Lambertian {
     fn scatter(&self, ctx: &RenderContext, r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult> {
-        let mut scatter_direction = hit.normal + Vector3::random_unit(ctx.random);
+        let mut scatter_direction = hit.normal + Vector3::random_unit(&*ctx.random);
 
         if scatter_direction.is_near_near() {
             scatter_direction = hit.normal

@@ -1,6 +1,7 @@
 pub mod axis_aligned_bounding_box;
 pub mod camera;
 pub mod color;
+pub mod image;
 pub mod interval;
 pub mod material;
 pub mod object;
@@ -9,16 +10,21 @@ pub mod ray;
 pub mod texture;
 pub mod vector;
 
+use std::sync::Arc;
+
 pub use axis_aligned_bounding_box::AxisAlignedBoundingBox;
 pub use camera::Camera;
 pub use color::Color;
+pub use image::{Image, ImageLoader, image_loader_new};
 pub use interval::Interval;
+pub use object::Node;
 pub use random::{Random, random_new};
 pub use ray::Ray;
 pub use vector::Vector3;
 
-pub struct RenderContext<'a> {
-    pub random: &'a dyn Random,
+pub struct RenderContext {
+    pub random: Arc<dyn Random>,
+    pub image_loader: Arc<dyn ImageLoader>,
 }
 
 #[derive(Debug, Clone, Copy)]

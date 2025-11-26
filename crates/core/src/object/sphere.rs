@@ -1,4 +1,5 @@
-use std::sync::Arc;
+use core::f64;
+use std::{f64::consts::PI, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Vector3,
@@ -43,6 +44,42 @@ impl Sphere {
         );
         self.bbox = AxisAlignedBoundingBox::new_from_bbox(box1, box2);
     }
+
+    /// Converts a point on the unit sphere into UV coordinates.
+    ///
+    /// # Parameters
+    /// - `pt`: A point on the unit sphere (radius = 1, centered at the origin).
+    ///
+    /// # Returns
+    /// A tuple `(u, v)` where:
+    /// - `u` ∈ [0, 1]: the normalized azimuth angle around the Y axis,
+    ///   measured from the negative X direction.  
+    /// - `v` ∈ [0, 1]: the normalized polar angle, where 0 corresponds to
+    ///   `y = -1` (south pole) and 1 corresponds to `y = +1` (north pole).
+    ///
+    /// # Mapping Examples
+    /// | Point        | (u, v)       |
+    /// |--------------|--------------|
+    /// | ( 1,  0,  0) | (0.50, 0.50) |
+    /// | (-1,  0,  0) | (0.00, 0.50) |
+    /// | ( 0,  1,  0) | (0.50, 1.00) |
+    /// | ( 0, -1,  0) | (0.50, 0.00) |
+    /// | ( 0,  0,  1) | (0.25, 0.50) |
+    /// | ( 0,  0, -1) | (0.75, 0.50) |
+    pub fn get_uv(pt: Vector3) -> (f64, f64) {
+        // produces a polar angle where the south pole maps to 0 and the north
+        // pole maps to 1 after normalization.
+        let theta = (-pt.y).acos();
+
+        // yields an azimuth that wraps `[0, 2π)` with `u = 0` at `(-1, 0, 0)`
+        // and increasing counterclockwise when viewed from above the positive
+        // Y axis.
+        let phi = (-pt.z).atan2(pt.x) + PI;
+
+        let u = phi / (2.0 * PI);
+        let v = theta / PI;
+        (u, v)
+    }
 }
 
 impl Node for Sphere {
@@ -71,12 +108,13 @@ impl Node for Sphere {
         let t = root;
         let pt = ray.at(t);
         let outward_normal = (pt - current_center) / self.radius;
+        let (u, v) = Sphere::get_uv(outward_normal);
         let mut rec = HitRecord {
             pt,
             normal: Vector3::ZERO, // set by set_face_normal
             t,
-            u: 0.0,
-            v: 0.0,
+            u,
+            v,
             front_face: false,
             material: self.material.clone(),
         };

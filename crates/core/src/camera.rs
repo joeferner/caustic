@@ -156,7 +156,7 @@ impl Camera {
     /// Construct a camera ray originating from the defocus disk and directed at a randomly
     /// sampled point around the pixel location i, j.
     fn get_ray(&self, ctx: &RenderContext, x: u32, y: u32) -> Ray {
-        let offset = Vector3::sample_square(ctx.random);
+        let offset = Vector3::sample_square(&*ctx.random);
         let pixel_sample = self.pixel00_loc
             + ((x as f64 + offset.x) * self.pixel_delta_u)
             + ((y as f64 + offset.y) * self.pixel_delta_v);
@@ -164,7 +164,7 @@ impl Camera {
         let ray_origin = if self.defocus_angle <= 0.0 {
             self.center
         } else {
-            self.defocus_disk_sample(ctx.random)
+            self.defocus_disk_sample(&*ctx.random)
         };
         let ray_direction = pixel_sample - ray_origin;
         let ray_time = ctx.random.rand();
