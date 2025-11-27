@@ -49,11 +49,43 @@ impl Perlin {
     }
 
     pub fn noise(&self, pt: Vector3) -> f64 {
-        let i = (((4.0 * pt.x) as i64) & 0xff) as usize;
-        let j = (((4.0 * pt.y) as i64) & 0xff) as usize;
-        let k = (((4.0 * pt.z) as i64) & 0xff) as usize;
+        let u = pt.x - pt.x.floor();
+        let v = pt.y - pt.y.floor();
+        let w = pt.z - pt.z.floor();
 
-        self.rand_float[self.perm_x[i] ^ self.perm_y[j] ^ self.perm_z[k]]
+        let i = pt.x.floor() as isize;
+        let j = pt.y.floor() as isize;
+        let k = pt.z.floor() as isize;
+
+        let mut c: [[[f64; 2]; 2]; 2] = [[[0.0; 2]; 2]; 2];
+
+        for di in 0..2 {
+            for dj in 0..2 {
+                for dk in 0..2 {
+                    let i = self.perm_x[((i + di) & 255) as usize]
+                        ^ self.perm_y[((j + dj) & 255) as usize]
+                        ^ self.perm_z[((k + dk) & 255) as usize];
+                    c[di as usize][dj as usize][dk as usize] = self.rand_float[i];
+                }
+            }
+        }
+
+        Perlin::trilinear_interpolation(c, u, v, w)
+    }
+
+    fn trilinear_interpolation(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+        let mut acc = 0.0;
+        for (i, item) in c.iter().enumerate() {
+            for (j, item) in item.iter().enumerate() {
+                for (k, item) in item.iter().enumerate() {
+                    acc += (i as f64 * u + (1.0 - i as f64) * (1.0 - u))
+                        * (j as f64 * v + (1.0 - j as f64) * (1.0 - v))
+                        * (k as f64 * w + (1.0 - k as f64) * (1.0 - w))
+                        * item;
+                }
+            }
+        }
+        acc
     }
 
     fn generate_perm(random: &dyn Random) -> [usize; Perlin::POINT_COUNT] {
