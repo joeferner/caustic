@@ -5,6 +5,7 @@
         "defocus",
         "indicatif",
         "lambertian",
+        "Perlin",
         "raytracer",
         "Schlick's",
         "serde",

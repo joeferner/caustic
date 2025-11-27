@@ -1,6 +1,7 @@
 #![allow(clippy::vec_init_then_push)]
 pub mod checkered_spheres;
 pub mod earth;
+pub mod perlin_spheres;
 pub mod random_spheres;
 pub mod three_spheres;
 
@@ -10,7 +11,8 @@ use rust_raytracer_core::{Camera, RenderContext, object::Node};
 
 use crate::scene::{
     checkered_spheres::create_checkered_spheres_scene, earth::create_earth_scene,
-    random_spheres::create_random_spheres_scene, three_spheres::create_three_spheres_scene,
+    perlin_spheres::create_perlin_spheres_scene, random_spheres::create_random_spheres_scene,
+    three_spheres::create_three_spheres_scene,
 };
 
 pub enum Scene {
@@ -18,6 +20,7 @@ pub enum Scene {
     RandomSpheres,
     CheckeredSpheres,
     Earth,
+    PerlinSpheres,
 }
 
 pub fn get_scene(ctx: &RenderContext, scene: Scene) -> (Arc<Camera>, Arc<dyn Node>) {
@@ -26,5 +29,6 @@ pub fn get_scene(ctx: &RenderContext, scene: Scene) -> (Arc<Camera>, Arc<dyn Nod
         Scene::RandomSpheres => create_random_spheres_scene(ctx),
         Scene::CheckeredSpheres => create_checkered_spheres_scene(ctx),
         Scene::Earth => create_earth_scene(ctx),
+        Scene::PerlinSpheres => create_perlin_spheres_scene(ctx),
     }
 }
