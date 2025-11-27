@@ -1,4 +1,3 @@
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
 pub trait Random: Send + Sync {
@@ -48,10 +47,10 @@ pub mod rand {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn random_new() -> impl Random {
+pub fn random_new() -> Arc<dyn Random> {
     use crate::random::wasm::WasmRandom;
 
-    WasmRandom::new()
+    Arc::new(WasmRandom::new())
 }
 
 #[cfg(target_arch = "wasm32")]

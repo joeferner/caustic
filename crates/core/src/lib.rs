@@ -15,7 +15,7 @@ use std::sync::Arc;
 pub use axis_aligned_bounding_box::AxisAlignedBoundingBox;
 pub use camera::Camera;
 pub use color::Color;
-pub use image::{Image, ImageLoader, image_loader_new};
+pub use image::Image;
 pub use interval::Interval;
 pub use object::Node;
 pub use random::{Random, random_new};
@@ -24,7 +24,6 @@ pub use vector::Vector3;
 
 pub struct RenderContext {
     pub random: Arc<dyn Random>,
-    pub image_loader: Arc<dyn ImageLoader>,
 }
 
 #[derive(Debug, Clone, Copy)]

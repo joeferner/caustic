@@ -10,5 +10,6 @@
         "serde",
         "tmax",
         "tmin"
-    ]
+    ],
+    "liveServer.settings.port": 5501
 }

@@ -9,7 +9,7 @@ use std::{
 };
 
 use indicatif::{ProgressBar, ProgressStyle};
-use rust_raytracer_core::{Camera, Color, Node, RenderContext, image_loader_new, random_new};
+use rust_raytracer_core::{Camera, Color, Node, RenderContext, random_new};
 use scene::Scene;
 
 use crate::scene::get_scene;
@@ -37,7 +37,6 @@ fn main() {
 
     let ctx = Arc::new(RenderContext {
         random: random_new(),
-        image_loader: image_loader_new(),
     });
 
     let (camera, world) = get_scene(&ctx, scene);
