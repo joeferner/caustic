@@ -58,6 +58,7 @@ pub fn create_three_spheres_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn
     camera_builder.max_depth = 50;
     camera_builder.defocus_angle = 0.6;
     camera_builder.focus_distance = 1.0;
+    camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
     (camera, world)

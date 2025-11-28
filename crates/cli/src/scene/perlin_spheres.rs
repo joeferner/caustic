@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Node, RenderContext, Vector3,
+    Camera, Color, Node, RenderContext, Vector3,
     camera::CameraBuilder,
     material::Lambertian,
     object::{BoundingVolumeHierarchy, Sphere},
@@ -47,6 +47,7 @@ pub fn create_perlin_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn
     camera_builder.look_at = Vector3::new(0.0, 1.5, 0.0);
     camera_builder.up = Vector3::new(0.0, 1.0, 0.0);
     camera_builder.defocus_angle = 0.0;
+    camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
     (camera, world)

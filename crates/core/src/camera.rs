@@ -21,6 +21,8 @@ pub struct CameraBuilder {
     pub samples_per_pixel: u32,
     /// Maximum number of ray bounces into scene
     pub max_depth: u32,
+    /// Scene background color
+    pub background: Color,
 }
 
 impl CameraBuilder {
@@ -36,6 +38,7 @@ impl CameraBuilder {
             focus_distance: 10.0,
             samples_per_pixel: 10,
             max_depth: 10,
+            background: Color::new(0.0, 0.0, 0.0),
         }
     }
 
@@ -86,6 +89,7 @@ impl CameraBuilder {
             defocus_angle: self.defocus_angle,
             defocus_disk_u,
             defocus_disk_v,
+            background: self.background,
         }
     }
 }
@@ -115,6 +119,8 @@ pub struct Camera {
     defocus_disk_u: Vector3,
     /// Defocus disk vertical radius
     defocus_disk_v: Vector3,
+    /// Scene background color
+    pub background: Color,
 }
 
 impl Camera {
@@ -124,24 +130,21 @@ impl Camera {
             return Color::BLACK;
         }
 
-        // The previous intersection might be just above the surface or might be just below the surface.
-        // If the ray's origin is just below the surface then it could intersect with that surface again.
-        // Which means that it will find the nearest surface at t=0.00000001 or whatever floating point
-        // approximation the hit function gives us. To address this raise the ray just a little bit off
-        // the surface.
-        if let Some(rec) = node.hit(&ray, Interval::new(0.00001, f64::INFINITY)) {
-            if let Some(scatter) = rec.material.scatter(ctx, &ray, &rec) {
-                let c: Color = self.ray_color(ctx, scatter.scattered, depth - 1, node);
-                return scatter.attenuation * c;
-            }
+        // If the ray hits nothing, return the background color.
+        let Some(hit) = node.hit(&ray, Interval::new(0.001, f64::INFINITY)) else {
+            return self.background;
+        };
 
-            return Color::BLACK;
-        }
+        let color_from_emission = hit.material.emitted(hit.u, hit.v, hit.pt);
 
-        // create a blue gradient sky
-        let unit_direction = ray.direction.unit();
-        let a = 0.5 * (unit_direction.y + 1.0);
-        (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
+        let Some(scatter_result) = hit.material.scatter(ctx, &ray, &hit) else {
+            return color_from_emission;
+        };
+
+        let color_from_scatter = scatter_result.attenuation
+            * self.ray_color(ctx, scatter_result.scattered, depth - 1, node);
+
+        color_from_emission + color_from_scatter
     }
 
     pub fn render(&self, ctx: &RenderContext, x: u32, y: u32, node: &dyn Node) -> Color {

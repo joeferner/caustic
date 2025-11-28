@@ -1,17 +1,23 @@
 use std::fmt::Debug;
 
-use crate::{Color, Ray, RenderContext, object::HitRecord};
+use crate::{Color, Ray, RenderContext, Vector3, object::HitRecord};
 
+pub mod diffuse_light;
 pub mod lambertian;
 pub mod metal;
 pub mod refractive;
 
+pub use diffuse_light::DiffuseLight;
 pub use lambertian::Lambertian;
 pub use metal::Metal;
 pub use refractive::Refractive;
 
 pub trait Material: Debug + Send + Sync {
     fn scatter(&self, ctx: &RenderContext, r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult>;
+
+    fn emitted(&self, _u: f64, _v: f64, _pt: Vector3) -> Color {
+        Color::new(0.0, 0.0, 0.0)
+    }
 }
 
 pub struct ScatterResult {

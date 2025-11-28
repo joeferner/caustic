@@ -59,6 +59,7 @@ pub fn create_earth_scene(
     camera_builder.look_at = Vector3::new(0.0, 0.0, 0.0);
     camera_builder.up = Vector3::new(0.0, 1.0, 0.0);
     camera_builder.defocus_angle = 0.0;
+    camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
     Ok((camera, globe))
@@ -97,6 +98,7 @@ fn create_three_ball_scene(aspect_ratio: f64, image_width: u32) -> (Arc<Camera>,
     let mut camera_builder = CameraBuilder::new();
     camera_builder.aspect_ratio = aspect_ratio;
     camera_builder.image_width = image_width;
+    camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
     (camera, Arc::new(group))

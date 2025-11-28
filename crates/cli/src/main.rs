@@ -20,7 +20,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args);
 
-    let mut scene = Scene::Quads;
+    let mut scene = Scene::SimpleLight;
     if let Some(scene_name) = args.get(1) {
         scene = if scene_name == "ThreeSpheres" {
             Scene::ThreeSpheres
@@ -34,6 +34,8 @@ fn main() {
             Scene::PerlinSpheres
         } else if scene_name == "Quads" {
             Scene::Quads
+        } else if scene_name == "SimpleLight" {
+            Scene::SimpleLight
         } else {
             panic!("invalid scene name")
         }

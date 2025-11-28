@@ -88,6 +88,7 @@ pub fn create_random_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn
     camera_builder.up = Vector3::new(0.0, 1.0, 0.0);
     camera_builder.defocus_angle = 0.6;
     camera_builder.focus_distance = 10.0;
+    camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
     (camera, world)
