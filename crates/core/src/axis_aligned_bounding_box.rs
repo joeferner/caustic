@@ -9,17 +9,17 @@ pub struct AxisAlignedBoundingBox {
 
 impl AxisAlignedBoundingBox {
     pub fn new() -> Self {
-        Self {
+        AxisAlignedBoundingBox::pad_to_minimums(Self {
             x: Interval::EMPTY,
             y: Interval::EMPTY,
             z: Interval::EMPTY,
-        }
+        })
     }
 
     /// Treat the two points a and b as extrema for the bounding box, so we don't require a
     /// particular minimum/maximum coordinate order.
     pub fn new_from_points(a: Vector3, b: Vector3) -> Self {
-        Self {
+        AxisAlignedBoundingBox::pad_to_minimums(Self {
             x: if a.x <= b.x {
                 Interval::new(a.x, b.x)
             } else {
@@ -35,15 +35,15 @@ impl AxisAlignedBoundingBox {
             } else {
                 Interval::new(b.z, a.z)
             },
-        }
+        })
     }
 
     pub fn new_from_bbox(box1: AxisAlignedBoundingBox, box2: AxisAlignedBoundingBox) -> Self {
-        Self {
+        AxisAlignedBoundingBox::pad_to_minimums(Self {
             x: Interval::new_from_intervals(box1.x, box2.x),
             y: Interval::new_from_intervals(box1.y, box2.y),
             z: Interval::new_from_intervals(box1.z, box2.z),
-        }
+        })
     }
 
     pub fn axis_interval(&self, axis: Axis) -> Interval {
@@ -102,6 +102,21 @@ impl AxisAlignedBoundingBox {
         } else {
             Axis::Z
         }
+    }
+
+    /// Adjust the AABB so that no side is narrower than some delta, padding if necessary.
+    fn pad_to_minimums(mut aabb: AxisAlignedBoundingBox) -> AxisAlignedBoundingBox {
+        let delta = 0.0001;
+        if aabb.x.size() < delta {
+            aabb.x = aabb.x.expand(delta);
+        }
+        if aabb.y.size() < delta {
+            aabb.y = aabb.y.expand(delta);
+        }
+        if aabb.z.size() < delta {
+            aabb.z = aabb.z.expand(delta);
+        }
+        aabb
     }
 }
 

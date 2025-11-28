@@ -4,10 +4,12 @@ use crate::{AxisAlignedBoundingBox, Interval, material::Material, ray::Ray, vect
 
 pub mod bounding_volume_hierarchy;
 pub mod group;
+pub mod quad;
 pub mod sphere;
 
 pub use bounding_volume_hierarchy::BoundingVolumeHierarchy;
 pub use group::Group;
+pub use quad::Quad;
 pub use sphere::Sphere;
 
 pub struct HitRecord {
