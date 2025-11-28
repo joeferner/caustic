@@ -12,7 +12,7 @@ pub fn create_perlin_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn
     let texture_perlin_noise = Arc::new(PerlinNoiseTexture::new(&*ctx.random, 4.0));
     let material_perlin_noise = Arc::new(Lambertian::new(texture_perlin_noise));
 
-    let texture_perlin_turbulence = Arc::new(PerlinTurbulenceTexture::new(&*ctx.random, 7));
+    let texture_perlin_turbulence = Arc::new(PerlinTurbulenceTexture::new(&*ctx.random, 4.0, 7));
     let material_perlin_turbulence = Arc::new(Lambertian::new(texture_perlin_turbulence));
 
     // World
