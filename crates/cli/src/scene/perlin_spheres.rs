@@ -9,7 +9,7 @@ use rust_raytracer_core::{
 };
 
 pub fn create_perlin_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
-    let texture_perlin = Arc::new(NoiseTexture::new(&*ctx.random));
+    let texture_perlin = Arc::new(NoiseTexture::new(&*ctx.random, 4.0));
     let material_perlin = Arc::new(Lambertian::new(texture_perlin));
 
     // World

@@ -12,6 +12,8 @@ cargo clippy -p rust-raytracer-wasm --target wasm32-unknown-unknown
 cargo build --workspace --exclude rust-raytracer-wasm
 cargo build -p rust-raytracer-wasm --target wasm32-unknown-unknown
 
+cargo test --workspace --exclude rust-raytracer-wasm
+
 cd "${SCRIPT_DIR}/../crates/wasm"
 wasm-pack build --target web --release
 
