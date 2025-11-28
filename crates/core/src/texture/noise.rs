@@ -17,13 +17,13 @@ impl NoiseTexture {
 
 impl Texture for NoiseTexture {
     fn value(&self, _u: f64, _v: f64, pt: Vector3) -> Color {
-        Color::new(1.0, 1.0, 1.0) * self.noise.noise(self.scale * pt)
+        Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(self.scale * pt))
     }
 }
 
 #[derive(Debug)]
 pub struct Perlin {
-    rand_float: [f64; Perlin::POINT_COUNT],
+    rand_vec: [Vector3; Perlin::POINT_COUNT],
     perm_x: [usize; Perlin::POINT_COUNT],
     perm_y: [usize; Perlin::POINT_COUNT],
     perm_z: [usize; Perlin::POINT_COUNT],
@@ -33,9 +33,9 @@ impl Perlin {
     const POINT_COUNT: usize = 256;
 
     pub fn new(random: &dyn Random) -> Self {
-        let mut rand_float: [f64; Perlin::POINT_COUNT] = [0.0; Perlin::POINT_COUNT];
-        for item in rand_float.iter_mut() {
-            *item = random.rand();
+        let mut rand_vec: [Vector3; Perlin::POINT_COUNT] = [Vector3::ZERO; Perlin::POINT_COUNT];
+        for item in rand_vec.iter_mut() {
+            *item = Vector3::random_unit(random);
         }
 
         let perm_x = Perlin::generate_perm(random);
@@ -43,7 +43,7 @@ impl Perlin {
         let perm_z = Perlin::generate_perm(random);
 
         Self {
-            rand_float,
+            rand_vec,
             perm_x,
             perm_y,
             perm_z,
@@ -55,16 +55,11 @@ impl Perlin {
         let v = pt.y - pt.y.floor();
         let w = pt.z - pt.z.floor();
 
-        // Hermitian Smoothing
-        let u = u * u * (3.0 - 2.0 * u);
-        let v = v * v * (3.0 - 2.0 * v);
-        let w = w * w * (3.0 - 2.0 * w);
-
         let i = pt.x.floor() as isize;
         let j = pt.y.floor() as isize;
         let k = pt.z.floor() as isize;
 
-        let mut c: [[[f64; 2]; 2]; 2] = [[[0.0; 2]; 2]; 2];
+        let mut c: [[[Vector3; 2]; 2]; 2] = [[[Vector3::ZERO; 2]; 2]; 2];
 
         for di in 0..2 {
             for dj in 0..2 {
@@ -72,7 +67,7 @@ impl Perlin {
                     let i = self.perm_x[((i + di) & 255) as usize]
                         ^ self.perm_y[((j + dj) & 255) as usize]
                         ^ self.perm_z[((k + dk) & 255) as usize];
-                    c[di as usize][dj as usize][dk as usize] = self.rand_float[i];
+                    c[di as usize][dj as usize][dk as usize] = self.rand_vec[i];
                 }
             }
         }
@@ -80,15 +75,19 @@ impl Perlin {
         Perlin::trilinear_interpolation(c, u, v, w)
     }
 
-    fn trilinear_interpolation(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+    fn trilinear_interpolation(c: [[[Vector3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+        let uu = u * u * (3.0 - 2.0 * u);
+        let vv = v * v * (3.0 - 2.0 * v);
+        let ww = w * w * (3.0 - 2.0 * w);
         let mut acc = 0.0;
         for (i, item) in c.iter().enumerate() {
             for (j, item) in item.iter().enumerate() {
                 for (k, item) in item.iter().enumerate() {
-                    acc += (i as f64 * u + (1.0 - i as f64) * (1.0 - u))
-                        * (j as f64 * v + (1.0 - j as f64) * (1.0 - v))
-                        * (k as f64 * w + (1.0 - k as f64) * (1.0 - w))
-                        * item;
+                    let weight_v = Vector3::new(u - i as f64, v - j as f64, w - k as f64);
+                    acc += (i as f64 * uu + (1.0 - i as f64) * (1.0 - uu))
+                        * (j as f64 * vv + (1.0 - j as f64) * (1.0 - vv))
+                        * (k as f64 * ww + (1.0 - k as f64) * (1.0 - ww))
+                        * item.dot(&weight_v);
                 }
             }
         }
