@@ -335,6 +335,15 @@ impl Vector3 {
     }
 }
 
+impl PartialEq for Vector3 {
+    fn eq(&self, other: &Self) -> bool {
+        const EPSILON: f64 = 1e-10;
+        (self.x - other.x).abs() < EPSILON
+            && (self.y - other.y).abs() < EPSILON
+            && (self.z - other.z).abs() < EPSILON
+    }
+}
+
 impl Mul<f64> for Vector3 {
     type Output = Self;
 
@@ -586,5 +595,111 @@ mod tests {
 
         // Refracted ray should bend toward the normal
         assert!(refracted.y < incident.y);
+    }
+
+    #[test]
+    fn test_vector3_exact_equality() {
+        let v1 = Vector3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        let v2 = Vector3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        assert_eq!(v1, v2);
+    }
+
+    #[test]
+    fn test_vector3_close_match() {
+        let v1 = Vector3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        let v2 = Vector3 {
+            x: 1.0 + 1e-11,
+            y: 2.0 + 1e-11,
+            z: 3.0 + 1e-11,
+        };
+        assert_eq!(v1, v2, "Vectors should be equal within epsilon");
+    }
+
+    #[test]
+    fn test_vector3_floating_point_error() {
+        // Simulating floating-point arithmetic errors
+        let v1 = Vector3 {
+            x: 0.1 + 0.2,
+            y: 0.0,
+            z: 0.0,
+        };
+        let v2 = Vector3 {
+            x: 0.3,
+            y: 0.0,
+            z: 0.0,
+        };
+        assert_eq!(v1, v2, "Should handle floating-point precision errors");
+    }
+
+    #[test]
+    fn test_vector3_not_equal() {
+        let v1 = Vector3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        let v2 = Vector3 {
+            x: 1.1,
+            y: 2.0,
+            z: 3.0,
+        };
+        assert_ne!(v1, v2);
+    }
+
+    #[test]
+    fn test_vector3_just_outside_epsilon() {
+        let v1 = Vector3 {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
+        let v2 = Vector3 {
+            x: 1.0 + 1e-9,
+            y: 2.0,
+            z: 3.0,
+        };
+        assert_ne!(v1, v2, "Difference larger than epsilon should not be equal");
+    }
+
+    #[test]
+    fn test_vector3_zero_vectors() {
+        let v1 = Vector3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        };
+        let v2 = Vector3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        };
+        assert_eq!(v1, v2);
+    }
+
+    #[test]
+    fn test_vector3_negative_values() {
+        let v1 = Vector3 {
+            x: -1.0,
+            y: -2.0,
+            z: -3.0,
+        };
+        let v2 = Vector3 {
+            x: -1.0 + 1e-11,
+            y: -2.0 - 1e-11,
+            z: -3.0 + 1e-11,
+        };
+        assert_eq!(v1, v2);
     }
 }
