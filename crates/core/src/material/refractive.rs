@@ -2,7 +2,7 @@ use core::f64;
 
 use crate::{
     Color, Ray, RenderContext,
-    material::{Material, ScatterResult},
+    material::{Material, PdfOrRay, ScatterResult},
     object::HitRecord,
 };
 
@@ -47,8 +47,7 @@ impl Material for Refractive {
 
         Some(ScatterResult {
             attenuation: Color::WHITE,
-            scattered: Ray::new_with_time(hit.pt, direction, r_in.time),
-            pdf: 0.0,
+            pdf_or_ray: PdfOrRay::Ray(Ray::new_with_time(hit.pt, direction, r_in.time)),
         })
     }
 }

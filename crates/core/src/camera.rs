@@ -1,8 +1,8 @@
 use std::{f64, sync::Arc};
 
 use crate::{
-    Color, CosinePdf, HitTablePdf, Interval, ProbabilityDensityFunction, Random, Ray,
-    RenderContext, Vector3, object::Node, probability_density_function::MixturePdf,
+    Color, HitTablePdf, Interval, ProbabilityDensityFunction, Random, Ray, RenderContext, Vector3,
+    material::PdfOrRay, object::Node, probability_density_function::MixturePdf,
 };
 
 #[derive(Debug)]
@@ -147,28 +147,30 @@ impl Camera {
 
         let color_from_emission = hit.material.emitted(&ray, &hit, hit.u, hit.v, hit.pt);
 
-        let attenuation = {
+        let (attenuation, pdf_or_ray) = {
             let Some(scatter_result) = hit.material.scatter(ctx, &ray, &hit) else {
                 return color_from_emission;
             };
-            scatter_result.attenuation
+            (scatter_result.attenuation, scatter_result.pdf_or_ray)
         };
 
-        let p0 = Arc::new(HitTablePdf::new(lights.clone(), hit.pt));
-        let p1 = Arc::new(CosinePdf::new(hit.normal));
-        let mixed_pdf = MixturePdf::new(p0, p1);
+        match pdf_or_ray {
+            PdfOrRay::Ray(ray) => attenuation * self.ray_color(ctx, ray, depth - 1, node, lights),
+            PdfOrRay::Pdf(pdf) => {
+                let light_ptr = Arc::new(HitTablePdf::new(lights.clone(), hit.pt));
+                let p = MixturePdf::new(light_ptr, pdf);
 
-        let scattered = Ray::new_with_time(hit.pt, mixed_pdf.generate(ctx), ray.time);
-        let pdf_value = mixed_pdf.value(ctx, &scattered.direction);
+                let scattered = Ray::new_with_time(hit.pt, p.generate(ctx), ray.time);
+                let pdf_value = p.value(ctx, &scattered.direction);
 
-        let scattering_pdf = hit.material.scattering_pdf(ctx, &ray, &hit, &scattered);
+                let scattering_pdf = hit.material.scattering_pdf(ctx, &ray, &hit, &scattered);
 
-        let color_from_scatter = (attenuation
-            * scattering_pdf
-            * self.ray_color(ctx, scattered, depth - 1, node, lights))
-            / pdf_value;
+                let sample_color = self.ray_color(ctx, scattered, depth - 1, node, lights);
+                let color_from_scatter = (attenuation * scattering_pdf * sample_color) / pdf_value;
 
-        color_from_emission + color_from_scatter
+                color_from_emission + color_from_scatter
+            }
+        }
     }
 
     pub fn render(

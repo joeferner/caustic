@@ -2,8 +2,8 @@ use core::f64;
 use std::sync::Arc;
 
 use crate::{
-    Color, Ray, RenderContext, Vector3,
-    material::{Material, ScatterResult},
+    Color, Ray, RenderContext, SpherePdf,
+    material::{Material, PdfOrRay, ScatterResult},
     object::HitRecord,
     texture::{SolidColor, Texture},
 };
@@ -26,11 +26,10 @@ impl Isotropic {
 }
 
 impl Material for Isotropic {
-    fn scatter(&self, ctx: &RenderContext, r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult> {
+    fn scatter(&self, _ctx: &RenderContext, _r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult> {
         Some(ScatterResult {
             attenuation: self.texture.value(hit.u, hit.v, hit.pt),
-            scattered: Ray::new_with_time(hit.pt, Vector3::random_unit(&*ctx.random), r_in.time),
-            pdf: 1.0 / (4.0 / f64::consts::PI),
+            pdf_or_ray: PdfOrRay::Pdf(Arc::new(SpherePdf::new())),
         })
     }
 

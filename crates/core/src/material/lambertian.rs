@@ -2,11 +2,10 @@ use core::f64;
 use std::sync::Arc;
 
 use crate::{
-    Color, Ray, RenderContext, Vector3,
-    material::{Material, ScatterResult},
+    Color, CosinePdf, Ray, RenderContext,
+    material::{Material, PdfOrRay, ScatterResult},
     object::HitRecord,
     texture::{SolidColor, Texture},
-    utils::OrthonormalBasis,
 };
 
 #[derive(Debug)]
@@ -27,17 +26,10 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, ctx: &RenderContext, r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult> {
-        let uvw = OrthonormalBasis::new(hit.normal);
-        let scatter_direction =
-            uvw.transform_to_local(Vector3::random_cosine_direction(&*ctx.random));
-        let scattered = Ray::new_with_time(hit.pt, scatter_direction.unit(), r_in.time);
-        let pdf = uvw.w.dot(&scattered.direction) / f64::consts::PI;
-
+    fn scatter(&self, _ctx: &RenderContext, _r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult> {
         Some(ScatterResult {
             attenuation: self.texture.value(hit.u, hit.v, hit.pt),
-            scattered,
-            pdf,
+            pdf_or_ray: PdfOrRay::Pdf(Arc::new(CosinePdf::new(hit.normal))),
         })
     }
 

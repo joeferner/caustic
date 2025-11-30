@@ -2,10 +2,11 @@ use core::f64;
 use std::{f64::consts::PI, sync::Arc};
 
 use crate::{
-    AxisAlignedBoundingBox, Interval, RenderContext, Vector3,
+    AxisAlignedBoundingBox, Interval, Random, RenderContext, Vector3,
     material::Material,
     object::{HitRecord, Node},
     ray::Ray,
+    utils::OrthonormalBasis,
 };
 
 #[derive(Debug)]
@@ -80,6 +81,18 @@ impl Sphere {
         let v = theta / PI;
         (u, v)
     }
+
+    fn random_to_sphere(random: &dyn Random, radius: f64, distance_squared: f64) -> Vector3 {
+        let r1 = random.rand();
+        let r2 = random.rand();
+        let z = 1.0 + r2 * ((1.0 - radius * radius / distance_squared).sqrt() - 1.0);
+
+        let phi = 2.0 * f64::consts::PI * r1;
+        let x = phi.cos() * (1.0 - z * z).sqrt();
+        let y = phi.sin() * (1.0 - z * z).sqrt();
+
+        Vector3::new(x, y, z)
+    }
 }
 
 impl Node for Sphere {
@@ -125,5 +138,34 @@ impl Node for Sphere {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         &self.bbox
+    }
+
+    fn pdf_value(&self, ctx: &RenderContext, origin: &Vector3, direction: &Vector3) -> f64 {
+        // This method only works for stationary spheres.
+
+        match self.hit(
+            ctx,
+            &Ray::new(*origin, *direction),
+            Interval::new(0.001, f64::INFINITY),
+        ) {
+            None => 0.0,
+            Some(_hit) => {
+                let dist_squared = (self.center.at(0.0) - *origin).length_squared();
+                let cos_theta_max = (1.0 - self.radius * self.radius / dist_squared).sqrt();
+                let solid_angle = 2.0 * f64::consts::PI * (1.0 - cos_theta_max);
+                1.0 / solid_angle
+            }
+        }
+    }
+
+    fn random(&self, ctx: &RenderContext, origin: &Vector3) -> Vector3 {
+        let direction = self.center.at(0.0) - *origin;
+        let distance_squared = direction.length_squared();
+        let uvw = OrthonormalBasis::new(direction);
+        uvw.transform_to_local(Sphere::random_to_sphere(
+            &*ctx.random,
+            self.radius,
+            distance_squared,
+        ))
     }
 }

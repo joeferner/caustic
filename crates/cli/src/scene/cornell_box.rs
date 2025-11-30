@@ -3,8 +3,8 @@ use std::sync::Arc;
 use rust_raytracer_core::{
     Color, Node, RenderContext, Vector3,
     camera::CameraBuilder,
-    material::{DiffuseLight, EmptyMaterial, Lambertian},
-    object::{BoundingVolumeHierarchy, Box, Quad, RotateY, Translate},
+    material::{DiffuseLight, EmptyMaterial, Lambertian, Refractive},
+    object::{BoundingVolumeHierarchy, Box, Group, Quad, RotateY, Sphere, Translate},
 };
 
 use crate::scene::SceneResult;
@@ -55,6 +55,7 @@ pub fn create_cornell_box_scene(_ctx: &RenderContext) -> SceneResult {
         white_material.clone(),
     )));
 
+    // box1
     let box1 = Arc::new(Box::new(
         Vector3::new(0.0, 0.0, 0.0),
         Vector3::new(165.0, 330.0, 165.0),
@@ -64,24 +65,38 @@ pub fn create_cornell_box_scene(_ctx: &RenderContext) -> SceneResult {
     let box1 = Arc::new(Translate::new(box1, Vector3::new(265.0, 0.0, 295.0)));
     world.push(box1);
 
-    let box2 = Arc::new(Box::new(
-        Vector3::new(0.0, 0.0, 0.0),
-        Vector3::new(165.0, 165.0, 165.0),
-        white_material,
-    ));
-    let box2 = Arc::new(RotateY::new(box2, -18.0));
-    let box2 = Arc::new(Translate::new(box2, Vector3::new(130.0, 0.0, 65.0)));
-    world.push(box2);
+    // box2
+    // let box2 = Arc::new(Box::new(
+    //     Vector3::new(0.0, 0.0, 0.0),
+    //     Vector3::new(165.0, 165.0, 165.0),
+    //     white_material,
+    // ));
+    // let box2 = Arc::new(RotateY::new(box2, -18.0));
+    // let box2 = Arc::new(Translate::new(box2, Vector3::new(130.0, 0.0, 65.0)));
+    // world.push(box2);
+    let glass = Arc::new(Refractive::new(1.5));
+    world.push(Arc::new(Sphere::new(
+        Vector3::new(190.0, 90.0, 190.0),
+        90.0,
+        glass,
+    )));
 
     let world = Arc::new(BoundingVolumeHierarchy::new(&world));
 
     // Lights
-    let lights = Arc::new(Quad::new(
+    let light1 = Arc::new(Quad::new(
         Vector3::new(343.0, 554.0, 332.0),
         Vector3::new(-130.0, 0.0, 0.0),
         Vector3::new(0.0, 0.0, -105.0),
         Arc::new(EmptyMaterial::new()),
     ));
+    let light2 = Arc::new(Sphere::new(
+        Vector3::new(190.0, 90.0, 190.0),
+        90.0,
+        Arc::new(EmptyMaterial::new()),
+    ));
+    let lights: Vec<Arc<dyn Node>> = vec![light1, light2];
+    let lights = Arc::new(Group::from_list(&lights));
 
     // Camera
     let mut camera_builder = CameraBuilder::new();

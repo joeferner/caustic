@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    AxisAlignedBoundingBox, Interval, Ray, RenderContext,
+    AxisAlignedBoundingBox, Interval, Ray, RenderContext, Vector3,
     object::{HitRecord, Node},
 };
 
@@ -54,5 +54,21 @@ impl Node for Group {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         &self.bbox
+    }
+
+    fn pdf_value(&self, ctx: &RenderContext, origin: &Vector3, direction: &Vector3) -> f64 {
+        let weight = 1.0 / (self.nodes.len() as f64);
+        let mut sum = 0.0;
+
+        for node in &self.nodes {
+            sum += weight * node.pdf_value(ctx, origin, direction);
+        }
+
+        sum
+    }
+
+    fn random(&self, ctx: &RenderContext, origin: &Vector3) -> Vector3 {
+        let r = ctx.random.rand_int_interval(0, self.nodes.len() as i64) as usize;
+        self.nodes[r].random(ctx, origin)
     }
 }

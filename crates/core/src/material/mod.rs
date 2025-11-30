@@ -1,6 +1,6 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
-use crate::{Color, Ray, RenderContext, Vector3, object::HitRecord};
+use crate::{Color, ProbabilityDensityFunction, Ray, RenderContext, Vector3, object::HitRecord};
 
 pub mod diffuse_light;
 pub mod empty;
@@ -34,8 +34,12 @@ pub trait Material: Debug + Send + Sync {
     }
 }
 
+pub enum PdfOrRay {
+    Pdf(Arc<dyn ProbabilityDensityFunction>),
+    Ray(Ray),
+}
+
 pub struct ScatterResult {
     pub attenuation: Color,
-    pub scattered: Ray,
-    pub pdf: f64,
+    pub pdf_or_ray: PdfOrRay,
 }
