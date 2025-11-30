@@ -1,11 +1,21 @@
 use core::f64;
-use std::{
-    fmt::Display,
-    ops::{Add, Div, Mul, Neg, Sub},
-};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::{Axis, Random};
 
+/// A 3-dimensional vector with x, y, and z components.
+///
+/// This struct is commonly used for representing points or directions in 3D space.
+///
+/// # Examples
+///
+/// ```
+/// use rust_raytracer_core::Vector3;
+///
+/// let v = Vector3::new(1.0, 2.0, 3.0);
+/// let length = v.length();
+/// let unit_vector = v.unit();
+/// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Vector3 {
     pub x: f64,
@@ -14,16 +24,42 @@ pub struct Vector3 {
 }
 
 impl Vector3 {
+    /// A constant zero vector (0, 0, 0).
     pub const ZERO: Vector3 = Vector3::new(0.0, 0.0, 0.0);
 
+    /// Creates a new Vector3 with the given x, y, and z components.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    /// use assert_eq_float::assert_eq_float;
+    ///
+    /// let v = Vector3::new(1.0, 2.0, 3.0);
+    /// assert_eq_float!(v.x, 1.0);
+    /// assert_eq_float!(v.y, 2.0);
+    /// assert_eq_float!(v.z, 3.0);
+    /// ```
     pub const fn new(x: f64, y: f64, z: f64) -> Self {
         Vector3 { x, y, z }
     }
 
+    /// Generates a random vector with components in the range [0, 1).
+    ///
+    /// # Arguments
+    ///
+    /// * `random` - A random number generator implementing the Random trait.
     pub fn random(random: &dyn Random) -> Self {
         Vector3::new(random.rand(), random.rand(), random.rand())
     }
 
+    /// Generates a random vector with components in the specified range [min, max).
+    ///
+    /// # Arguments
+    ///
+    /// * `random` - A random number generator implementing the Random trait.
+    /// * `min` - The minimum value for each component, inclusive.
+    /// * `max` - The maximum value for each component, exclusive.
     pub fn random_interval(random: &dyn Random, min: f64, max: f64) -> Self {
         Vector3::new(
             random.rand_interval(min, max),
@@ -32,6 +68,14 @@ impl Vector3 {
         )
     }
 
+    /// Generates a random unit vector (length = 1) with uniform distribution
+    /// on the unit sphere.
+    ///
+    /// Uses rejection sampling to ensure uniform distribution.
+    ///
+    /// # Arguments
+    ///
+    /// * `random` - A random number generator implementing the Random trait.
     pub fn random_unit(random: &dyn Random) -> Self {
         loop {
             let p = Self::random_interval(random, -1.0, 1.0);
@@ -42,6 +86,15 @@ impl Vector3 {
         }
     }
 
+    /// Generates a random vector on the hemisphere oriented around the given normal.
+    ///
+    /// The returned vector will be in the same hemisphere as the normal vector,
+    /// useful for sampling light directions.
+    ///
+    /// # Arguments
+    ///
+    /// * `random` - A random number generator implementing the Random trait.
+    /// * `normal` - The normal vector defining the hemisphere orientation.
     pub fn random_on_hemisphere(random: &dyn Random, normal: Vector3) -> Self {
         let on_unit_sphere = Self::random_unit(random);
         // In the same hemisphere as the normal
@@ -52,6 +105,13 @@ impl Vector3 {
         }
     }
 
+    /// Generates a random point within the unit disk (circle of radius 1) in the XY plane.
+    ///
+    /// Uses rejection sampling. The z component is always 0.
+    ///
+    /// # Arguments
+    ///
+    /// * `random` - A random number generator implementing the Random trait.
     pub fn random_in_unit_disk(random: &dyn Random) -> Vector3 {
         loop {
             let pt = Vector3::new(
@@ -65,6 +125,14 @@ impl Vector3 {
         }
     }
 
+    /// Generates a random direction using cosine-weighted hemisphere sampling.
+    ///
+    /// This is useful for importance sampling, where the probability density
+    /// is proportional to the cosine of the angle from the normal.
+    ///
+    /// # Arguments
+    ///
+    /// * `random` - A random number generator implementing the Random trait.
     pub fn random_cosine_direction(random: &dyn Random) -> Vector3 {
         let r1 = random.rand();
         let r2 = random.rand();
@@ -77,23 +145,92 @@ impl Vector3 {
         Vector3::new(x, y, z)
     }
 
-    /// Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
+    /// Returns a vector to a random point in the [-0.5, -0.5] to [+0.5, +0.5] unit square.
+    ///
+    /// The z component is always 0. Useful for antialiasing and depth of field effects.
+    ///
+    /// # Arguments
+    ///
+    /// * `random` - A random number generator implementing the Random trait.
     pub fn sample_square(random: &dyn Random) -> Vector3 {
         Vector3::new(random.rand() - 0.5, random.rand() - 0.5, 0.0)
     }
 
+    /// Returns the length (magnitude) of the vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    /// use assert_eq_float::assert_eq_float;
+    ///
+    /// let v = Vector3::new(3.0, 4.0, 0.0);
+    /// assert_eq_float!(v.length(), 5.0);
+    /// ```
     pub fn length(&self) -> f64 {
         self.length_squared().sqrt()
     }
 
+    /// Returns the squared length of the vector.
+    ///
+    /// This is more efficient than `length()` when you only need to compare
+    /// lengths or when the actual length value isn't needed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    /// use assert_eq_float::assert_eq_float;
+    ///
+    /// let v = Vector3::new(3.0, 4.0, 0.0);
+    /// assert_eq_float!(v.length_squared(), 25.0);
+    /// ```
     pub fn length_squared(&self) -> f64 {
-        self.x * self.x + self.y * self.y + self.z * self.z
+        let x_squared = self.x * self.x;
+        let y_squared = self.y * self.y;
+        let z_squared = self.z * self.z;
+        x_squared + y_squared + z_squared
     }
 
+    /// Computes the dot product (scalar product) of this vector with another.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The other vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    /// use assert_eq_float::assert_eq_float;
+    ///
+    /// let v1 = Vector3::new(1.0, 2.0, 3.0);
+    /// let v2 = Vector3::new(4.0, 5.0, 6.0);
+    /// assert_eq_float!(v1.dot(&v2), 32.0);
+    /// ```
     pub fn dot(&self, other: &Vector3) -> f64 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    /// Computes the cross product (vector product) of this vector with another.
+    ///
+    /// The resulting vector is perpendicular to both input vectors.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The other vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    /// use assert_eq_float::assert_eq_float;
+    ///
+    /// let v1 = Vector3::new(1.0, 0.0, 0.0);
+    /// let v2 = Vector3::new(0.0, 1.0, 0.0);
+    /// let result = v1.cross(&v2);
+    /// assert_eq_float!(result.z, 1.0);
+    /// ```
     pub fn cross(&self, other: &Vector3) -> Vector3 {
         Vector3 {
             x: self.y * other.z - self.z * other.y,
@@ -102,20 +239,68 @@ impl Vector3 {
         }
     }
 
+    /// Returns the unit vector (normalized vector) in the same direction.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    ///
+    /// let v = Vector3::new(3.0, 4.0, 0.0);
+    /// let unit = v.unit();
+    /// assert!((unit.length() - 1.0).abs() < 1e-10);
+    /// ```
     pub fn unit(&self) -> Vector3 {
         *self / self.length()
     }
 
-    /// Return true if the vector is close to zero in all dimensions.
+    /// Returns true if the vector is close to zero in all dimensions.
+    ///
+    /// Uses a threshold of 1e-8 for each component.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    ///
+    /// let v1 = Vector3::new(1e-9, 1e-9, 1e-9);
+    /// assert!(v1.is_near_zero());
+    ///
+    /// let v2 = Vector3::new(0.1, 0.0, 0.0);
+    /// assert!(!v2.is_near_zero());
+    /// ```
     pub fn is_near_zero(&self) -> bool {
         let s = 1e-8;
         (self.x.abs() < s) && (self.y.abs() < s) && (self.z.abs() < s)
     }
 
+    /// Reflects this vector about the given normal vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `n` - The normal vector to reflect about (should be normalized).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use rust_raytracer_core::Vector3;
+    /// use assert_eq_float::assert_eq_float;
+    ///
+    /// let v = Vector3::new(1.0, -1.0, 0.0);
+    /// let n = Vector3::new(0.0, 1.0, 0.0);
+    /// let reflected = v.reflect(n);
+    /// assert_eq_float!(reflected.y, 1.0);
+    /// ```
     pub fn reflect(&self, n: Vector3) -> Vector3 {
         *self - 2.0 * self.dot(&n) * n
     }
 
+    /// Refracts this vector through a surface with the given normal and refractive index ratio.
+    ///
+    /// # Arguments
+    ///
+    /// * `n` - The normal vector of the surface (should be normalized).
+    /// * `etai_over_etat` - The ratio of refractive indices (incident/transmitted).
     pub fn refract(&self, n: Vector3, etai_over_etat: f64) -> Vector3 {
         let cos_theta = (-(*self)).dot(&n).min(1.0);
         let r_out_perp = etai_over_etat * (*self + cos_theta * n);
@@ -123,6 +308,11 @@ impl Vector3 {
         r_out_perp + r_out_parallel
     }
 
+    /// Returns the value of the component along the specified axis.
+    ///
+    /// # Arguments
+    ///
+    /// * `axis` - The axis (X, Y, or Z) to retrieve.
     pub fn axis_value(&self, axis: Axis) -> f64 {
         match axis {
             Axis::X => self.x,
@@ -131,6 +321,11 @@ impl Vector3 {
         }
     }
 
+    /// Returns a mutable reference to the component along the specified axis.
+    ///
+    /// # Arguments
+    ///
+    /// * `axis` - The axis (X, Y, or Z) to retrieve.
     pub fn axis_value_mut(&mut self, axis: Axis) -> &mut f64 {
         match axis {
             Axis::X => &mut self.x,
@@ -212,118 +407,184 @@ impl Neg for Vector3 {
     }
 }
 
-impl Display for Vector3 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}, {}, {}]", self.x, self.y, self.z)
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use assert_eq_float::assert_eq_float;
+
+    use crate::random::test::MockRandom;
+
     use super::*;
 
-    const EPS: f64 = 1e-12;
-
-    fn approx_eq(a: f64, b: f64) -> bool {
-        (a - b).abs() < EPS
+    #[test]
+    fn test_new() {
+        let v = Vector3::new(1.0, 2.0, 3.0);
+        assert_eq_float!(v.x, 1.0);
+        assert_eq_float!(v.y, 2.0);
+        assert_eq_float!(v.z, 3.0);
     }
 
     #[test]
-    fn test_length_squared() {
-        let v = Vector3 {
-            x: 3.0,
-            y: 4.0,
-            z: 12.0,
-        };
-        assert!(approx_eq(v.length_squared(), 169.0)); // 3^2 + 4^2 + 12^2 = 169
+    fn test_zero() {
+        let v = Vector3::ZERO;
+        assert_eq_float!(v.x, 0.0);
+        assert_eq_float!(v.y, 0.0);
+        assert_eq_float!(v.z, 0.0);
     }
 
     #[test]
     fn test_length() {
-        let v = Vector3 {
-            x: 3.0,
-            y: 4.0,
-            z: 12.0,
-        };
-        assert!(approx_eq(v.length(), 13.0)); // sqrt(169)
+        let v = Vector3::new(3.0, 4.0, 0.0);
+        assert_eq_float!(v.length(), 5.0);
     }
 
     #[test]
-    fn test_dot_product() {
-        let a = Vector3 {
-            x: 1.0,
-            y: 2.0,
-            z: 3.0,
-        };
-        let b = Vector3 {
-            x: 4.0,
-            y: -5.0,
-            z: 6.0,
-        };
-
-        let dot = a.dot(&b); // 1*4 + 2*(-5) + 3*6 = 4 - 10 + 18 = 12
-        assert!(approx_eq(dot, 12.0));
+    fn test_length_squared() {
+        let v = Vector3::new(3.0, 4.0, 0.0);
+        assert_eq_float!(v.length_squared(), 25.0);
     }
 
     #[test]
-    fn test_cross_product() {
-        let a = Vector3 {
-            x: 1.0,
-            y: 2.0,
-            z: 3.0,
-        };
-        let b = Vector3 {
-            x: 4.0,
-            y: 5.0,
-            z: 6.0,
-        };
-
-        let c = a.cross(&b);
-
-        assert!(approx_eq(c.x, -3.0)); // 2*6 - 3*5 = -3
-        assert!(approx_eq(c.y, 6.0)); // 3*4 - 1*6 = 6
-        assert!(approx_eq(c.z, -3.0)); // 1*5 - 2*4 = -3
+    fn test_dot() {
+        let v1 = Vector3::new(1.0, 2.0, 3.0);
+        let v2 = Vector3::new(4.0, 5.0, 6.0);
+        assert_eq_float!(v1.dot(&v2), 32.0);
     }
 
     #[test]
-    fn test_cross_product_perpendicular() {
-        // Cross product of parallel vectors = zero vector
-        let a = Vector3 {
-            x: 2.0,
-            y: 2.0,
-            z: 2.0,
-        };
-        let b = Vector3 {
-            x: 4.0,
-            y: 4.0,
-            z: 4.0,
-        };
-
-        let c = a.cross(&b);
-
-        assert!(approx_eq(c.x, 0.0));
-        assert!(approx_eq(c.y, 0.0));
-        assert!(approx_eq(c.z, 0.0));
+    fn test_cross() {
+        let v1 = Vector3::new(1.0, 0.0, 0.0);
+        let v2 = Vector3::new(0.0, 1.0, 0.0);
+        let result = v1.cross(&v2);
+        assert_eq_float!(result.x, 0.0);
+        assert_eq_float!(result.y, 0.0);
+        assert_eq_float!(result.z, 1.0);
     }
 
     #[test]
-    fn test_cross_product_orientation() {
-        // Standard basis: i × j = k
-        let i = Vector3 {
-            x: 1.0,
-            y: 0.0,
-            z: 0.0,
-        };
-        let j = Vector3 {
-            x: 0.0,
-            y: 1.0,
-            z: 0.0,
-        };
+    fn test_unit() {
+        let v = Vector3::new(3.0, 4.0, 8.0);
+        let unit = v.unit();
+        assert_eq_float!(unit.length(), 1.0);
+        assert_eq_float!(unit.x, 0.31799936400190804);
+        assert_eq_float!(unit.y, 0.423999152002544);
+        assert_eq_float!(unit.z, 0.847998304005088);
+    }
 
-        let k = i.cross(&j);
+    #[test]
+    fn test_is_near_zero() {
+        let v1 = Vector3::new(1e-9, 1e-9, 1e-9);
+        assert!(v1.is_near_zero());
 
-        assert!(approx_eq(k.x, 0.0));
-        assert!(approx_eq(k.y, 0.0));
-        assert!(approx_eq(k.z, 1.0));
+        let v2 = Vector3::new(0.1, 0.0, 0.0);
+        assert!(!v2.is_near_zero());
+    }
+
+    #[test]
+    fn test_reflect() {
+        let v = Vector3::new(1.0, -1.0, 0.0);
+        let n = Vector3::new(0.0, 1.0, 0.0);
+        let reflected = v.reflect(n);
+        assert_eq_float!(reflected.x, 1.0);
+        assert_eq_float!(reflected.y, 1.0);
+        assert_eq_float!(reflected.z, 0.0);
+    }
+
+    #[test]
+    fn test_add() {
+        let v1 = Vector3::new(1.0, 2.0, 3.0);
+        let v2 = Vector3::new(4.0, 5.0, 6.0);
+        let result = v1 + v2;
+        assert_eq_float!(result.x, 5.0);
+        assert_eq_float!(result.y, 7.0);
+        assert_eq_float!(result.z, 9.0);
+    }
+
+    #[test]
+    fn test_sub() {
+        let v1 = Vector3::new(4.0, 5.0, 6.0);
+        let v2 = Vector3::new(1.0, 2.0, 3.0);
+        let result = v1 - v2;
+        assert_eq_float!(result.x, 3.0);
+        assert_eq_float!(result.y, 3.0);
+        assert_eq_float!(result.z, 3.0);
+    }
+
+    #[test]
+    fn test_mul_scalar() {
+        let v = Vector3::new(1.0, 2.0, 3.0);
+        let result = v * 2.0;
+        assert_eq_float!(result.x, 2.0);
+        assert_eq_float!(result.y, 4.0);
+        assert_eq_float!(result.z, 6.0);
+    }
+
+    #[test]
+    fn test_scalar_mul() {
+        let v = Vector3::new(1.0, 2.0, 3.0);
+        let result = 2.0 * v;
+        assert_eq_float!(result.x, 2.0);
+        assert_eq_float!(result.y, 4.0);
+        assert_eq_float!(result.z, 6.0);
+    }
+
+    #[test]
+    fn test_div() {
+        let v = Vector3::new(2.0, 4.0, 6.0);
+        let result = v / 2.0;
+        assert_eq_float!(result.x, 1.0);
+        assert_eq_float!(result.y, 2.0);
+        assert_eq_float!(result.z, 3.0);
+    }
+
+    #[test]
+    fn test_neg() {
+        let v = Vector3::new(1.0, -2.0, 3.0);
+        let result = -v;
+        assert_eq_float!(result.x, -1.0);
+        assert_eq_float!(result.y, 2.0);
+        assert_eq_float!(result.z, -3.0);
+    }
+
+    #[test]
+    fn test_random() {
+        let mock = MockRandom::new(vec![0.5, 0.3, 0.7]);
+        let v = Vector3::random(&mock);
+        assert_eq_float!(v.x, 0.5);
+        assert_eq_float!(v.y, 0.3);
+        assert_eq_float!(v.z, 0.7);
+    }
+
+    #[test]
+    fn test_sample_square() {
+        let mock = MockRandom::new(vec![0.5, 0.8]);
+        let v = Vector3::sample_square(&mock);
+        assert_eq_float!(v.x, 0.0);
+        assert_eq_float!(v.y, 0.3);
+        assert_eq_float!(v.z, 0.0);
+    }
+
+    #[test]
+    fn test_axis_value() {
+        let v = Vector3::new(1.0, 2.0, 3.0);
+        assert_eq_float!(v.axis_value(Axis::X), 1.0);
+        assert_eq_float!(v.axis_value(Axis::Y), 2.0);
+        assert_eq_float!(v.axis_value(Axis::Z), 3.0);
+    }
+
+    #[test]
+    fn test_axis_value_mut() {
+        let mut v = Vector3::new(1.0, 2.0, 3.0);
+        *v.axis_value_mut(Axis::X) = 10.0;
+        assert_eq_float!(v.x, 10.0);
+    }
+
+    #[test]
+    fn test_refract() {
+        let incident = Vector3::new(1.0, -1.0, 0.0).unit();
+        let normal = Vector3::new(0.0, 1.0, 0.0);
+        let refracted = incident.refract(normal, 1.0 / 1.5);
+
+        // Refracted ray should bend toward the normal
+        assert!(refracted.y < incident.y);
     }
 }

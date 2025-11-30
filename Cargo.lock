@@ -65,6 +65,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "assert-eq-float"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cb1d1f4e7328a563286d459cf348988e04df64bcff2057cef9b910a0d5950f8"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -859,6 +868,7 @@ dependencies = [
 name = "rust-raytracer-core"
 version = "0.1.0"
 dependencies = [
+ "assert-eq-float",
  "image",
  "rand",
  "wasm-bindgen",
