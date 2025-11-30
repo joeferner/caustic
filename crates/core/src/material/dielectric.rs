@@ -7,13 +7,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Refractive {
+pub struct Dielectric {
     /// Refractive index in vacuum or air, or the ratio of the material's refractive index over
     /// the refractive index of the enclosing media
     refraction_index: f64,
 }
 
-impl Refractive {
+impl Dielectric {
     pub fn new(refraction_index: f64) -> Self {
         Self { refraction_index }
     }
@@ -26,7 +26,7 @@ impl Refractive {
     }
 }
 
-impl Material for Refractive {
+impl Material for Dielectric {
     fn scatter(&self, ctx: &RenderContext, r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult> {
         let ri = if hit.front_face {
             1.0 / self.refraction_index

@@ -162,29 +162,28 @@ impl Camera {
 
         let color_from_emission = hit.material.emitted(&ray, &hit, hit.u, hit.v, hit.pt);
 
-        let (attenuation, pdf_or_ray) = {
-            let Some(scatter_result) = hit.material.scatter(ctx, &ray, &hit) else {
-                return color_from_emission;
-            };
-            (scatter_result.attenuation, scatter_result.pdf_or_ray)
-        };
+        match hit.material.scatter(ctx, &ray, &hit) {
+            None => color_from_emission,
+            Some(scatter_results) => match scatter_results.pdf_or_ray {
+                PdfOrRay::Ray(ray) => {
+                    scatter_results.attenuation * self.ray_color(ctx, ray, depth - 1, world, lights)
+                }
+                PdfOrRay::Pdf(material_pdf) => {
+                    let light_pdf = Arc::new(HittablePdf::new(lights.clone(), hit.pt));
+                    let pdf = MixturePdf::new(light_pdf, material_pdf);
 
-        match pdf_or_ray {
-            PdfOrRay::Ray(ray) => attenuation * self.ray_color(ctx, ray, depth - 1, world, lights),
-            PdfOrRay::Pdf(pdf) => {
-                let light_pdf = Arc::new(HittablePdf::new(lights.clone(), hit.pt));
-                let p = MixturePdf::new(light_pdf, pdf);
+                    let scattered = Ray::new_with_time(hit.pt, pdf.generate(ctx), ray.time);
+                    let pdf_value = pdf.value(ctx, &scattered.direction);
 
-                let scattered = Ray::new_with_time(hit.pt, p.generate(ctx), ray.time);
-                let pdf_value = p.value(ctx, &scattered.direction);
+                    let scattering_pdf = hit.material.scattering_pdf(ctx, &ray, &hit, &scattered);
 
-                let scattering_pdf = hit.material.scattering_pdf(ctx, &ray, &hit, &scattered);
+                    let sample_color = self.ray_color(ctx, scattered, depth - 1, world, lights);
+                    let color_from_scatter =
+                        (scatter_results.attenuation * scattering_pdf * sample_color) / pdf_value;
 
-                let sample_color = self.ray_color(ctx, scattered, depth - 1, world, lights);
-                let color_from_scatter = (attenuation * scattering_pdf * sample_color) / pdf_value;
-
-                color_from_emission + color_from_scatter
-            }
+                    color_from_emission + color_from_scatter
+                }
+            },
         }
     }
 

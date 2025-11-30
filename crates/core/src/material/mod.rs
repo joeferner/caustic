@@ -2,19 +2,19 @@ use std::{fmt::Debug, sync::Arc};
 
 use crate::{Color, ProbabilityDensityFunction, Ray, RenderContext, Vector3, object::HitRecord};
 
+pub mod dielectric;
 pub mod diffuse_light;
 pub mod empty;
 pub mod isotropic;
 pub mod lambertian;
 pub mod metal;
-pub mod refractive;
 
+pub use dielectric::Dielectric;
 pub use diffuse_light::DiffuseLight;
 pub use empty::EmptyMaterial;
 pub use isotropic::Isotropic;
 pub use lambertian::Lambertian;
 pub use metal::Metal;
-pub use refractive::Refractive;
 
 pub trait Material: Debug + Send + Sync {
     fn scatter(&self, ctx: &RenderContext, r_in: &Ray, hit: &HitRecord) -> Option<ScatterResult>;

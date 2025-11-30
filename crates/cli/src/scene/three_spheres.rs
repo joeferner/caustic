@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rust_raytracer_core::{
     Color, RenderContext, Vector3,
     camera::CameraBuilder,
-    material::{Lambertian, Metal, Refractive},
+    material::{Dielectric, Lambertian, Metal},
     object::{BoundingVolumeHierarchy, Group, Node, Sphere},
     texture::{CheckerTexture, SolidColor},
 };
@@ -17,8 +17,8 @@ pub fn create_three_spheres_scene(_ctx: &RenderContext) -> SceneResult {
         Arc::new(SolidColor::new(Color::new(0.9, 0.9, 0.9))),
     ))));
     let material_center = Arc::new(Lambertian::new_from_color(Color::new(0.1, 0.2, 0.5)));
-    let material_left = Arc::new(Refractive::new(1.5));
-    let material_bubble = Arc::new(Refractive::new(1.0 / 1.5));
+    let material_left = Arc::new(Dielectric::new(1.5));
+    let material_bubble = Arc::new(Dielectric::new(1.0 / 1.5));
     let material_right = Arc::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.2));
 
     // World

@@ -4,7 +4,7 @@ use rust_raytracer_core::{
     Color, RenderContext, Vector3,
     camera::CameraBuilder,
     image::ImageImage,
-    material::{DiffuseLight, Lambertian, Metal, Refractive},
+    material::{Dielectric, DiffuseLight, Lambertian, Metal},
     object::{
         BoundingVolumeHierarchy, Box, ConstantMedium, Group, Node, Quad, RotateY, Sphere, Translate,
     },
@@ -58,7 +58,7 @@ pub fn create_final_scene(ctx: &RenderContext) -> SceneResult {
     world.push(Arc::new(Sphere::new(
         Vector3::new(260.0, 150.0, 45.0),
         50.0,
-        Arc::new(Refractive::new(1.5)),
+        Arc::new(Dielectric::new(1.5)),
     )));
 
     // metal sphere bottom right
@@ -72,7 +72,7 @@ pub fn create_final_scene(ctx: &RenderContext) -> SceneResult {
     let boundary = Arc::new(Sphere::new(
         Vector3::new(360.0, 150.0, 145.0),
         70.0,
-        Arc::new(Refractive::new(1.5)),
+        Arc::new(Dielectric::new(1.5)),
     ));
     world.push(boundary.clone());
     world.push(Arc::new(ConstantMedium::new_from_color(
@@ -85,7 +85,7 @@ pub fn create_final_scene(ctx: &RenderContext) -> SceneResult {
     let boundary = Arc::new(Sphere::new(
         Vector3::new(0.0, 0.0, 0.0),
         5000.0,
-        Arc::new(Refractive::new(1.5)),
+        Arc::new(Dielectric::new(1.5)),
     ));
     world.push(Arc::new(ConstantMedium::new_from_color(
         boundary,

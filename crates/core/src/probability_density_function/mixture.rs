@@ -18,7 +18,9 @@ impl MixturePdf {
 
 impl ProbabilityDensityFunction for MixturePdf {
     fn value(&self, ctx: &RenderContext, direction: &Vector3) -> f64 {
-        0.5 * self.pdf0.value(ctx, direction) + 0.5 * self.pdf1.value(ctx, direction)
+        let v0 = 0.5 * self.pdf0.value(ctx, direction);
+        let v1 = 0.5 * self.pdf1.value(ctx, direction);
+        v0 + v1
     }
 
     fn generate(&self, ctx: &RenderContext) -> Vector3 {

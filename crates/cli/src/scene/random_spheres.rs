@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rust_raytracer_core::{
     Color, RenderContext, Vector3,
     camera::CameraBuilder,
-    material::{Lambertian, Metal, Refractive},
+    material::{Dielectric, Lambertian, Metal},
     object::{BoundingVolumeHierarchy, Group, Node, Sphere},
 };
 
@@ -48,14 +48,14 @@ pub fn create_random_spheres_scene(ctx: &RenderContext) -> SceneResult {
                     world.push(Arc::new(Sphere::new(center, 0.2, sphere_material)));
                 } else {
                     // glass
-                    let sphere_material = Arc::new(Refractive::new(1.5));
+                    let sphere_material = Arc::new(Dielectric::new(1.5));
                     world.push(Arc::new(Sphere::new(center, 0.2, sphere_material)));
                 }
             }
         }
     }
 
-    let material1 = Arc::new(Refractive::new(1.5));
+    let material1 = Arc::new(Dielectric::new(1.5));
     world.push(Arc::new(Sphere::new(
         Vector3::new(0.0, 1.0, 0.0),
         1.0,

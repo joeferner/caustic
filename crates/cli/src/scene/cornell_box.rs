@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rust_raytracer_core::{
     Color, Node, RenderContext, Vector3,
     camera::CameraBuilder,
-    material::{DiffuseLight, EmptyMaterial, Lambertian, Refractive},
+    material::{Dielectric, DiffuseLight, EmptyMaterial, Lambertian},
     object::{BoundingVolumeHierarchy, Box, Group, Quad, RotateY, Sphere, Translate},
 };
 
@@ -74,7 +74,7 @@ pub fn create_cornell_box_scene(_ctx: &RenderContext) -> SceneResult {
     // let box2 = Arc::new(RotateY::new(box2, -18.0));
     // let box2 = Arc::new(Translate::new(box2, Vector3::new(130.0, 0.0, 65.0)));
     // world.push(box2);
-    let glass = Arc::new(Refractive::new(1.5));
+    let glass = Arc::new(Dielectric::new(1.5));
     world.push(Arc::new(Sphere::new(
         Vector3::new(190.0, 90.0, 190.0),
         90.0,
