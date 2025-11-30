@@ -1,10 +1,12 @@
-pub mod cosine_pdf;
-pub mod hit_table_pdf;
-pub mod sphere_pdf;
+pub mod cosine;
+pub mod hit_table;
+pub mod mixture;
+pub mod sphere;
 
-pub use cosine_pdf::CosinePdf;
-pub use hit_table_pdf::HitTablePdf;
-pub use sphere_pdf::SpherePdf;
+pub use cosine::CosinePdf;
+pub use hit_table::HitTablePdf;
+pub use mixture::MixturePdf;
+pub use sphere::SpherePdf;
 
 use core::f64;
 

@@ -1,8 +1,8 @@
 use std::{f64, sync::Arc};
 
 use crate::{
-    Color, HitTablePdf, Interval, ProbabilityDensityFunction, Random, Ray, RenderContext, Vector3,
-    object::Node,
+    Color, CosinePdf, HitTablePdf, Interval, ProbabilityDensityFunction, Random, Ray,
+    RenderContext, Vector3, object::Node, probability_density_function::MixturePdf,
 };
 
 #[derive(Debug)]
@@ -154,9 +154,12 @@ impl Camera {
             scatter_result.attenuation
         };
 
-        let light_pdf = HitTablePdf::new(lights.clone(), hit.pt);
-        let scattered = Ray::new_with_time(hit.pt, light_pdf.generate(ctx), ray.time);
-        let pdf_value = light_pdf.value(ctx, &scattered.direction);
+        let p0 = Arc::new(HitTablePdf::new(lights.clone(), hit.pt));
+        let p1 = Arc::new(CosinePdf::new(hit.normal));
+        let mixed_pdf = MixturePdf::new(p0, p1);
+
+        let scattered = Ray::new_with_time(hit.pt, mixed_pdf.generate(ctx), ray.time);
+        let pdf_value = mixed_pdf.value(ctx, &scattered.direction);
 
         let scattering_pdf = hit.material.scattering_pdf(ctx, &ray, &hit, &scattered);
 
