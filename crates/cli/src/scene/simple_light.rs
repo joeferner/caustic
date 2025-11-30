@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, RenderContext, Vector3,
+    Color, RenderContext, Vector3,
     camera::CameraBuilder,
     material::{DiffuseLight, Lambertian},
-    object::{BoundingVolumeHierarchy, Node, Quad, Sphere},
+    object::{BoundingVolumeHierarchy, Group, Node, Quad, Sphere},
     texture::PerlinTurbulenceTexture,
 };
 
-pub fn create_simple_light_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_simple_light_scene(ctx: &RenderContext) -> SceneResult {
     // Material
     let perlin_texture = Arc::new(PerlinTurbulenceTexture::new(&*ctx.random, 4.0, 7));
     let perlin_material = Arc::new(Lambertian::new(perlin_texture));
@@ -61,5 +63,9 @@ pub fn create_simple_light_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn N
     camera_builder.background = Color::new(0.0, 0.0, 0.0);
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

@@ -35,7 +35,13 @@ pub enum Scene {
     Final,
 }
 
-pub fn get_scene(ctx: &RenderContext, scene: Scene) -> (Arc<Camera>, Arc<dyn Node>) {
+pub struct SceneResult {
+    pub camera: Arc<Camera>,
+    pub world: Arc<dyn Node>,
+    pub lights: Arc<dyn Node>,
+}
+
+pub fn get_scene(ctx: &RenderContext, scene: Scene) -> SceneResult {
     match scene {
         Scene::ThreeSpheres => create_three_spheres_scene(ctx),
         Scene::RandomSpheres => create_random_spheres_scene(ctx),

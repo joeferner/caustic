@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, RenderContext, Vector3,
+    Color, RenderContext, Vector3,
     camera::CameraBuilder,
     material::Lambertian,
-    object::{BoundingVolumeHierarchy, Node, Sphere},
+    object::{BoundingVolumeHierarchy, Group, Node, Sphere},
     texture::{CheckerTexture, SolidColor},
 };
 
-pub fn create_checkered_spheres_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_checkered_spheres_scene(_ctx: &RenderContext) -> SceneResult {
     let checker = Arc::new(Lambertian::new(Arc::new(CheckerTexture::new(
         0.32,
         Arc::new(SolidColor::new(Color::new(0.2, 0.3, 0.1))),
@@ -45,5 +47,9 @@ pub fn create_checkered_spheres_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc
     camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

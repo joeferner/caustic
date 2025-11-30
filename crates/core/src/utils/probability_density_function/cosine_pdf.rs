@@ -1,7 +1,7 @@
 use core::f64;
 
 use crate::{
-    Random, Vector3,
+    RenderContext, Vector3,
     utils::{OrthonormalBasis, ProbabilityDensityFunction},
 };
 
@@ -18,13 +18,13 @@ impl CosinePdf {
 }
 
 impl ProbabilityDensityFunction for CosinePdf {
-    fn value(&self, direction: Vector3) -> f64 {
+    fn value(&self, _ctx: &RenderContext, direction: &Vector3) -> f64 {
         let cosine_theta = direction.unit().dot(&self.uvw.w);
         (cosine_theta / f64::consts::PI).max(0.0)
     }
 
-    fn generate(&self, random: &dyn Random) -> Vector3 {
+    fn generate(&self, ctx: &RenderContext) -> Vector3 {
         self.uvw
-            .transform_to_local(Vector3::random_cosine_direction(random))
+            .transform_to_local(Vector3::random_cosine_direction(&*ctx.random))
     }
 }

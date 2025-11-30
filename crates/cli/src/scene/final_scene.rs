@@ -1,17 +1,19 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, RenderContext, Vector3,
+    Color, RenderContext, Vector3,
     camera::CameraBuilder,
     image::ImageImage,
     material::{DiffuseLight, Lambertian, Metal, Refractive},
     object::{
-        BoundingVolumeHierarchy, Box, ConstantMedium, Node, Quad, RotateY, Sphere, Translate,
+        BoundingVolumeHierarchy, Box, ConstantMedium, Group, Node, Quad, RotateY, Sphere, Translate,
     },
     texture::{ImageTexture, PerlinNoiseTexture},
 };
 
-pub fn create_final_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_final_scene(ctx: &RenderContext) -> SceneResult {
     let mut world: Vec<Arc<dyn Node>> = vec![];
 
     // ground
@@ -152,5 +154,9 @@ pub fn create_final_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
     camera_builder.defocus_angle = 0.0;
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

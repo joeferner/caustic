@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, Node, RenderContext, Vector3,
+    Color, Node, RenderContext, Vector3,
     camera::CameraBuilder,
     material::Lambertian,
-    object::{BoundingVolumeHierarchy, Sphere},
+    object::{BoundingVolumeHierarchy, Group, Sphere},
     texture::{PerlinNoiseTexture, PerlinTurbulenceTexture},
 };
 
-pub fn create_perlin_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_perlin_spheres_scene(ctx: &RenderContext) -> SceneResult {
     let texture_perlin_noise = Arc::new(PerlinNoiseTexture::new(&*ctx.random, 4.0));
     let material_perlin_noise = Arc::new(Lambertian::new(texture_perlin_noise));
 
@@ -50,5 +52,9 @@ pub fn create_perlin_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn
     camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

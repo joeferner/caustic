@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, Node, RenderContext, Vector3,
+    Color, Node, RenderContext, Vector3,
     camera::CameraBuilder,
     material::{DiffuseLight, Lambertian},
-    object::{BoundingVolumeHierarchy, Box, ConstantMedium, Quad, RotateY, Translate},
+    object::{BoundingVolumeHierarchy, Box, ConstantMedium, Group, Quad, RotateY, Translate},
 };
 
-pub fn create_cornell_box_smoke_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_cornell_box_smoke_scene(_ctx: &RenderContext) -> SceneResult {
     let red_material = Arc::new(Lambertian::new_from_color(Color::new(0.65, 0.05, 0.05)));
     let white_material = Arc::new(Lambertian::new_from_color(Color::new(0.73, 0.73, 0.73)));
     let green_material = Arc::new(Lambertian::new_from_color(Color::new(0.12, 0.45, 0.15)));
@@ -97,5 +99,9 @@ pub fn create_cornell_box_smoke_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc
     camera_builder.defocus_angle = 0.0;
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

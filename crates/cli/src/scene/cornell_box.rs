@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, Node, RenderContext, Vector3,
+    Color, Node, RenderContext, Vector3,
     camera::CameraBuilder,
-    material::{DiffuseLight, Lambertian},
+    material::{DiffuseLight, EmptyMaterial, Lambertian},
     object::{BoundingVolumeHierarchy, Box, Quad, RotateY, Translate},
 };
 
-pub fn create_cornell_box_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_cornell_box_scene(_ctx: &RenderContext) -> SceneResult {
     let red_material = Arc::new(Lambertian::new_from_color(Color::new(0.65, 0.05, 0.05)));
     let white_material = Arc::new(Lambertian::new_from_color(Color::new(0.73, 0.73, 0.73)));
     let green_material = Arc::new(Lambertian::new_from_color(Color::new(0.12, 0.45, 0.15)));
@@ -73,11 +75,19 @@ pub fn create_cornell_box_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn N
 
     let world = Arc::new(BoundingVolumeHierarchy::new(&world));
 
+    // Lights
+    let lights = Arc::new(Quad::new(
+        Vector3::new(343.0, 554.0, 332.0),
+        Vector3::new(-130.0, 0.0, 0.0),
+        Vector3::new(0.0, 0.0, -105.0),
+        Arc::new(EmptyMaterial::new()),
+    ));
+
     // Camera
     let mut camera_builder = CameraBuilder::new();
     camera_builder.aspect_ratio = 1.0;
     camera_builder.image_width = 600;
-    camera_builder.samples_per_pixel = 1000;
+    camera_builder.samples_per_pixel = 10;
     camera_builder.max_depth = 10;
     camera_builder.vertical_fov = 40.0;
     camera_builder.look_from = Vector3::new(278.0, 278.0, -800.0);
@@ -87,5 +97,9 @@ pub fn create_cornell_box_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn N
     camera_builder.defocus_angle = 0.0;
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights,
+    }
 }

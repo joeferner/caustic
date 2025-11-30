@@ -1,14 +1,16 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, RenderContext, Vector3,
+    Color, RenderContext, Vector3,
     camera::CameraBuilder,
     material::{Lambertian, Metal, Refractive},
-    object::{BoundingVolumeHierarchy, Node, Sphere},
+    object::{BoundingVolumeHierarchy, Group, Node, Sphere},
     texture::{CheckerTexture, SolidColor},
 };
 
-pub fn create_three_spheres_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_three_spheres_scene(_ctx: &RenderContext) -> SceneResult {
     let material_ground = Arc::new(Lambertian::new(Arc::new(CheckerTexture::new(
         0.32,
         Arc::new(SolidColor::new(Color::new(0.2, 0.3, 0.1))),
@@ -54,12 +56,16 @@ pub fn create_three_spheres_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn
     let mut camera_builder = CameraBuilder::new();
     camera_builder.aspect_ratio = 16.0 / 9.0;
     camera_builder.image_width = 600;
-    camera_builder.samples_per_pixel = 100;
+    camera_builder.samples_per_pixel = 10;
     camera_builder.max_depth = 50;
     camera_builder.defocus_angle = 0.6;
     camera_builder.focus_distance = 1.0;
     camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

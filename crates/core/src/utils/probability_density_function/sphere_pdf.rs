@@ -1,6 +1,6 @@
 use core::f64;
 
-use crate::{Random, Vector3, utils::ProbabilityDensityFunction};
+use crate::{RenderContext, Vector3, utils::ProbabilityDensityFunction};
 
 pub struct SpherePdf {}
 
@@ -17,11 +17,11 @@ impl Default for SpherePdf {
 }
 
 impl ProbabilityDensityFunction for SpherePdf {
-    fn value(&self, _direction: Vector3) -> f64 {
+    fn value(&self, _ctx: &RenderContext, _direction: &Vector3) -> f64 {
         1.0 / (4.0 * f64::consts::PI)
     }
 
-    fn generate(&self, random: &dyn Random) -> Vector3 {
-        Vector3::random_unit(random)
+    fn generate(&self, ctx: &RenderContext) -> Vector3 {
+        Vector3::random_unit(&*ctx.random)
     }
 }

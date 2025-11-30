@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, RenderContext, Vector3,
+    Color, RenderContext, Vector3,
     camera::CameraBuilder,
     image::ImageImage,
     material::Lambertian,
-    object::{Node, Sphere},
+    object::{Group, Sphere},
     texture::ImageTexture,
 };
 
-pub fn create_earth_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_earth_scene(_ctx: &RenderContext) -> SceneResult {
     let image = ImageImage::load_file("assets/earth-map.jpg").unwrap();
     let earth_texture = Arc::new(ImageTexture::new(image));
     let earth_surface = Arc::new(Lambertian::new(earth_texture));
@@ -29,5 +31,9 @@ pub fn create_earth_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) 
     camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
-    (camera, globe)
+    SceneResult {
+        camera,
+        world: globe,
+        lights: Arc::new(Group::new()),
+    }
 }

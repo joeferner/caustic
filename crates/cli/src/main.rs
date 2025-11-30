@@ -51,13 +51,13 @@ fn main() {
         random: random_new(),
     });
 
-    let (camera, world) = get_scene(&ctx, scene);
+    let scene = get_scene(&ctx, scene);
 
     // render image
     let mut img: image::ImageBuffer<
         image::Rgb<u8>,
         Vec<<image::Rgb<u8> as image::Pixel>::Subpixel>,
-    > = image::ImageBuffer::new(camera.image_width(), camera.image_height());
+    > = image::ImageBuffer::new(scene.camera.image_width(), scene.camera.image_height());
 
     // generate work
     let mut work: Vec<Work> = vec![];
@@ -66,8 +66,9 @@ fn main() {
         let mut x = 0;
         loop {
             work.push(Work {
-                camera: camera.clone(),
-                world: world.clone(),
+                camera: scene.camera.clone(),
+                world: scene.world.clone(),
+                lights: scene.lights.clone(),
                 xmin: x,
                 xmax: (x + BLOCK_SIZE).min(img.width()),
                 ymin: y,
@@ -114,7 +115,13 @@ fn main() {
                             let mut pixels = vec![];
                             for y in item.ymin..item.ymax {
                                 for x in item.xmin..item.xmax {
-                                    let pixel_color = item.camera.render(&ctx, x, y, &*item.world);
+                                    let pixel_color = item.camera.render(
+                                        &ctx,
+                                        x,
+                                        y,
+                                        &*item.world,
+                                        item.lights.clone(),
+                                    );
                                     pixels.push(pixel_color);
                                 }
                             }
@@ -168,6 +175,7 @@ fn color_to_image_rgb(color: Color) -> image::Rgb<u8> {
 pub struct Work {
     pub camera: Arc<Camera>,
     pub world: Arc<dyn Node>,
+    pub lights: Arc<dyn Node>,
     pub xmin: u32,
     pub xmax: u32,
     pub ymin: u32,

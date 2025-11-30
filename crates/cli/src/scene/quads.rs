@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, Node, RenderContext, Vector3,
+    Color, Node, RenderContext, Vector3,
     camera::CameraBuilder,
     material::Lambertian,
-    object::{BoundingVolumeHierarchy, Quad},
+    object::{BoundingVolumeHierarchy, Group, Quad},
 };
 
-pub fn create_quads_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_quads_scene(_ctx: &RenderContext) -> SceneResult {
     // Materials
     let left_red = Arc::new(Lambertian::new_from_color(Color::new(1.0, 0.2, 0.2)));
     let back_green = Arc::new(Lambertian::new_from_color(Color::new(0.2, 1.0, 0.2)));
@@ -65,5 +67,9 @@ pub fn create_quads_scene(_ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) 
     camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

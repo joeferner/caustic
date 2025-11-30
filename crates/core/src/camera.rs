@@ -1,9 +1,9 @@
-use std::f64;
+use std::{f64, sync::Arc};
 
 use crate::{
     Color, Interval, Random, Ray, RenderContext, Vector3,
     object::Node,
-    utils::{CosinePdf, ProbabilityDensityFunction},
+    utils::{HitTablePdf, ProbabilityDensityFunction},
 };
 
 #[derive(Debug)]
@@ -129,7 +129,14 @@ pub struct Camera {
 
 impl Camera {
     #[allow(clippy::only_used_in_recursion)]
-    fn ray_color(&self, ctx: &RenderContext, ray: Ray, depth: u32, node: &dyn Node) -> Color {
+    fn ray_color(
+        &self,
+        ctx: &RenderContext,
+        ray: Ray,
+        depth: u32,
+        node: &dyn Node,
+        lights: Arc<dyn Node>,
+    ) -> Color {
         if depth == 0 {
             return Color::BLACK;
         }
@@ -148,24 +155,32 @@ impl Camera {
             scatter_result.attenuation
         };
 
-        let surface_pdf = CosinePdf::new(hit.normal);
-        let scattered = Ray::new_with_time(hit.pt, surface_pdf.generate(&*ctx.random), ray.time);
-        let pdf_value = surface_pdf.value(scattered.direction);
+        let light_pdf = HitTablePdf::new(lights.clone(), hit.pt);
+        let scattered = Ray::new_with_time(hit.pt, light_pdf.generate(ctx), ray.time);
+        let pdf_value = light_pdf.value(ctx, &scattered.direction);
 
         let scattering_pdf = hit.material.scattering_pdf(ctx, &ray, &hit, &scattered);
 
-        let color_from_scatter =
-            (attenuation * scattering_pdf * self.ray_color(ctx, scattered, depth - 1, node))
-                / pdf_value;
+        let color_from_scatter = (attenuation
+            * scattering_pdf
+            * self.ray_color(ctx, scattered, depth - 1, node, lights))
+            / pdf_value;
 
         color_from_emission + color_from_scatter
     }
 
-    pub fn render(&self, ctx: &RenderContext, x: u32, y: u32, node: &dyn Node) -> Color {
+    pub fn render(
+        &self,
+        ctx: &RenderContext,
+        x: u32,
+        y: u32,
+        node: &dyn Node,
+        lights: Arc<dyn Node>,
+    ) -> Color {
         let mut pixel_color = Color::new(0.0, 0.0, 0.0);
         for _sample in 0..self.samples_per_pixel {
             let r = self.get_ray(ctx, x, y);
-            pixel_color += self.ray_color(ctx, r, self.max_depth, node);
+            pixel_color += self.ray_color(ctx, r, self.max_depth, node, lights.clone());
         }
         (self.pixel_samples_scale * pixel_color).linear_to_gamma()
     }

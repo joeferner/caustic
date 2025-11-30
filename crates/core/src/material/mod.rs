@@ -3,12 +3,14 @@ use std::fmt::Debug;
 use crate::{Color, Ray, RenderContext, Vector3, object::HitRecord};
 
 pub mod diffuse_light;
+pub mod empty;
 pub mod isotropic;
 pub mod lambertian;
 pub mod metal;
 pub mod refractive;
 
 pub use diffuse_light::DiffuseLight;
+pub use empty::EmptyMaterial;
 pub use isotropic::Isotropic;
 pub use lambertian::Lambertian;
 pub use metal::Metal;

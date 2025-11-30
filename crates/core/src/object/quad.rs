@@ -1,3 +1,4 @@
+use core::f64;
 use std::sync::Arc;
 
 use crate::{
@@ -15,6 +16,7 @@ pub struct Quad {
     normal: Vector3,
     d: f64,
     w: Vector3,
+    area: f64,
 }
 
 impl Quad {
@@ -33,6 +35,7 @@ impl Quad {
             normal,
             d,
             w,
+            area: n.length(),
         }
     }
 
@@ -100,5 +103,28 @@ impl Node for Quad {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         &self.bbox
+    }
+
+    fn pdf_value(&self, ctx: &RenderContext, origin: &Vector3, direction: &Vector3) -> f64 {
+        let hit = match self.hit(
+            ctx,
+            &Ray::new(*origin, *direction),
+            Interval::new(0.001, f64::INFINITY),
+        ) {
+            Some(hit) => hit,
+            None => {
+                return 0.0;
+            }
+        };
+
+        let distance_squared = hit.t * hit.t * direction.length_squared();
+        let cosine = (direction.dot(&hit.normal) / direction.length()).abs();
+
+        distance_squared / (cosine * self.area)
+    }
+
+    fn random(&self, ctx: &RenderContext, origin: &Vector3) -> Vector3 {
+        let p = self.q + (ctx.random.rand() * self.u) + (ctx.random.rand() * self.v);
+        p - *origin
     }
 }

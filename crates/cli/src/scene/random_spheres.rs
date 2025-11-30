@@ -1,13 +1,15 @@
 use std::sync::Arc;
 
 use rust_raytracer_core::{
-    Camera, Color, RenderContext, Vector3,
+    Color, RenderContext, Vector3,
     camera::CameraBuilder,
     material::{Lambertian, Metal, Refractive},
-    object::{BoundingVolumeHierarchy, Node, Sphere},
+    object::{BoundingVolumeHierarchy, Group, Node, Sphere},
 };
 
-pub fn create_random_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn Node>) {
+use crate::scene::SceneResult;
+
+pub fn create_random_spheres_scene(ctx: &RenderContext) -> SceneResult {
     let mut world: Vec<Arc<dyn Node>> = vec![];
 
     let ground_material = Arc::new(Lambertian::new_from_color(Color::new(0.5, 0.5, 0.5)));
@@ -91,5 +93,9 @@ pub fn create_random_spheres_scene(ctx: &RenderContext) -> (Arc<Camera>, Arc<dyn
     camera_builder.background = Color::new(0.7, 0.8, 1.0);
     let camera = Arc::new(camera_builder.build());
 
-    (camera, world)
+    SceneResult {
+        camera,
+        world,
+        lights: Arc::new(Group::new()),
+    }
 }

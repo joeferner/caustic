@@ -49,4 +49,12 @@ pub trait Node: Send + Sync {
     fn hit(&self, ctx: &RenderContext, ray: &Ray, ray_t: Interval) -> Option<HitRecord>;
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox;
+
+    fn pdf_value(&self, _ctx: &RenderContext, _origin: &Vector3, _direction: &Vector3) -> f64 {
+        0.0
+    }
+
+    fn random(&self, _ctx: &RenderContext, _origin: &Vector3) -> Vector3 {
+        Vector3::new(1.0, 0.0, 0.0)
+    }
 }
