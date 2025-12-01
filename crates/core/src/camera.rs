@@ -128,9 +128,9 @@ impl CameraBuilder {
         let image_height: u32 = if image_height < 1 { 1 } else { image_height };
 
         // Calculate stratified sampling parameters
-        let sqrt_spp = (self.samples_per_pixel as f64).sqrt();
-        let pixel_samples_scale = 1.0 / (sqrt_spp * sqrt_spp);
-        let reciprocal_sqrt_spp = 1.0 / sqrt_spp;
+        let sqrt_spp = (self.samples_per_pixel as f64).sqrt() as u32;
+        let pixel_samples_scale = 1.0 / (sqrt_spp * sqrt_spp) as f64;
+        let reciprocal_sqrt_spp = 1.0 / sqrt_spp as f64;
 
         let center = self.look_from;
 
@@ -175,7 +175,7 @@ impl CameraBuilder {
             defocus_disk_u,
             defocus_disk_v,
             background: self.background,
-            sqrt_spp: sqrt_spp as u32,
+            sqrt_spp,
             reciprocal_sqrt_spp,
             pixel_samples_scale,
         }
@@ -326,11 +326,13 @@ impl Camera {
         for s_y in 0..self.sqrt_spp {
             for s_x in 0..self.sqrt_spp {
                 let r = self.get_ray(ctx, x, y, s_x, s_y);
-                pixel_color += self.ray_color(ctx, r, self.max_depth, world, lights.clone());
+                let sample = self.ray_color(ctx, r, self.max_depth, world, lights.clone());
+                pixel_color += sample;
             }
         }
 
-        (self.pixel_samples_scale * pixel_color.nan_to_zero()).linear_to_gamma()
+        let pixel_color = self.pixel_samples_scale * pixel_color.nan_to_zero();
+        pixel_color.linear_to_gamma()
     }
 
     /// Constructs a camera ray originating from the defocus disk and directed at a randomly

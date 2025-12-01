@@ -37,7 +37,7 @@ pub fn create_final_scene(ctx: &RenderContext) -> SceneResult {
     }
 
     // light
-    let light_material = Arc::new(DiffuseLight::new_from_color(Color::new(4.0, 4.0, 4.0)));
+    let light_material = Arc::new(DiffuseLight::new_from_color(Color::new(1.0, 1.0, 1.0)));
     world.push(Arc::new(Quad::new(
         Vector3::new(123.0, 554.0, 147.0),
         Vector3::new(300.0, 0.0, 0.0),
@@ -144,7 +144,7 @@ pub fn create_final_scene(ctx: &RenderContext) -> SceneResult {
 
     // Camera
     let image_width = 400;
-    let samples_per_pixel = 100;
+    let samples_per_pixel = 200;
     let max_depth = 10;
 
     // let image_width = 800;
