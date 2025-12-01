@@ -9,6 +9,7 @@
         "lambertian",
         "Perlin",
         "raytracer",
+        "Rodrigues",
         "rustup",
         "Schlick's",
         "serde",

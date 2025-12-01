@@ -5,6 +5,7 @@ pub mod color;
 pub mod image;
 pub mod interval;
 pub mod material;
+pub mod matrix;
 pub mod object;
 pub mod probability_density_function;
 pub mod random;
@@ -21,6 +22,7 @@ pub use camera::{Camera, CameraBuilder};
 pub use color::Color;
 pub use image::Image;
 pub use interval::Interval;
+pub use matrix::Matrix3x3;
 pub use object::Node;
 pub use probability_density_function::{
     CosinePdf, HittablePdf, ProbabilityDensityFunction, SpherePdf,

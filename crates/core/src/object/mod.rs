@@ -9,7 +9,7 @@ pub mod box_node;
 pub mod constant_medium;
 pub mod group;
 pub mod quad;
-pub mod rotate_y;
+pub mod rotate;
 pub mod sphere;
 pub mod translate;
 
@@ -18,7 +18,7 @@ pub use box_node::Box;
 pub use constant_medium::ConstantMedium;
 pub use group::Group;
 pub use quad::Quad;
-pub use rotate_y::RotateY;
+pub use rotate::Rotate;
 pub use sphere::Sphere;
 pub use translate::Translate;
 
