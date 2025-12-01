@@ -475,7 +475,7 @@ mod tests {
         camera_builder.samples_per_pixel = 16; // sqrt = 4
         let camera = camera_builder.build();
 
-        let random = MockRandom::new(vec![0.5]);
+        let random = MockRandom::new(vec![0.5, 0.8, 0.1, 0.4]);
 
         // Test corners of stratification grid
         let offset_00 = camera.sample_square_stratified(&random, 0, 0);

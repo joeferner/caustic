@@ -131,10 +131,11 @@ pub mod wasm {
 
 #[cfg(test)]
 pub mod test {
-    use std::sync::Mutex;
+    use std::{fmt::Debug, sync::Mutex};
 
     use crate::Random;
 
+    #[derive(Debug)]
     pub struct MockRandom {
         values: Vec<f64>,
         index: Mutex<usize>,
@@ -147,12 +148,20 @@ pub mod test {
                 index: Mutex::new(0),
             }
         }
+
+        pub fn new_with_length(len: usize) -> Self {
+            let mut values = vec![];
+            for i in 0..len {
+                values.push(((i * 1103515245 + 12345) % 2147483648) as f64 / 2147483648.0);
+            }
+            MockRandom::new(values)
+        }
     }
 
     impl Random for MockRandom {
         fn rand(&self) -> f64 {
             let mut idx = self.index.lock().unwrap();
-            let val = self.values[*idx % self.values.len()];
+            let val = self.values[*idx];
             *idx += 1;
             val
         }
