@@ -1,10 +1,11 @@
+pub mod parser;
 pub mod tokenizer;
 
 use std::fs;
 
 use rust_raytracer_core::SceneData;
 
-use crate::tokenizer::OpenscadTokenizer;
+use crate::{parser::openscad_parse, tokenizer::openscad_tokenize};
 
 #[derive(Debug)]
 pub enum OpenscadError {
@@ -21,9 +22,11 @@ pub fn openscad_read_from_file(filename: &str) -> Result<SceneData, OpenscadErro
     }
 }
 
-pub fn openscad_read_from_string(contents: &str) -> Result<SceneData, OpenscadError> {
-    let mut tokenizer = OpenscadTokenizer::new(contents);
-    println!("{:?}", tokenizer.next_token());
+pub fn openscad_read_from_string(input: &str) -> Result<SceneData, OpenscadError> {
+    let tokens = openscad_tokenize(input);
+    let tree = openscad_parse(tokens);
+
+    println!("{:?}", tree);
 
     todo!();
 }

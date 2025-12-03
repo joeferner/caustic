@@ -1,13 +1,12 @@
-use regex::Regex;
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Identifier(String),
     Number(f64),
     LeftParen,
     RightParen,
     Semicolon,
-    EOF,
+    For,
+    Unknown(char),
 }
 
 impl PartialEq for Token {
@@ -21,130 +20,375 @@ impl PartialEq for Token {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum TokenizerError {
-    PastEndOfFile,
+#[derive(Debug, PartialEq, Clone)]
+pub struct TokenWithPos {
+    pub token: Token,
+    pub line: usize,
+    pub col: usize,
 }
 
-pub type Result<T> = std::result::Result<T, TokenizerError>;
-
-const RE_NUMBER: &str = r"^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?";
-const RE_IDENTIFIER: &str = r"^[a-zA-Z_][a-zA-Z0-9_]*";
-
-pub struct OpenscadTokenizer {
-    contents: String,
-    position: usize,
-    re_number: Regex,
-    re_identifier: Regex,
+struct Tokenizer {
+    input: Vec<char>,
+    pos: usize,
+    line: usize,
+    col: usize,
 }
 
-impl OpenscadTokenizer {
-    pub fn new(contents: &str) -> Self {
+impl Tokenizer {
+    pub fn new(input: &str) -> Self {
         Self {
-            contents: contents.to_owned(),
-            position: 0,
-            re_number: Regex::new(RE_NUMBER).unwrap(),
-            re_identifier: Regex::new(RE_IDENTIFIER).unwrap(),
+            input: input.chars().collect(),
+            pos: 0,
+            line: 1,
+            col: 1,
         }
     }
 
-    pub fn next_token(&mut self) -> Result<Token> {
-        let s = match self.contents.get(self.position..) {
-            Some(s) => s,
-            None => return Err(TokenizerError::PastEndOfFile),
-        };
+    pub fn tokenize(mut self) -> Vec<TokenWithPos> {
+        let mut tokens = Vec::new();
+        while let Some(tok) = self.next() {
+            tokens.push(tok);
+        }
+        tokens
+    }
 
-        // end of file
-        if s.is_empty() {
-            self.position += 1;
-            return Ok(Token::EOF);
+    fn current(&self) -> Option<char> {
+        self.input.get(self.pos).copied()
+    }
+
+    fn peek(&self, offset: usize) -> Option<char> {
+        let idx = self.pos + offset;
+        if idx < self.input.len() {
+            Some(self.input[idx])
+        } else {
+            None
+        }
+    }
+
+    fn advance(&mut self) -> Option<char> {
+        let ch = self.current()?;
+        self.pos += 1;
+        if ch == '\n' {
+            self.line += 1;
+            self.col = 1;
+        } else {
+            self.col += 1;
+        }
+        Some(ch)
+    }
+
+    fn advance_n(&mut self, n: usize) {
+        for _ in 0..n {
+            self.advance();
+        }
+    }
+
+    fn skip_whitespace_and_comments(&mut self) {
+        loop {
+            self.skip_whitespace();
+            if !self.skip_comment() {
+                break;
+            }
+        }
+    }
+
+    fn skip_comment(&mut self) -> bool {
+        if self.current() == Some('/') {
+            if self.peek(1) == Some('/') {
+                // Line comment
+                while self.current().is_some() && self.current() != Some('\n') {
+                    self.advance();
+                }
+                return true;
+            } else if self.peek(1) == Some('*') {
+                // Block comment
+                self.advance(); // /
+                self.advance(); // *
+                while self.current().is_some() {
+                    if self.current() == Some('*') && self.peek(1) == Some('/') {
+                        self.advance(); // *
+                        self.advance(); // /
+                        break;
+                    }
+                    self.advance();
+                }
+                return true;
+            }
+        }
+        false
+    }
+
+    fn skip_whitespace(&mut self) {
+        while let Some(ch) = self.current() {
+            if ch.is_whitespace() {
+                self.advance();
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn read_identifier(&mut self) -> String {
+        let mut ident = String::new();
+        while let Some(ch) = self.current() {
+            if ch.is_alphanumeric() || ch == '_' {
+                ident.push(ch);
+                self.advance();
+            } else {
+                break;
+            }
+        }
+        ident
+    }
+
+    fn try_read_number(&mut self) -> Option<f64> {
+        let mut result = String::new();
+        let mut offset = 0;
+        let mut found_number = false;
+        let mut found_decimal = false;
+
+        // find middle decimals
+        while let Some(ch) = self.peek(offset) {
+            if ch >= '0' && ch <= '9' {
+                result.push(ch);
+                found_number = true;
+            } else if found_decimal == false && ch == '.' {
+                result.push(ch);
+                found_decimal = true;
+            } else {
+                break;
+            }
+            offset += 1;
         }
 
-        // symbols
-        if s.starts_with(';') {
-            self.position += 1;
-            return Ok(Token::Semicolon);
-        }
-        if s.starts_with('(') {
-            self.position += 1;
-            return Ok(Token::LeftParen);
-        }
-        if s.starts_with(')') {
-            self.position += 1;
-            return Ok(Token::RightParen);
+        if !found_number {
+            return None;
         }
 
-        // number
-        if let Some(m) = self.re_number.captures(s) {
-            let m = m.get_match();
-            self.position += m.end();
-            if let Ok(v) = m.as_str().parse::<f64>() {
-                return Ok(Token::Number(v));
+        // scientific notation
+        if let Some(ch) = self.peek(offset)
+            && (ch == 'e' || ch == 'E')
+        {
+            result.push(ch);
+            offset += 1;
+
+            // +/-
+            if let Some(ch) = self.peek(offset)
+                && (ch == '+' || ch == '-')
+            {
+                result.push(ch);
+                offset += 1;
+            }
+
+            // number
+            while let Some(ch) = self.peek(offset) {
+                if ch >= '0' && ch <= '9' {
+                    result.push(ch);
+                    offset += 1;
+                } else {
+                    break;
+                }
             }
         }
 
-        // identifier
-        if let Some(m) = self.re_identifier.captures(s) {
-            let m = m.get_match();
-            self.position += m.end();
-            return Ok(Token::Identifier(m.as_str().to_owned()));
+        match result.parse() {
+            Ok(v) => {
+                self.advance_n(offset);
+                Some(v)
+            }
+            Err(_) => None,
         }
-
-        todo!("{s}");
     }
+}
+
+impl Iterator for Tokenizer {
+    type Item = TokenWithPos;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.skip_whitespace_and_comments();
+
+        let line = self.line;
+        let col = self.col;
+
+        let token = match self.current() {
+            None => {
+                return None;
+            }
+            Some('(') => {
+                self.advance();
+                Token::LeftParen
+            }
+            Some(')') => {
+                self.advance();
+                Token::RightParen
+            }
+            Some(';') => {
+                self.advance();
+                Token::Semicolon
+            }
+            Some(ch) if ch.is_alphabetic() || ch == '_' => {
+                Token::Identifier(self.read_identifier())
+            }
+            Some(ch) => {
+                if let Some(number) = self.try_read_number() {
+                    Token::Number(number)
+                } else {
+                    self.advance();
+                    Token::Unknown(ch)
+                }
+            }
+        };
+
+        Some(TokenWithPos { token, line, col })
+    }
+}
+
+pub fn openscad_tokenize(input: &str) -> Vec<TokenWithPos> {
+    let tokenizer = Tokenizer::new(input);
+    tokenizer.tokenize()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    macro_rules! assert_match {
-        ($re:expr, $input:expr, $expected:expr, $end:expr) => {
-            let m = $re.captures($input).unwrap().get_match();
-            assert_eq!($expected, m.as_str());
-            assert_eq!($end, m.end());
-        };
-        ($re:expr, $input:expr, $expected:expr, $end:expr, $msg:expr) => {
-            let m = $re.captures($input).unwrap().get_match();
-            assert_eq!($expected, m.as_str(), $msg);
-            assert_eq!($end, m.end(), $msg);
-        };
+    fn assert_tokens(input: &str, expected: &[TokenWithPos]) {
+        let found = openscad_tokenize(input);
+        assert_eq!(found, expected);
     }
 
     #[test]
     fn test_re_number() {
-        let re = Regex::new(RE_NUMBER).unwrap();
-        assert_match!(re, "1", "1", 1);
-        assert_match!(re, "42", "42", 2);
-        assert_match!(re, "-42.34", "-42.34", 6);
-        assert_match!(re, "-42.34e11", "-42.34e11", 9);
-        assert_match!(re, "-42.34e-11", "-42.34e-11", 10);
-        assert_match!(re, "-42.34a", "-42.34", 6, "trailing character");
+        assert_tokens(
+            "1",
+            &vec![TokenWithPos {
+                col: 1,
+                line: 1,
+                token: Token::Number(1.0),
+            }],
+        );
+
+        assert_tokens(
+            "42",
+            &vec![TokenWithPos {
+                col: 1,
+                line: 1,
+                token: Token::Number(42.0),
+            }],
+        );
+
+        assert_tokens(
+            "42.34",
+            &vec![TokenWithPos {
+                col: 1,
+                line: 1,
+                token: Token::Number(42.34),
+            }],
+        );
+
+        assert_tokens(
+            "42.34e11",
+            &vec![TokenWithPos {
+                col: 1,
+                line: 1,
+                token: Token::Number(42.34e11),
+            }],
+        );
+
+        assert_tokens(
+            "42.34E-11",
+            &vec![TokenWithPos {
+                col: 1,
+                line: 1,
+                token: Token::Number(42.34e-11),
+            }],
+        );
+
+        assert_tokens(
+            "42.34a",
+            &vec![
+                TokenWithPos {
+                    col: 1,
+                    line: 1,
+                    token: Token::Number(42.34),
+                },
+                TokenWithPos {
+                    col: 6,
+                    line: 1,
+                    token: Token::Identifier("a".to_string()),
+                },
+            ],
+        );
     }
 
     #[test]
     fn test_re_identifier() {
-        let re = Regex::new(RE_IDENTIFIER).unwrap();
-        assert_match!(re, "a", "a", 1);
-        assert_match!(re, "cube", "cube", 4);
-        assert_match!(re, "cube(", "cube", 4, "trailing character");
+        assert_tokens(
+            "a",
+            &vec![TokenWithPos {
+                col: 1,
+                line: 1,
+                token: Token::Identifier("a".to_string()),
+            }],
+        );
+
+        assert_tokens(
+            "cube_2",
+            &vec![TokenWithPos {
+                col: 1,
+                line: 1,
+                token: Token::Identifier("cube_2".to_string()),
+            }],
+        );
+
+        assert_tokens(
+            "cube(",
+            &vec![
+                TokenWithPos {
+                    col: 1,
+                    line: 1,
+                    token: Token::Identifier("cube".to_string()),
+                },
+                TokenWithPos {
+                    col: 5,
+                    line: 1,
+                    token: Token::LeftParen,
+                },
+            ],
+        );
     }
 
     #[test]
     fn test_simple() {
-        let mut tokenizer = OpenscadTokenizer::new("cube(10);");
-        assert_eq!(
-            tokenizer.next_token().unwrap(),
-            Token::Identifier("cube".to_string())
-        );
-        assert_eq!(tokenizer.next_token().unwrap(), Token::LeftParen);
-        assert_eq!(tokenizer.next_token().unwrap(), Token::Number(10.0));
-        assert_eq!(tokenizer.next_token().unwrap(), Token::RightParen);
-        assert_eq!(tokenizer.next_token().unwrap(), Token::Semicolon);
-        assert_eq!(tokenizer.next_token().unwrap(), Token::EOF);
-        assert_eq!(
-            tokenizer.next_token().unwrap_err(),
-            TokenizerError::PastEndOfFile
+        assert_tokens(
+            "cube(10);",
+            &vec![
+                TokenWithPos {
+                    col: 1,
+                    line: 1,
+                    token: Token::Identifier("cube".to_string()),
+                },
+                TokenWithPos {
+                    col: 5,
+                    line: 1,
+                    token: Token::LeftParen,
+                },
+                TokenWithPos {
+                    col: 6,
+                    line: 1,
+                    token: Token::Number(10.0),
+                },
+                TokenWithPos {
+                    col: 8,
+                    line: 1,
+                    token: Token::RightParen,
+                },
+                TokenWithPos {
+                    col: 9,
+                    line: 1,
+                    token: Token::Semicolon,
+                },
+            ],
         );
     }
 }
