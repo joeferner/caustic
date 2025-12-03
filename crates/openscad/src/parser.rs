@@ -1,54 +1,79 @@
 // see https://github.com/GilesBathgate/RapCAD/blob/master/doc/openscad.bnf
 
-use crate::tokenizer::{Token, TokenWithPos};
+use crate::{
+    WithPosition,
+    tokenizer::{Token, TokenWithPosition},
+};
 
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     /// ';'
     Empty,
     // TODO '{' <inner_input> '}'
-    // TODO <module_instantiation>
     // TODO <assignment>
+    // TODO "include" <include_file>
+    // TODO "use" <include_file>
     // TODO "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
     // TODO "function" <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
+    /// <module_instantiation>
+    ModuleInstantiation {
+        module_instantiation: ModuleInstantiationWithPosition,
+    },
 }
+
+pub type StatementWithPosition = WithPosition<Statement>;
 
 #[derive(Debug, PartialEq)]
-pub struct WithTokens<T: PartialEq> {
-    node: T,
-    tokens: Vec<TokenWithPos>,
+pub enum ModuleInstantiation {
+    // TODO '!' <module_instantiation>
+    // TODO '#' <module_instantiation>
+    // TODO '%' <module_instantiation>
+    // TODO '*' <module_instantiation>
+    // TODO <ifelse_statement>
+    /// <single_module_instantiation> <child_statement>
+    SingleModuleInstantiation {
+        single_module_instantiation: SingleModuleInstantiationWithPosition,
+        child_statement: ChildStatementWithPosition,
+    },
 }
 
-impl<T: PartialEq> WithTokens<T> {
-    pub fn new(node: T, tokens: &[TokenWithPos]) -> Self {
-        Self {
-            node,
-            tokens: tokens.to_vec(),
-        }
-    }
+pub type ModuleInstantiationWithPosition = WithPosition<ModuleInstantiation>;
+
+#[derive(Debug, PartialEq)]
+pub enum SingleModuleInstantiation {
+    // TODO
 }
 
-#[derive(Debug)]
+pub type SingleModuleInstantiationWithPosition = WithPosition<SingleModuleInstantiation>;
+
+#[derive(Debug, PartialEq)]
+pub enum ChildStatement {
+    // TODO
+}
+
+pub type ChildStatementWithPosition = WithPosition<ChildStatement>;
+
+#[derive(Debug, PartialEq)]
 pub struct ParseError {
     pub message: String,
-    pub line: usize,
-    pub col: usize,
+    pub start: usize,
+    pub end: usize,
 }
 
 #[derive(Debug)]
 pub struct ParseResult {
-    pub statements: Vec<WithTokens<Statement>>,
+    pub statements: Vec<StatementWithPosition>,
     pub errors: Vec<ParseError>,
 }
 
 struct Parser {
-    tokens: Vec<TokenWithPos>,
+    tokens: Vec<TokenWithPosition>,
     pos: usize,
     errors: Vec<ParseError>,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<TokenWithPos>) -> Self {
+    pub fn new(tokens: Vec<TokenWithPosition>) -> Self {
         Self {
             tokens,
             pos: 0,
@@ -56,38 +81,41 @@ impl Parser {
         }
     }
 
-    fn current(&self) -> Option<&TokenWithPos> {
+    fn current(&self) -> Option<&TokenWithPosition> {
         self.tokens.get(self.pos)
     }
 
-    fn advance(&mut self) -> Option<TokenWithPos> {
-        let cur = self.current().cloned();
+    fn current_token_start(&self) -> usize {
+        self.current().map(|t| t.start).unwrap_or(0)
+    }
+
+    fn advance(&mut self) {
         if self.pos < self.tokens.len() {
             self.pos += 1;
         }
-        cur
     }
 
-    fn expect(&mut self, expected: Token) -> Option<TokenWithPos> {
+    fn expect(&mut self, expected: Token) -> bool {
         match self.current() {
             None => {
                 self.errors.push(ParseError {
                     message: format!("Expected {:?}, found EOF", expected),
-                    line: 0,
-                    col: 0,
+                    start: 0,
+                    end: 0,
                 });
-                None
+                false
             }
             Some(tok) => {
-                if tok.token == expected {
-                    self.advance()
+                if tok.item == expected {
+                    self.advance();
+                    true
                 } else {
                     self.errors.push(ParseError {
-                        message: format!("Expected {:?}, found {:?}", expected, tok.token),
-                        line: tok.line,
-                        col: tok.col,
+                        message: format!("Expected {:?}, found {:?}", expected, tok.item),
+                        start: tok.start,
+                        end: tok.end,
                     });
-                    None
+                    false
                 }
             }
         }
@@ -96,7 +124,7 @@ impl Parser {
     fn synchronize(&mut self) {
         // Skip tokens until we find a semicolon or EOF
         while let Some(tok) = self.current() {
-            if tok.token == Token::Semicolon {
+            if tok.item == Token::Semicolon {
                 self.advance();
                 break;
             }
@@ -107,24 +135,97 @@ impl Parser {
     /// <statement> ::=
     ///   ';'
     ///   '{' <inner_input> '}'
-    ///   <module_instantiation>
-    ///   <assignment>
     ///   "include" <include_file>
     ///   "use" <include_file>
     ///   "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
     ///   "function" <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
-    fn parse_statement(&mut self) -> Option<WithTokens<Statement>> {
-        if let Some(e) = self.expect(Token::Semicolon) {
-            return Some(WithTokens::new(Statement::Empty, &vec![e]));
+    ///   <assignment>
+    ///   <module_instantiation>
+    fn parse_statement(&mut self) -> Option<StatementWithPosition> {
+        let start = self.current_token_start();
+
+        // ';'
+        if self.expect(Token::Semicolon) {
+            return Some(StatementWithPosition::new(
+                Statement::Empty,
+                start,
+                self.current_token_start(),
+            ));
+        }
+
+        // TODO '{' <inner_input> '}'
+        // TODO "include" <include_file>
+        // TODO "use" <include_file>
+        // TODO "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
+        // TODO "function" <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
+        // TODO <assignment>
+
+        // <module_instantiation>
+        if let Some(module_instantiation) = self.parse_module_instantiation() {
+            return Some(StatementWithPosition::new(
+                Statement::ModuleInstantiation {
+                    module_instantiation,
+                },
+                start,
+                self.current_token_start(),
+            ));
         }
 
         todo!();
     }
 
+    /// <module_instantiation> ::=
+    ///   '!' <module_instantiation>
+    ///   '#' <module_instantiation>
+    ///   '%' <module_instantiation>
+    ///   '*' <module_instantiation>
+    ///   <ifelse_statement>
+    ///   <single_module_instantiation> <child_statement>
+    fn parse_module_instantiation(&mut self) -> Option<ModuleInstantiationWithPosition> {
+        let start = self.current_token_start();
+
+        // TODO '!' <module_instantiation>
+        // TODO '#' <module_instantiation>
+        // TODO '%' <module_instantiation>
+        // TODO '*' <module_instantiation>
+        // TODO <ifelse_statement>
+
+        // <single_module_instantiation> <child_statement>
+        if let Some(single_module_instantiation) = self.parse_single_module_instantiation() {
+            if let Some(child_statement) = self.parse_child_statement() {
+                return Some(ModuleInstantiationWithPosition::new(
+                    ModuleInstantiation::SingleModuleInstantiation {
+                        single_module_instantiation,
+                        child_statement,
+                    },
+                    start,
+                    self.current_token_start(),
+                ));
+            } else {
+                todo!("write error");
+            }
+        }
+
+        todo!();
+    }
+
+    fn parse_single_module_instantiation(
+        &mut self,
+    ) -> Option<SingleModuleInstantiationWithPosition> {
+        todo!()
+    }
+
+    fn parse_child_statement(&mut self) -> Option<ChildStatementWithPosition> {
+        todo!()
+    }
+
     pub fn parse(mut self) -> ParseResult {
         let mut statements = vec![];
 
-        while self.current().is_some() {
+        while let Some(tok) = self.current() {
+            if tok.item == Token::Eof {
+                break;
+            }
             if let Some(stmt) = self.parse_statement() {
                 statements.push(stmt);
             }
@@ -137,7 +238,7 @@ impl Parser {
     }
 }
 
-pub fn openscad_parse(tokens: Vec<TokenWithPos>) -> ParseResult {
+pub fn openscad_parse(tokens: Vec<TokenWithPosition>) -> ParseResult {
     let parser = Parser::new(tokens);
     parser.parse()
 }
@@ -153,22 +254,18 @@ mod tests {
         let result = openscad_parse(openscad_tokenize(";"));
         assert_eq!(
             result.statements,
-            vec![WithTokens::new(
-                Statement::Empty,
-                &vec![TokenWithPos {
-                    token: Token::Semicolon,
-                    line: 1,
-                    col: 1
-                }]
-            )]
+            vec![StatementWithPosition::new(Statement::Empty, 0, 1)]
         );
-        assert_eq!(0, result.errors.len());
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
     }
 
     #[test]
     fn test_simple() {
         let result = openscad_parse(openscad_tokenize("cube(10);"));
-        assert_eq!(1, result.statements.len());
-        assert_eq!(0, result.errors.len());
+        assert_eq!(
+            result.statements,
+            vec![StatementWithPosition::new(Statement::Empty, 0, 1)]
+        );
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
     }
 }

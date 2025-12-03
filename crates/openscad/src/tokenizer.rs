@@ -1,3 +1,5 @@
+use crate::WithPosition;
+
 #[derive(Debug, Clone)]
 pub enum Token {
     Identifier(String),
@@ -7,6 +9,7 @@ pub enum Token {
     Semicolon,
     For,
     Unknown(char),
+    Eof,
 }
 
 impl PartialEq for Token {
@@ -20,18 +23,11 @@ impl PartialEq for Token {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct TokenWithPos {
-    pub token: Token,
-    pub line: usize,
-    pub col: usize,
-}
+pub type TokenWithPosition = WithPosition<Token>;
 
 struct Tokenizer {
     input: Vec<char>,
     pos: usize,
-    line: usize,
-    col: usize,
 }
 
 impl Tokenizer {
@@ -39,16 +35,15 @@ impl Tokenizer {
         Self {
             input: input.chars().collect(),
             pos: 0,
-            line: 1,
-            col: 1,
         }
     }
 
-    pub fn tokenize(mut self) -> Vec<TokenWithPos> {
+    pub fn tokenize(mut self) -> Vec<TokenWithPosition> {
         let mut tokens = Vec::new();
         while let Some(tok) = self.next() {
             tokens.push(tok);
         }
+        tokens.push(TokenWithPosition::new(Token::Eof, self.pos, self.pos));
         tokens
     }
 
@@ -68,12 +63,6 @@ impl Tokenizer {
     fn advance(&mut self) -> Option<char> {
         let ch = self.current()?;
         self.pos += 1;
-        if ch == '\n' {
-            self.line += 1;
-            self.col = 1;
-        } else {
-            self.col += 1;
-        }
         Some(ch)
     }
 
@@ -199,16 +188,11 @@ impl Tokenizer {
             Err(_) => None,
         }
     }
-}
 
-impl Iterator for Tokenizer {
-    type Item = TokenWithPos;
-
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<TokenWithPosition> {
         self.skip_whitespace_and_comments();
 
-        let line = self.line;
-        let col = self.col;
+        let start = self.pos;
 
         let token = match self.current() {
             None => {
@@ -239,11 +223,11 @@ impl Iterator for Tokenizer {
             }
         };
 
-        Some(TokenWithPos { token, line, col })
+        Some(TokenWithPosition::new(token, start, self.pos))
     }
 }
 
-pub fn openscad_tokenize(input: &str) -> Vec<TokenWithPos> {
+pub fn openscad_tokenize(input: &str) -> Vec<TokenWithPosition> {
     let tokenizer = Tokenizer::new(input);
     tokenizer.tokenize()
 }
@@ -252,108 +236,50 @@ pub fn openscad_tokenize(input: &str) -> Vec<TokenWithPos> {
 mod tests {
     use super::*;
 
-    fn assert_tokens(input: &str, expected: &[TokenWithPos]) {
+    fn assert_tokens(input: &str, expected: &[TokenWithPosition]) {
         let found = openscad_tokenize(input);
         assert_eq!(found, expected);
     }
 
+    fn assert_token(input: &str, token: Token, start: usize, end: usize) {
+        assert_tokens(
+            input,
+            &vec![
+                TokenWithPosition::new(token, start, end),
+                TokenWithPosition::new(Token::Eof, end, end),
+            ],
+        )
+    }
+
     #[test]
     fn test_re_number() {
-        assert_tokens(
-            "1",
-            &vec![TokenWithPos {
-                col: 1,
-                line: 1,
-                token: Token::Number(1.0),
-            }],
-        );
-
-        assert_tokens(
-            "42",
-            &vec![TokenWithPos {
-                col: 1,
-                line: 1,
-                token: Token::Number(42.0),
-            }],
-        );
-
-        assert_tokens(
-            "42.34",
-            &vec![TokenWithPos {
-                col: 1,
-                line: 1,
-                token: Token::Number(42.34),
-            }],
-        );
-
-        assert_tokens(
-            "42.34e11",
-            &vec![TokenWithPos {
-                col: 1,
-                line: 1,
-                token: Token::Number(42.34e11),
-            }],
-        );
-
-        assert_tokens(
-            "42.34E-11",
-            &vec![TokenWithPos {
-                col: 1,
-                line: 1,
-                token: Token::Number(42.34e-11),
-            }],
-        );
+        assert_token("1", Token::Number(1.0), 0, 1);
+        assert_token("42", Token::Number(42.0), 0, 2);
+        assert_token("42.34", Token::Number(42.34), 0, 5);
+        assert_token("42.34e11", Token::Number(42.34e11), 0, 8);
+        assert_token("42.34E-11", Token::Number(42.34e-11), 0, 9);
 
         assert_tokens(
             "42.34a",
             &vec![
-                TokenWithPos {
-                    col: 1,
-                    line: 1,
-                    token: Token::Number(42.34),
-                },
-                TokenWithPos {
-                    col: 6,
-                    line: 1,
-                    token: Token::Identifier("a".to_string()),
-                },
+                TokenWithPosition::new(Token::Number(42.34), 0, 5),
+                TokenWithPosition::new(Token::Identifier("a".to_string()), 5, 6),
+                TokenWithPosition::new(Token::Eof, 6, 6),
             ],
         );
     }
 
     #[test]
     fn test_re_identifier() {
-        assert_tokens(
-            "a",
-            &vec![TokenWithPos {
-                col: 1,
-                line: 1,
-                token: Token::Identifier("a".to_string()),
-            }],
-        );
-
-        assert_tokens(
-            "cube_2",
-            &vec![TokenWithPos {
-                col: 1,
-                line: 1,
-                token: Token::Identifier("cube_2".to_string()),
-            }],
-        );
+        assert_token("a", Token::Identifier("a".to_string()), 0, 1);
+        assert_token("cube_2", Token::Identifier("cube_2".to_string()), 0, 6);
 
         assert_tokens(
             "cube(",
             &vec![
-                TokenWithPos {
-                    col: 1,
-                    line: 1,
-                    token: Token::Identifier("cube".to_string()),
-                },
-                TokenWithPos {
-                    col: 5,
-                    line: 1,
-                    token: Token::LeftParen,
-                },
+                TokenWithPosition::new(Token::Identifier("cube".to_string()), 0, 4),
+                TokenWithPosition::new(Token::LeftParen, 4, 5),
+                TokenWithPosition::new(Token::Eof, 5, 5),
             ],
         );
     }
@@ -363,30 +289,35 @@ mod tests {
         assert_tokens(
             "cube(10);",
             &vec![
-                TokenWithPos {
-                    col: 1,
-                    line: 1,
-                    token: Token::Identifier("cube".to_string()),
+                TokenWithPosition {
+                    item: Token::Identifier("cube".to_string()),
+                    start: 0,
+                    end: 4,
                 },
-                TokenWithPos {
-                    col: 5,
-                    line: 1,
-                    token: Token::LeftParen,
+                TokenWithPosition {
+                    item: Token::LeftParen,
+                    start: 4,
+                    end: 5,
                 },
-                TokenWithPos {
-                    col: 6,
-                    line: 1,
-                    token: Token::Number(10.0),
+                TokenWithPosition {
+                    item: Token::Number(10.0),
+                    start: 5,
+                    end: 7,
                 },
-                TokenWithPos {
-                    col: 8,
-                    line: 1,
-                    token: Token::RightParen,
+                TokenWithPosition {
+                    item: Token::RightParen,
+                    start: 7,
+                    end: 8,
                 },
-                TokenWithPos {
-                    col: 9,
-                    line: 1,
-                    token: Token::Semicolon,
+                TokenWithPosition {
+                    item: Token::Semicolon,
+                    start: 8,
+                    end: 9,
+                },
+                TokenWithPosition {
+                    item: Token::Eof,
+                    start: 9,
+                    end: 9,
                 },
             ],
         );

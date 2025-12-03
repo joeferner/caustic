@@ -7,6 +7,19 @@ use rust_raytracer_core::SceneData;
 
 use crate::{parser::openscad_parse, tokenizer::openscad_tokenize};
 
+#[derive(Debug, PartialEq)]
+pub struct WithPosition<T: PartialEq> {
+    pub item: T,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl<T: PartialEq> WithPosition<T> {
+    pub fn new(item: T, start: usize, end: usize) -> Self {
+        Self { item, start, end }
+    }
+}
+
 #[derive(Debug)]
 pub enum OpenscadError {
     FileReadError(String, String),
