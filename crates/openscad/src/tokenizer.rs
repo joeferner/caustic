@@ -7,6 +7,7 @@ pub enum Token {
     LeftParen,
     RightParen,
     Semicolon,
+    Equals,
     For,
     Unknown(char),
     Eof,
@@ -138,10 +139,10 @@ impl Tokenizer {
 
         // find middle decimals
         while let Some(ch) = self.peek(offset) {
-            if ch >= '0' && ch <= '9' {
+            if ch.is_ascii_digit() {
                 result.push(ch);
                 found_number = true;
-            } else if found_decimal == false && ch == '.' {
+            } else if !found_decimal && ch == '.' {
                 result.push(ch);
                 found_decimal = true;
             } else {
@@ -171,7 +172,7 @@ impl Tokenizer {
 
             // number
             while let Some(ch) = self.peek(offset) {
-                if ch >= '0' && ch <= '9' {
+                if ch.is_ascii_digit() {
                     result.push(ch);
                     offset += 1;
                 } else {
@@ -210,8 +211,17 @@ impl Tokenizer {
                 self.advance();
                 Token::Semicolon
             }
+            Some('=') => {
+                self.advance();
+                Token::Equals
+            }
             Some(ch) if ch.is_alphabetic() || ch == '_' => {
-                Token::Identifier(self.read_identifier())
+                let identifier = self.read_identifier();
+                if identifier == "for" {
+                    Token::For
+                } else {
+                    Token::Identifier(identifier)
+                }
             }
             Some(ch) => {
                 if let Some(number) = self.try_read_number() {
