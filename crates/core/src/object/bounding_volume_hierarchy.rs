@@ -2,7 +2,7 @@ use std::{cmp::Ordering, sync::Arc};
 
 use crate::{
     Axis, AxisAlignedBoundingBox, Interval, Ray, RenderContext,
-    object::{HitRecord, Node},
+    object::{Group, HitRecord, Node},
 };
 
 pub struct BoundingVolumeHierarchy {
@@ -19,7 +19,11 @@ impl BoundingVolumeHierarchy {
             bbox = AxisAlignedBoundingBox::new_from_bbox(bbox, *obj.bounding_box());
         }
 
-        let (left, right) = if nodes.len() == 1 {
+        let (left, right) = if nodes.is_empty() {
+            let left: Arc<dyn Node> = Arc::new(Group::new());
+            let right: Arc<dyn Node> = Arc::new(Group::new());
+            (left, right)
+        } else if nodes.len() == 1 {
             (nodes[0].clone(), nodes[0].clone())
         } else if nodes.len() == 2 {
             (nodes[0].clone(), nodes[1].clone())
