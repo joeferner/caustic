@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use rust_raytracer_core::{
     Camera, CameraBuilder, Color, Node, SceneData, Vector3,
@@ -86,6 +86,40 @@ impl Converter {
         }
     }
 
+    fn convert_args<'a>(
+        &self,
+        arg_names: &[&str],
+        arguments: &'a [ModuleArgument],
+    ) -> HashMap<String, &'a ModuleArgumentValue> {
+        let mut results: HashMap<String, &'a ModuleArgumentValue> = HashMap::new();
+
+        let mut found_named_arg = false;
+        for (pos, arg) in arguments.iter().enumerate() {
+            match arg {
+                ModuleArgument::Positional(value) => {
+                    if found_named_arg {
+                        todo!("add error, no positional args after named arg");
+                    }
+                    if let Some(arg_name) = arg_names.get(pos) {
+                        results.insert(arg_name.to_string(), value);
+                    } else {
+                        todo!("arg past end of list");
+                    }
+                }
+                ModuleArgument::NamedArgument { name, value } => {
+                    found_named_arg = true;
+                    if arg_names.contains(&name.as_str()) {
+                        results.insert(name.to_string(), value);
+                    } else {
+                        todo!("unknown arg name");
+                    }
+                }
+            }
+        }
+
+        results
+    }
+
     fn create_cube(
         &self,
         instance: &ModuleInstance,
@@ -98,31 +132,14 @@ impl Converter {
         let mut size = Vector3::new(0.0, 0.0, 0.0);
         let mut center = false;
 
-        for (pos, argument) in instance.arguments.iter().enumerate() {
-            match &argument {
-                ModuleArgument::Positional(value) => {
-                    if pos == 0 {
-                        if let Some(v) = self.module_argument_value_to_vector3(value) {
-                            size = v;
-                        } else {
-                            return None;
-                        }
-                    }
-                }
-                ModuleArgument::NamedArgument { name, value } => {
-                    if name == "size" {
-                        todo!();
-                    } else if name == "center" {
-                        if let Some(value) = self.module_argument_value_to_boolean(value) {
-                            center = value;
-                        } else {
-                            return None;
-                        }
-                    } else {
-                        todo!();
-                    }
-                }
-            }
+        let arguments = self.convert_args(&["size", "center"], &instance.arguments);
+
+        if let Some(arg) = arguments.get("size") {
+            size = self.module_argument_value_to_vector3(arg)?;
+        }
+
+        if let Some(arg) = arguments.get("center") {
+            center = self.module_argument_value_to_boolean(arg)?;
         }
 
         let mut a = Vector3::new(0.0, 0.0, 0.0);
@@ -146,25 +163,10 @@ impl Converter {
     ) -> Option<Arc<dyn Node>> {
         let mut offset = Vector3::new(0.0, 0.0, 0.0);
 
-        for (pos, argument) in instance.arguments.iter().enumerate() {
-            match &argument {
-                ModuleArgument::Positional(value) => {
-                    if pos == 0 {
-                        if let Some(v) = self.module_argument_value_to_vector3(value) {
-                            offset = v;
-                        } else {
-                            return None;
-                        }
-                    }
-                }
-                ModuleArgument::NamedArgument { name, value } => {
-                    if name == "v" {
-                        todo!("process v into vector {value:?}");
-                    } else {
-                        todo!();
-                    }
-                }
-            }
+        let arguments = self.convert_args(&["v"], &instance.arguments);
+
+        if let Some(arg) = arguments.get("v") {
+            offset = self.module_argument_value_to_vector3(arg)?;
         }
 
         let translate = Translate::new(Arc::new(Group::from_list(&child_nodes)), offset);
