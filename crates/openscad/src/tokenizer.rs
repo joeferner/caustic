@@ -22,6 +22,8 @@ pub enum Token {
     Semicolon,
     /// '='
     Equals,
+    /// '-'
+    Minus,
     /// 'for'
     For,
     /// 'true'
@@ -253,6 +255,10 @@ impl Tokenizer {
             Some('=') => {
                 self.advance();
                 Token::Equals
+            }
+            Some('-') => {
+                self.advance();
+                Token::Minus
             }
             Some(ch) if ch.is_alphabetic() || ch == '_' => {
                 let identifier = self.read_identifier();

@@ -107,19 +107,25 @@ pub enum Expr {
     Vector {
         items: Vec<ExprWithPosition>,
     },
-    // TODO <expr> '*' <expr>
-    // TODO <expr> '/' <expr>
-    // TODO <expr> '%' <expr>
-    // TODO <expr> '+' <expr>
-    // TODO <expr> '-' <expr>
-    // TODO <expr> '<' <expr>
-    // TODO <expr> "<=" <expr>
-    // TODO <expr> "==" <expr>
-    // TODO <expr> "!=" <expr>
-    // TODO <expr> ">=" <expr>
-    // TODO <expr> '>' <expr>
-    // TODO <expr> "&&" <expr>
-    // TODO <expr> "||" <expr>
+
+    /// <expr> '*' <expr>
+    /// <expr> '/' <expr>
+    /// <expr> '%' <expr>
+    /// <expr> '+' <expr>
+    /// <expr> '-' <expr>
+    /// <expr> '<' <expr>
+    /// <expr> "<=" <expr>
+    /// <expr> "==" <expr>
+    /// <expr> "!=" <expr>
+    /// <expr> ">=" <expr>
+    /// <expr> '>' <expr>
+    /// <expr> "&&" <expr>
+    /// <expr> "||" <expr>
+    Binary {
+        operator: BinaryOperator,
+        lhs: Box<ExprWithPosition>,
+        rhs: Box<ExprWithPosition>,
+    },
     // TODO '+' <expr>
     // TODO '-' <expr>
     // TODO '!' <expr>
@@ -127,6 +133,11 @@ pub enum Expr {
     // TODO <expr> '?' <expr> ':' <expr>
     // TODO <expr> '[' <expr> ']'
     // TODO <identifier> <call_arguments>
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BinaryOperator {
+    Minus,
 }
 
 pub type ExprWithPosition = WithPosition<Expr>;
@@ -502,44 +513,6 @@ impl Parser {
     fn parse_expr(&mut self) -> Option<ExprWithPosition> {
         let start = self.current_token_start();
 
-        // "true"
-        if self.current_matches(Token::True) {
-            self.advance();
-            return Some(ExprWithPosition::new(
-                Expr::True,
-                start,
-                self.current_token_start(),
-            ));
-        }
-
-        // "false"
-        if self.current_matches(Token::False) {
-            self.advance();
-            return Some(ExprWithPosition::new(
-                Expr::False,
-                start,
-                self.current_token_start(),
-            ));
-        }
-
-        // TODO "undef"
-        // TODO <identifier>
-        // TODO <expr> '.' <identifier>
-        // TODO <string>
-
-        // <number>
-        if let Some(tok) = self.current()
-            && let Token::Number(number) = &tok.item
-        {
-            let number = *number;
-            self.advance();
-            return Some(ExprWithPosition::new(
-                Expr::Number(number),
-                start,
-                self.current_token_start(),
-            ));
-        }
-
         // TODO "let" <call_arguments> <expr>
         // TODO '[' <expr> ':' <expr> ']'
         // TODO '[' <expr> ':' <expr> ':' <expr> ']'
@@ -567,11 +540,34 @@ impl Parser {
             ));
         }
 
+        let result: ExprWithPosition = if self.current_matches(Token::True) {
+            // "true"
+            self.advance();
+            ExprWithPosition::new(Expr::True, start, self.current_token_start())
+        } else if self.current_matches(Token::False) {
+            // "false"
+            self.advance();
+            ExprWithPosition::new(Expr::False, start, self.current_token_start())
+        }
+        // TODO "undef"
+        // TODO <identifier>
+        // TODO <expr> '.' <identifier>
+        // TODO <string>
+        else if let Some(tok) = self.current()
+            && let Token::Number(number) = &tok.item
+        {
+            // <number>
+            let number = *number;
+            self.advance();
+            ExprWithPosition::new(Expr::Number(number), start, self.current_token_start())
+        } else {
+            todo!()
+        };
+
         // TODO <expr> '*' <expr>
         // TODO <expr> '/' <expr>
         // TODO <expr> '%' <expr>
         // TODO <expr> '+' <expr>
-        // TODO <expr> '-' <expr>
         // TODO <expr> '<' <expr>
         // TODO <expr> "<=" <expr>
         // TODO <expr> "==" <expr>
@@ -580,6 +576,25 @@ impl Parser {
         // TODO <expr> '>' <expr>
         // TODO <expr> "&&" <expr>
         // TODO <expr> "||" <expr>
+
+        // <expr> '-' <expr>
+        if self.current_matches(Token::Minus) {
+            self.advance();
+            if let Some(rhs) = self.parse_expr() {
+                return Some(ExprWithPosition::new(
+                    Expr::Binary {
+                        operator: BinaryOperator::Minus,
+                        lhs: Box::new(result),
+                        rhs: Box::new(rhs),
+                    },
+                    start,
+                    self.current_token_start(),
+                ));
+            } else {
+                return None;
+            }
+        }
+
         // TODO '+' <expr>
         // TODO '-' <expr>
         // TODO '!' <expr>
@@ -588,7 +603,7 @@ impl Parser {
         // TODO <expr> '[' <expr> ']'
         // TODO <identifier> <call_arguments>
 
-        todo!("{:?}", self.current())
+        Some(result)
     }
 
     pub fn parse(mut self) -> ParseResult {
@@ -752,6 +767,13 @@ mod tests {
         let result = openscad_parse(openscad_tokenize(
             "translate([0,0,5]) cube([20,30,50],center=true);",
         ));
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
+        assert_eq!(1, result.statements.len());
+    }
+
+    #[test]
+    fn test_binary_expression() {
+        let result = openscad_parse(openscad_tokenize("cube(20 - 0.1);"));
         assert_eq!(Vec::<ParseError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }

@@ -1,10 +1,10 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::parser::{
-    CallArgument, CallArgumentWithPosition, ChildStatement, ChildStatementWithPosition, Expr,
-    ExprWithPosition, ModuleId, ModuleInstantiation, ModuleInstantiationWithPosition,
-    SingleModuleInstantiation, SingleModuleInstantiationWithPosition, Statement,
-    StatementWithPosition,
+    BinaryOperator, CallArgument, CallArgumentWithPosition, ChildStatement,
+    ChildStatementWithPosition, Expr, ExprWithPosition, ModuleId, ModuleInstantiation,
+    ModuleInstantiationWithPosition, SingleModuleInstantiation,
+    SingleModuleInstantiationWithPosition, Statement, StatementWithPosition,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -42,6 +42,19 @@ pub enum ModuleArgumentValue {
     False,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct InterpreterError {
+    pub message: String,
+    pub start: usize,
+    pub end: usize,
+}
+
+#[derive(Debug)]
+pub struct InterpreterResults {
+    pub trees: Vec<Rc<ModuleInstanceTree>>,
+    pub errors: Vec<InterpreterError>,
+}
+
 struct Interpreter {
     modules: HashMap<String, Module>,
     stack: Vec<Rc<ModuleInstanceTree>>,
@@ -61,11 +74,14 @@ impl Interpreter {
         }
     }
 
-    fn interpret(mut self, statements: Vec<StatementWithPosition>) -> Vec<Rc<ModuleInstanceTree>> {
+    fn interpret(mut self, statements: Vec<StatementWithPosition>) -> InterpreterResults {
         for statement in statements {
             self.process_statement(statement);
         }
-        self.results
+        InterpreterResults {
+            trees: self.results,
+            errors: vec![], // TODO
+        }
     }
 
     fn process_statement(&mut self, statement: StatementWithPosition) {
@@ -117,17 +133,40 @@ impl Interpreter {
         }
     }
 
-    fn expr_to_module_argument_value(expr: &ExprWithPosition) -> ModuleArgumentValue {
+    fn expr_to_module_argument_value(&self, expr: &ExprWithPosition) -> ModuleArgumentValue {
         match &expr.item {
             Expr::Number(number) => ModuleArgumentValue::Number(*number),
             Expr::Vector { items } => ModuleArgumentValue::Vector {
                 items: items
                     .iter()
-                    .map(Self::expr_to_module_argument_value)
+                    .map(|v| self.expr_to_module_argument_value(v))
                     .collect(),
             },
             Expr::True => ModuleArgumentValue::True,
             Expr::False => ModuleArgumentValue::False,
+            Expr::Binary { operator, lhs, rhs } => {
+                self.evaluate_binary_expression(operator, lhs, rhs)
+            }
+        }
+    }
+
+    fn evaluate_binary_expression(
+        &self,
+        operator: &BinaryOperator,
+        lhs: &ExprWithPosition,
+        rhs: &ExprWithPosition,
+    ) -> ModuleArgumentValue {
+        let left = self.expr_to_module_argument_value(lhs);
+        let right = self.expr_to_module_argument_value(rhs);
+
+        if let ModuleArgumentValue::Number(left) = left
+            && let ModuleArgumentValue::Number(right) = right
+        {
+            match operator {
+                BinaryOperator::Minus => ModuleArgumentValue::Number(left - right),
+            }
+        } else {
+            todo!("{left:?} {operator:?} {right:?}");
         }
     }
 
@@ -140,10 +179,10 @@ impl Interpreter {
         for call_argument in call_arguments {
             match &call_argument.item {
                 CallArgument::Expr { expr } => results.push(ModuleArgument::Positional(
-                    Self::expr_to_module_argument_value(expr),
+                    self.expr_to_module_argument_value(expr),
                 )),
                 CallArgument::NamedArgument { identifier, expr } => {
-                    let value = Self::expr_to_module_argument_value(expr);
+                    let value = self.expr_to_module_argument_value(expr);
                     results.push(ModuleArgument::NamedArgument {
                         name: identifier.to_string(),
                         value,
@@ -183,7 +222,23 @@ impl Interpreter {
     }
 }
 
-pub fn openscad_interpret(statements: Vec<StatementWithPosition>) -> Vec<Rc<ModuleInstanceTree>> {
+pub fn openscad_interpret(statements: Vec<StatementWithPosition>) -> InterpreterResults {
     let it = Interpreter::new();
     it.interpret(statements)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{parser::openscad_parse, tokenizer::openscad_tokenize};
+
+    use super::*;
+
+    #[test]
+    fn test_binary_expression() {
+        let result = openscad_parse(openscad_tokenize("cube(20 - 0.1);"));
+        let result = openscad_interpret(result.statements);
+
+        assert_eq!(Vec::<InterpreterError>::new(), result.errors);
+        assert_eq!(1, result.trees.len());
+    }
 }

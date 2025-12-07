@@ -42,14 +42,18 @@ pub fn openscad_file_to_scene_data(filename: &str) -> Result<SceneData, Openscad
 
 pub fn openscad_string_to_scene_data(input: &str) -> Result<SceneData, OpenscadError> {
     let tokens = openscad_tokenize(input);
-    let tree = openscad_parse(tokens);
+    let parse_results = openscad_parse(tokens);
 
-    if !tree.errors.is_empty() {
-        todo!("{:?}", tree.errors);
+    if !parse_results.errors.is_empty() {
+        todo!("{:?}", parse_results.errors);
     }
 
-    let modules = openscad_interpret(tree.statements);
-    let scene_data = openscad_convert(modules);
+    let interpret_results = openscad_interpret(parse_results.statements);
+    if !interpret_results.errors.is_empty() {
+        todo!("{:?}", interpret_results.errors);
+    }
+
+    let scene_data = openscad_convert(interpret_results.trees);
 
     Ok(scene_data)
 }
