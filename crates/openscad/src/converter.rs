@@ -6,9 +6,7 @@ use rust_raytracer_core::{
     object::{BoundingVolumeHierarchy, BoxPrimitive, ConeFrustum, Group, Rotate, Translate},
 };
 
-use crate::interpreter::{
-    Module, ModuleArgument, ModuleArgumentValue, ModuleInstance, ModuleInstanceTree,
-};
+use crate::interpreter::{Module, ModuleArgument, ModuleInstance, ModuleInstanceTree, Value};
 
 struct Converter {
     camera: Option<Arc<Camera>>,
@@ -92,8 +90,8 @@ impl Converter {
         &self,
         arg_names: &[&str],
         arguments: &'a [ModuleArgument],
-    ) -> HashMap<String, &'a ModuleArgumentValue> {
-        let mut results: HashMap<String, &'a ModuleArgumentValue> = HashMap::new();
+    ) -> HashMap<String, &'a Value> {
+        let mut results: HashMap<String, &'a Value> = HashMap::new();
 
         let mut found_named_arg = false;
         for (pos, arg) in arguments.iter().enumerate() {
@@ -213,12 +211,13 @@ impl Converter {
             center = self.module_argument_value_to_boolean(arg)?;
         }
 
+        let mut center_vec = Vector3::new(0.0, 0.0, 0.0);
         if center {
-            todo!();
+            center_vec.y -= height / 2.0;
         }
 
         Some(Arc::new(ConeFrustum::new(
-            Vector3::new(0.0, 0.0, 0.0),
+            center_vec,
             height,
             radius1,
             radius2,
@@ -252,8 +251,8 @@ impl Converter {
 
         if let Some(arg) = arguments.get("a") {
             match arg {
-                ModuleArgumentValue::Number(_deg_a) => todo!(),
-                ModuleArgumentValue::Vector { items } => {
+                Value::Number(_deg_a) => todo!(),
+                Value::Vector { items } => {
                     let a = self.vector_expr_to_vector3(items)?;
                     let mut result: Arc<dyn Node> = Arc::new(Group::from_list(&child_nodes));
                     if a.x != 0.0 {
@@ -278,24 +277,24 @@ impl Converter {
         todo!();
     }
 
-    fn vector_expr_to_vector3(&self, items: &[ModuleArgumentValue]) -> Option<Vector3> {
+    fn vector_expr_to_vector3(&self, items: &[Value]) -> Option<Vector3> {
         if items.len() != 3 {
             todo!();
         }
 
-        let x = if let ModuleArgumentValue::Number(x) = items[0] {
+        let x = if let Value::Number(x) = items[0] {
             x
         } else {
             todo!();
         };
 
-        let y = if let ModuleArgumentValue::Number(y) = items[1] {
+        let y = if let Value::Number(y) = items[1] {
             y
         } else {
             todo!();
         };
 
-        let z = if let ModuleArgumentValue::Number(z) = items[2] {
+        let z = if let Value::Number(z) = items[2] {
             z
         } else {
             todo!();
@@ -305,25 +304,25 @@ impl Converter {
         Some(Vector3::new(-x, z, y))
     }
 
-    fn module_argument_value_to_number(&self, value: &ModuleArgumentValue) -> Option<f64> {
+    fn module_argument_value_to_number(&self, value: &Value) -> Option<f64> {
         match &value {
-            ModuleArgumentValue::Number(value) => Some(*value),
+            Value::Number(value) => Some(*value),
             _ => todo!(),
         }
     }
 
-    fn module_argument_value_to_vector3(&self, value: &ModuleArgumentValue) -> Option<Vector3> {
+    fn module_argument_value_to_vector3(&self, value: &Value) -> Option<Vector3> {
         match &value {
-            ModuleArgumentValue::Number(value) => Some(Vector3::new(-*value, *value, *value)),
-            ModuleArgumentValue::Vector { items } => self.vector_expr_to_vector3(items),
+            Value::Number(value) => Some(Vector3::new(-*value, *value, *value)),
+            Value::Vector { items } => self.vector_expr_to_vector3(items),
             _ => todo!(),
         }
     }
 
-    fn module_argument_value_to_boolean(&self, value: &ModuleArgumentValue) -> Option<bool> {
+    fn module_argument_value_to_boolean(&self, value: &Value) -> Option<bool> {
         match value {
-            ModuleArgumentValue::True => Some(true),
-            ModuleArgumentValue::False => Some(false),
+            Value::True => Some(true),
+            Value::False => Some(false),
             _ => todo!(),
         }
     }

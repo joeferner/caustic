@@ -32,17 +32,14 @@ pub struct ModuleInstanceTree {
 
 #[derive(Debug)]
 pub enum ModuleArgument {
-    Positional(ModuleArgumentValue),
-    NamedArgument {
-        name: String,
-        value: ModuleArgumentValue,
-    },
+    Positional(Value),
+    NamedArgument { name: String, value: Value },
 }
 
 #[derive(Debug)]
-pub enum ModuleArgumentValue {
+pub enum Value {
     Number(f64),
-    Vector { items: Vec<ModuleArgumentValue> },
+    Vector { items: Vec<Value> },
     True,
     False,
 }
@@ -64,24 +61,41 @@ struct Interpreter {
     modules: HashMap<String, Module>,
     stack: Vec<Rc<ModuleInstanceTree>>,
     results: Vec<Rc<ModuleInstanceTree>>,
+    variables: HashMap<String, Value>,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        let mut modules = HashMap::new();
+        let modules = {
+            let mut modules = HashMap::new();
 
-        // 3d
-        modules.insert("cube".to_string(), Module::Cube);
-        modules.insert("cylinder".to_string(), Module::Cylinder);
+            // 3d
+            modules.insert("cube".to_string(), Module::Cube);
+            modules.insert("cylinder".to_string(), Module::Cylinder);
 
-        // transformations
-        modules.insert("translate".to_string(), Module::Translate);
-        modules.insert("rotate".to_string(), Module::Rotate);
+            // transformations
+            modules.insert("translate".to_string(), Module::Translate);
+            modules.insert("rotate".to_string(), Module::Rotate);
+
+            modules
+        };
+
+        let variables = {
+            let mut variables = HashMap::new();
+
+            variables.insert("$fn".to_owned(), Value::Number(0.0));
+            variables.insert("$fs".to_owned(), Value::Number(2.0));
+            variables.insert("$fa".to_owned(), Value::Number(12.0));
+            variables.insert("$t".to_owned(), Value::Number(0.0));
+
+            variables
+        };
 
         Self {
             modules,
             stack: vec![],
             results: vec![],
+            variables,
         }
     }
 
@@ -101,6 +115,7 @@ impl Interpreter {
             Statement::ModuleInstantiation {
                 module_instantiation,
             } => self.process_module_instantiation(&module_instantiation),
+            Statement::Assignment { identifier, expr } => self.process_assignment(identifier, expr),
         }
     }
 
@@ -144,17 +159,14 @@ impl Interpreter {
         }
     }
 
-    fn expr_to_module_argument_value(&self, expr: &ExprWithPosition) -> ModuleArgumentValue {
+    fn expr_to_value(&self, expr: &ExprWithPosition) -> Value {
         match &expr.item {
-            Expr::Number(number) => ModuleArgumentValue::Number(*number),
-            Expr::Vector { items } => ModuleArgumentValue::Vector {
-                items: items
-                    .iter()
-                    .map(|v| self.expr_to_module_argument_value(v))
-                    .collect(),
+            Expr::Number(number) => Value::Number(*number),
+            Expr::Vector { items } => Value::Vector {
+                items: items.iter().map(|v| self.expr_to_value(v)).collect(),
             },
-            Expr::True => ModuleArgumentValue::True,
-            Expr::False => ModuleArgumentValue::False,
+            Expr::True => Value::True,
+            Expr::False => Value::False,
             Expr::Binary { operator, lhs, rhs } => {
                 self.evaluate_binary_expression(operator, lhs, rhs)
             }
@@ -167,31 +179,27 @@ impl Interpreter {
         operator: &BinaryOperator,
         lhs: &ExprWithPosition,
         rhs: &ExprWithPosition,
-    ) -> ModuleArgumentValue {
-        let left = self.expr_to_module_argument_value(lhs);
-        let right = self.expr_to_module_argument_value(rhs);
+    ) -> Value {
+        let left = self.expr_to_value(lhs);
+        let right = self.expr_to_value(rhs);
 
-        if let ModuleArgumentValue::Number(left) = left
-            && let ModuleArgumentValue::Number(right) = right
+        if let Value::Number(left) = left
+            && let Value::Number(right) = right
         {
             match operator {
-                BinaryOperator::Minus => ModuleArgumentValue::Number(left - right),
+                BinaryOperator::Minus => Value::Number(left - right),
             }
         } else {
             todo!("{left:?} {operator:?} {right:?}");
         }
     }
 
-    fn evaluate_unary_expression(
-        &self,
-        operator: &UnaryOperator,
-        rhs: &ExprWithPosition,
-    ) -> ModuleArgumentValue {
-        let right = self.expr_to_module_argument_value(rhs);
+    fn evaluate_unary_expression(&self, operator: &UnaryOperator, rhs: &ExprWithPosition) -> Value {
+        let right = self.expr_to_value(rhs);
 
-        if let ModuleArgumentValue::Number(right) = right {
+        if let Value::Number(right) = right {
             match operator {
-                UnaryOperator::Minus => ModuleArgumentValue::Number(-right),
+                UnaryOperator::Minus => Value::Number(-right),
             }
         } else {
             todo!("{operator:?} {right:?}");
@@ -206,11 +214,11 @@ impl Interpreter {
 
         for call_argument in call_arguments {
             match &call_argument.item {
-                CallArgument::Expr { expr } => results.push(ModuleArgument::Positional(
-                    self.expr_to_module_argument_value(expr),
-                )),
+                CallArgument::Expr { expr } => {
+                    results.push(ModuleArgument::Positional(self.expr_to_value(expr)))
+                }
                 CallArgument::NamedArgument { identifier, expr } => {
-                    let value = self.expr_to_module_argument_value(expr);
+                    let value = self.expr_to_value(expr);
                     results.push(ModuleArgument::NamedArgument {
                         name: identifier.to_string(),
                         value,
@@ -248,6 +256,19 @@ impl Interpreter {
 
         self.stack.push(tree);
     }
+
+    fn process_assignment(&mut self, identifier: String, expr: ExprWithPosition) {
+        let value = self.expr_to_value(&expr);
+
+        if identifier.starts_with("$") {
+            match value {
+                Value::Number(_) => {}
+                _ => todo!("expected number but found {value:?}"),
+            }
+        }
+
+        self.variables.insert(identifier, value);
+    }
 }
 
 pub fn openscad_interpret(statements: Vec<StatementWithPosition>) -> InterpreterResults {
@@ -277,5 +298,14 @@ mod tests {
 
         assert_eq!(Vec::<InterpreterError>::new(), result.errors);
         assert_eq!(1, result.trees.len());
+    }
+
+    #[test]
+    fn test_set_fa() {
+        let result = openscad_parse(openscad_tokenize("$fa = 1;"));
+        let result = openscad_interpret(result.statements);
+
+        assert_eq!(Vec::<InterpreterError>::new(), result.errors);
+        assert_eq!(0, result.trees.len());
     }
 }

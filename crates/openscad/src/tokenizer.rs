@@ -142,7 +142,7 @@ impl Tokenizer {
     fn read_identifier(&mut self) -> String {
         let mut ident = String::new();
         while let Some(ch) = self.current() {
-            if ch.is_alphanumeric() || ch == '_' {
+            if ch.is_alphanumeric() || ch == '_' || ch == '$' {
                 ident.push(ch);
                 self.advance();
             } else {
@@ -260,7 +260,7 @@ impl Tokenizer {
                 self.advance();
                 Token::Minus
             }
-            Some(ch) if ch.is_alphabetic() || ch == '_' => {
+            Some(ch) if ch.is_alphabetic() || ch == '_' || ch == '$' => {
                 let identifier = self.read_identifier();
                 if identifier == "for" {
                     Token::For
@@ -420,6 +420,20 @@ mod tests {
                 Token::Equals,
                 Token::Number(20.0),
                 Token::RightParen,
+                Token::Semicolon,
+                Token::Eof,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_set_fa() {
+        assert_tokens(
+            "$fa = 1;",
+            &vec![
+                Token::Identifier("$fa".to_string()),
+                Token::Equals,
+                Token::Number(1.0),
                 Token::Semicolon,
                 Token::Eof,
             ],

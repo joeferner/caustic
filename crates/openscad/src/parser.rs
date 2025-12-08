@@ -8,7 +8,11 @@ pub enum Statement {
     /// ';'
     Empty,
     // TODO '{' <inner_input> '}'
-    // TODO <assignment>
+    /// <assignment>
+    Assignment {
+        identifier: String,
+        expr: ExprWithPosition,
+    },
     // TODO "include" <include_file>
     // TODO "use" <include_file>
     // TODO "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
@@ -196,8 +200,18 @@ impl Parser {
         }
     }
 
-    fn current_matches(&mut self, expected: Token) -> bool {
+    fn current_matches(&self, expected: Token) -> bool {
         self.peek_matches(0, expected)
+    }
+
+    fn current_matches_identifier(&self) -> Option<String> {
+        if let Some(tok) = self.current()
+            && let Token::Identifier(identifier) = &tok.item
+        {
+            Some(identifier.clone())
+        } else {
+            None
+        }
     }
 
     fn peek_matches(&self, n: usize, expected: Token) -> bool {
@@ -271,7 +285,11 @@ impl Parser {
         // TODO "use" <include_file>
         // TODO "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
         // TODO "function" <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
-        // TODO <assignment>
+
+        // <assignment>
+        if self.current_matches_identifier().is_some() && self.peek_matches(1, Token::Equals) {
+            return self.parse_assignment();
+        }
 
         // <module_instantiation>
         if let Some(module_instantiation) = self.parse_module_instantiation() {
@@ -401,9 +419,7 @@ impl Parser {
         }
 
         // <identifier>
-        if let Some(tok) = self.current()
-            && let Token::Identifier(identifier) = &tok.item
-        {
+        if let Some(identifier) = self.current_matches_identifier() {
             let identifier = identifier.clone();
             self.advance();
             return Some(ModuleIdWithPosition::new(
@@ -413,7 +429,7 @@ impl Parser {
             ));
         }
 
-        todo!();
+        todo!("parse_module_id: {:?}", self.current());
     }
 
     /// <call_arguments> ::=
@@ -454,8 +470,7 @@ impl Parser {
         let start = self.current_token_start();
 
         // <identifier> '=' <expr>
-        if let Some(tok) = self.current()
-            && let Token::Identifier(identifier) = &tok.item
+        if let Some(identifier) = self.current_matches_identifier()
             && self.peek_matches(1, Token::Equals)
         {
             let identifier = identifier.to_owned();
@@ -646,6 +661,39 @@ impl Parser {
             errors: self.errors,
         }
     }
+
+    /// <assignment> ::=
+    ///   <identifier> '=' <expr> ';'
+    fn parse_assignment(&mut self) -> Option<StatementWithPosition> {
+        let start = self.current_token_start();
+
+        // <identifier>
+        let identifier = if let Some(identifier) = self.current_matches_identifier() {
+            self.advance();
+            identifier
+        } else {
+            todo!("expected identifier")
+        };
+
+        // '='
+        if !self.expect(Token::Equals) {
+            return None;
+        }
+
+        // <expr>
+        let expr = self.parse_expr()?;
+
+        // ';'
+        if !self.expect(Token::Semicolon) {
+            return None;
+        }
+
+        Some(StatementWithPosition::new(
+            Statement::Assignment { identifier, expr },
+            start,
+            self.current_token_start(),
+        ))
+    }
 }
 
 pub fn openscad_parse(tokens: Vec<TokenWithPosition>) -> ParseResult {
@@ -804,6 +852,13 @@ mod tests {
     #[test]
     fn test_unary_expression() {
         let result = openscad_parse(openscad_tokenize("cube(-20);"));
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
+        assert_eq!(1, result.statements.len());
+    }
+
+    #[test]
+    fn test_set_fa() {
+        let result = openscad_parse(openscad_tokenize("$fa = 1;"));
         assert_eq!(Vec::<ParseError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
