@@ -36,8 +36,8 @@ fn main() -> ExitCode {
             Scene::Quads
         } else if scene_name == "LightedSphere" {
             Scene::LightedSphere
-        } else if scene_name == "LightedFrustum" {
-            Scene::LightedFrustum
+        } else if scene_name == "LightedConeFrustum" {
+            Scene::LightedConeFrustum
         } else if scene_name == "CornellBox" {
             Scene::CornellBox
         } else if scene_name == "CornellBoxSmoke" {

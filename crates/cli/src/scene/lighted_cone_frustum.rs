@@ -3,13 +3,13 @@ use std::sync::Arc;
 use rust_raytracer_core::{
     CameraBuilder, Color, RenderContext, Vector3,
     material::{DiffuseLight, Lambertian},
-    object::{BoundingVolumeHierarchy, Frustum, Node, Quad, Sphere},
+    object::{BoundingVolumeHierarchy, ConeFrustum, Node, Quad, Sphere},
     texture::PerlinTurbulenceTexture,
 };
 
 use crate::scene::SceneData;
 
-pub fn create_lighted_frustum_scene(ctx: &RenderContext) -> SceneData {
+pub fn create_lighted_cone_frustum_scene(ctx: &RenderContext) -> SceneData {
     // Material
     let perlin_texture = Arc::new(PerlinTurbulenceTexture::new(&*ctx.random, 4.0, 7));
     let perlin_material = Arc::new(Lambertian::new(perlin_texture));
@@ -26,7 +26,7 @@ pub fn create_lighted_frustum_scene(ctx: &RenderContext) -> SceneData {
         perlin_material.clone(),
     )));
 
-    world.push(Arc::new(Frustum::new(
+    world.push(Arc::new(ConeFrustum::new(
         Vector3::new(0.0, 1.5, 0.0),
         2.0,
         1.0,

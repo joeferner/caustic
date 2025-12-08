@@ -3,7 +3,7 @@ use std::{collections::HashMap, rc::Rc, sync::Arc};
 use rust_raytracer_core::{
     Camera, CameraBuilder, Color, Node, SceneData, Vector3,
     material::Lambertian,
-    object::{BoundingVolumeHierarchy, BoxPrimitive, Frustum, Group, Rotate, Translate},
+    object::{BoundingVolumeHierarchy, BoxPrimitive, ConeFrustum, Group, Rotate, Translate},
 };
 
 use crate::interpreter::{
@@ -217,7 +217,7 @@ impl Converter {
             todo!();
         }
 
-        Some(Arc::new(Frustum::new(
+        Some(Arc::new(ConeFrustum::new(
             Vector3::new(0.0, 0.0, 0.0),
             height,
             radius1,

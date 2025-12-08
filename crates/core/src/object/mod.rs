@@ -19,7 +19,7 @@ pub use bounding_volume_hierarchy::BoundingVolumeHierarchy;
 pub use box_node::BoxPrimitive;
 pub use constant_medium::ConstantMedium;
 pub use disc::Disc;
-pub use frustum::Frustum;
+pub use frustum::ConeFrustum;
 pub use group::Group;
 pub use quad::Quad;
 pub use rotate::Rotate;

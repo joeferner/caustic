@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     WithPosition,
     tokenizer::{Token, TokenWithPosition},
@@ -56,7 +54,7 @@ pub enum ChildStatement {
     // TODO '{' <child_statements> '}'
     // <module_instantiation>
     ModuleInstantiation {
-        module_instantiation: Rc<ModuleInstantiationWithPosition>,
+        module_instantiation: Box<ModuleInstantiationWithPosition>,
     },
 }
 
@@ -376,7 +374,7 @@ impl Parser {
         if let Some(module_instantiation) = self.parse_module_instantiation() {
             return Some(ChildStatementWithPosition::new(
                 ChildStatement::ModuleInstantiation {
-                    module_instantiation: Rc::new(module_instantiation),
+                    module_instantiation: Box::new(module_instantiation),
                 },
                 start,
                 self.current_token_start(),

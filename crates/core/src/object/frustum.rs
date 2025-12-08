@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-struct FrustumWall {
+struct ConeFrustumWall {
     center_y: f64, // The Y-coordinate of the center of the cylinder's height
     height: f64,
     r0: f64, // Bottom radius
@@ -17,7 +17,7 @@ struct FrustumWall {
     bbox: AxisAlignedBoundingBox,
 }
 
-impl FrustumWall {
+impl ConeFrustumWall {
     pub fn new(
         center: Vector3,
         height: f64,
@@ -72,7 +72,7 @@ impl FrustumWall {
     }
 }
 
-impl Node for FrustumWall {
+impl Node for ConeFrustumWall {
     fn hit(&self, _ctx: &RenderContext, ray: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let h = self.height;
         let half_h = h / 2.0;
@@ -176,7 +176,7 @@ impl Node for FrustumWall {
         )
         .unit();
 
-        let (u, v) = FrustumWall::get_uv(pt, c_y, h);
+        let (u, v) = ConeFrustumWall::get_uv(pt, c_y, h);
 
         let mut rec = HitRecord {
             pt,
@@ -207,11 +207,11 @@ impl Node for FrustumWall {
     }
 }
 
-pub struct Frustum {
+pub struct ConeFrustum {
     pub object_node: Group,
 }
 
-impl Frustum {
+impl ConeFrustum {
     /// Creates a closed cylinder (or frustum/cone) centered around the Y-axis.
     ///
     /// The cylinder spans from `center.y - height / 2` to `center.y + height / 2`.
@@ -255,7 +255,7 @@ impl Frustum {
 
         // --- 3. Side Wall ---
         let side_center = center;
-        let side_wall = FrustumWall::new(
+        let side_wall = ConeFrustumWall::new(
             side_center,
             height,
             top_radius,    // r1
@@ -270,7 +270,7 @@ impl Frustum {
     }
 }
 
-impl Node for Frustum {
+impl Node for ConeFrustum {
     fn hit(&self, ctx: &RenderContext, ray: &Ray, ray_t: Interval) -> Option<HitRecord> {
         self.object_node.hit(ctx, ray, ray_t)
     }
