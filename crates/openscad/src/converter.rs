@@ -2,7 +2,7 @@ use std::{collections::HashMap, rc::Rc, sync::Arc};
 
 use rust_raytracer_core::{
     Camera, CameraBuilder, Color, Node, SceneData, Vector3,
-    material::Lambertian,
+    material::{Lambertian, Material},
     object::{BoundingVolumeHierarchy, BoxPrimitive, ConeFrustum, Group, Rotate, Scale, Translate},
 };
 
@@ -12,6 +12,7 @@ struct Converter {
     camera: Option<Arc<Camera>>,
     world: Vec<Arc<dyn Node>>,
     lights: Vec<Arc<dyn Node>>,
+    material_stack: Vec<Arc<dyn Material>>,
 }
 
 impl Converter {
@@ -20,6 +21,7 @@ impl Converter {
             camera: None,
             world: vec![],
             lights: vec![],
+            material_stack: vec![],
         }
     }
 
@@ -59,8 +61,21 @@ impl Converter {
         }
     }
 
+    fn current_material(&self) -> Arc<dyn Material> {
+        if let Some(mat) = self.material_stack.last() {
+            mat.clone()
+        } else {
+            Arc::new(Lambertian::new_from_color(Color::new(0.99, 0.85, 0.26)))
+        }
+    }
+
     fn process_module(&mut self, module: Rc<ModuleInstanceTree>) -> Option<Arc<dyn Node>> {
         let mut child_nodes: Vec<Arc<dyn Node>> = vec![];
+
+        if module.instance.module == Module::Color {
+            let color = self.create_color(&module.instance)?;
+            self.material_stack.push(color);
+        }
 
         for child_module in module.children.borrow().iter() {
             if let Some(child_node) = self.process_module(child_module.clone()) {
@@ -70,21 +85,17 @@ impl Converter {
             }
         }
 
-        self.process_module_instance(&module.instance, child_nodes)
-    }
-
-    fn process_module_instance(
-        &mut self,
-        instance: &ModuleInstance,
-        child_nodes: Vec<Arc<dyn Node>>,
-    ) -> Option<Arc<dyn Node>> {
-        match instance.module {
-            Module::Cube => self.create_cube(instance, child_nodes),
-            Module::Cylinder => self.create_cylinder(instance, child_nodes),
-            Module::Translate => self.create_translate(instance, child_nodes),
-            Module::Rotate => self.create_rotate(instance, child_nodes),
-            Module::Scale => self.create_scale(instance, child_nodes),
-            Module::Camera => self.create_camera(instance, child_nodes),
+        match module.instance.module {
+            Module::Cube => self.create_cube(&module.instance, child_nodes),
+            Module::Cylinder => self.create_cylinder(&module.instance, child_nodes),
+            Module::Translate => self.create_translate(&module.instance, child_nodes),
+            Module::Rotate => self.create_rotate(&module.instance, child_nodes),
+            Module::Scale => self.create_scale(&module.instance, child_nodes),
+            Module::Camera => self.create_camera(&module.instance, child_nodes),
+            Module::Color => {
+                self.material_stack.pop();
+                Some(Arc::new(Group::from_list(&child_nodes)))
+            }
         }
     }
 
@@ -151,11 +162,7 @@ impl Converter {
             b = b - (size / 2.0);
         }
 
-        Some(Arc::new(BoxPrimitive::new(
-            a,
-            b,
-            Arc::new(Lambertian::new_from_color(Color::new(0.99, 0.85, 0.26))),
-        )))
+        Some(Arc::new(BoxPrimitive::new(a, b, self.current_material())))
     }
 
     fn create_cylinder(
@@ -223,7 +230,7 @@ impl Converter {
             height,
             radius1,
             radius2,
-            Arc::new(Lambertian::new_from_color(Color::new(0.99, 0.85, 0.26))),
+            self.current_material(),
         )))
     }
 
@@ -290,6 +297,21 @@ impl Converter {
             let v = arg.to_vector3()?;
             let items_to_scale: Arc<dyn Node> = Arc::new(Group::from_list(&child_nodes));
             return Some(Arc::new(Scale::new(items_to_scale, v.x, v.y, v.z)));
+        }
+
+        todo!("missing arg");
+    }
+
+    fn create_color(&self, instance: &ModuleInstance) -> Option<Arc<dyn Material>> {
+        let arguments = self.convert_args(&["c", "alpha"], &instance.arguments);
+
+        if let Some(arg) = arguments.get("alpha") {
+            todo!("handle alpha {arg:?}");
+        }
+
+        if let Some(arg) = arguments.get("c") {
+            let color = arg.to_color()?;
+            return Some(Arc::new(Lambertian::new_from_color(color)));
         }
 
         todo!("missing arg");

@@ -9,7 +9,7 @@ use crate::parser::{
     SingleModuleInstantiationWithPosition, Statement, StatementWithPosition, UnaryOperator,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Module {
     Camera,
 
@@ -21,6 +21,7 @@ pub enum Module {
     Translate,
     Rotate,
     Scale,
+    Color,
 }
 
 #[derive(Debug)]
@@ -241,6 +242,7 @@ impl Interpreter {
                         ModuleId::Translate => Module::Translate,
                         ModuleId::Rotate => Module::Rotate,
                         ModuleId::Scale => Module::Scale,
+                        ModuleId::Color => Module::Color,
                         ModuleId::Camera => Module::Camera,
                         ModuleId::For => todo!("already handled"),
                         ModuleId::Identifier(_) => todo!("already handled"),

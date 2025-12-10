@@ -74,6 +74,7 @@ pub enum ModuleId {
     Translate,
     Rotate,
     Scale,
+    Color,
     Camera,
     /// <identifier>
     Identifier(String),
@@ -437,6 +438,7 @@ impl Parser {
                 Token::Translate => ModuleId::Translate,
                 Token::Rotate => ModuleId::Rotate,
                 Token::Scale => ModuleId::Scale,
+                Token::Color => ModuleId::Color,
                 Token::Camera => ModuleId::Camera,
                 _ => todo!("throw error {:?}", current.item),
             };

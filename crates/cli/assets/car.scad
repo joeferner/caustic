@@ -19,10 +19,15 @@ camera(
     background = [178, 205, 255]
 );
 
-// axis
-cube([1,1,200],center=true);
-cube([1,200,1],center=true);
-cube([200,1,1],center=true);
+// x-axis
+color([255,0,0])
+    cube([200,1,1],center=true);
+// y-axis
+color([0,255,0])
+    cube([1,200,1],center=true);
+// z-axis
+color([0,0,255])
+    cube([1,1,200],center=true);
 
 // Car body base
 scale([1.2,1,1])
