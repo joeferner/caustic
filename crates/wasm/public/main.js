@@ -1,6 +1,12 @@
 const BLOCK_SIZE = 10;
 const worker = new Worker('worker.js', { type: 'module' });
 
+const input = `
+color([0,125,255]/255)
+    scale([1.2,1,1])
+    cube([60,20,10],center=true);
+`;
+
 worker.onmessage = (ev) => {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -16,15 +22,18 @@ worker.onmessage = (ev) => {
     }
 };
 
+worker.onerror = (err) => {
+    console.error(`worker error`, err);
+};
+
 function render() {
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    console.log(`render ${canvas.width}x${canvas.height}`);
 
     for (let y = 0; y < canvas.height; y += BLOCK_SIZE) {
         for (let x = 0; x < canvas.width; x += BLOCK_SIZE) {
             worker.postMessage({
-                width: canvas.width,
-                height: canvas.height,
+                input,
                 xmin: x,
                 xmax: Math.min(canvas.width, x + BLOCK_SIZE),
                 ymin: y,
