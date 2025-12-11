@@ -888,6 +888,7 @@ name = "rust-raytracer-wasm"
 version = "0.1.0"
 dependencies = [
  "rust-raytracer-core",
+ "rust-raytracer-openscad",
  "serde",
  "serde-wasm-bindgen",
  "wasm-bindgen",
