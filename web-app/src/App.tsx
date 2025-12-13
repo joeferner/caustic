@@ -4,8 +4,9 @@ import { Files } from './components/Files';
 import { MyProvider } from './state';
 import { Render } from './components/Render';
 import { Toolbar } from './components/Toolbar';
+import type { JSX } from 'react';
 
-export function App() {
+export function App(): JSX.Element {
   return (
     <MyProvider>
       <div className={styles.main}>

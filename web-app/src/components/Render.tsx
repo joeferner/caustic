@@ -1,42 +1,140 @@
-import { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef, useState, type JSX } from "react";
 import { useMyContext } from "../state";
+import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from "react-zoom-pan-pinch";
+import styles from './Render.module.scss';
+import { Button, Tooltip } from "@mantine/core";
+import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, X as ResetZoomIcon } from 'react-bootstrap-icons';
+import type { DrawEvent } from "../types";
 
-export function Render() {
+export function Render(): JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const canvasMiniRef = useRef<HTMLCanvasElement | null>(null);
+    const [showMinimap, setShowMinimap] = useState(false);
     const { cameraInfo, subscribeToDrawEvents } = useMyContext();
 
     useEffect(() => {
-        const unsubscribe = subscribeToDrawEvents((event) => {
-            const canvas = canvasRef.current;
-            if (!canvas) {
-                console.error('canvas not set');
-                return;
-            }
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                console.error('could not get canvas context');
-                return;
-            }
+        renderEmpty(canvasRef);
+        renderEmpty(canvasMiniRef);
+    }, []);
 
-            const { xmin, xmax, ymin, ymax, data } = event;
-            let i = 0;
-            for (let y = ymin; y < ymax; y++) {
-                for (let x = xmin; x < xmax; x++) {
-                    const color = data[i++];
-                    const { r, g, b } = color;
-                    ctx.fillStyle = `rgb(${r},${g},${b})`;
-                    ctx.fillRect(x, y, 1, 1);
-                }
-            }
+    useEffect(() => {
+        const unsubscribe = subscribeToDrawEvents((event) => {
+            renderDrawEvent(canvasRef, event);
+            renderDrawEvent(canvasMiniRef, event);
         });
 
         return unsubscribe;
     }, [subscribeToDrawEvents, canvasRef]);
 
-    console.log('render');
+    const handleOnZoom = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) {
+            return;
+        }
+
+        const el = canvas.parentElement;
+        const wrapperEl = el?.parentElement;
+        if (!el || !wrapperEl) {
+            return;
+        }
+
+        const elRect = el.getBoundingClientRect();
+        const wrapperElRect = wrapperEl.getBoundingClientRect();
+
+        const offScreen = ((elRect.y - wrapperElRect.y) < 0) || ((elRect.x - wrapperElRect.x) < 0) || ((wrapperElRect.right - elRect.right) < 0) || ((wrapperElRect.bottom - elRect.bottom) < 0);
+        setShowMinimap(offScreen);
+    }, []);
+
     return (
-        <div>
-            <canvas ref={canvasRef} width={cameraInfo?.width ?? 100} height={cameraInfo?.height ?? 100} />
+        <div className={styles.wrapper}>
+            <TransformWrapper onZoom={handleOnZoom}>
+                {(utils) => (
+                    <React.Fragment>
+                        <div className={styles.miniMap} style={{ display: showMinimap ? 'block' : 'none' }}>
+                            <MiniMap width={150} height={150}>
+                                <canvas ref={canvasMiniRef} width={cameraInfo?.width ?? 500} height={cameraInfo?.height ?? 500} />
+                            </MiniMap>
+                        </div>
+                        <Controls {...utils} />
+                        <TransformComponent>
+                            <canvas className={styles.canvas} ref={canvasRef} width={cameraInfo?.width ?? 500} height={cameraInfo?.height ?? 500} />
+                        </TransformComponent>
+                    </React.Fragment>
+                )}
+            </TransformWrapper>
         </div>
     )
 }
+
+function Controls(options: ReactZoomPanPinchHandlers): JSX.Element {
+    return (
+        <div className={styles.controls}>
+            <Tooltip label="Zoom In">
+                <Button onClick={() => { options.zoomIn() }}><ZoomInIcon /></Button>
+            </Tooltip>
+            <Tooltip label="Zoom Out">
+                <Button onClick={() => { options.zoomOut() }}><ZoomOutIcon /></Button>
+            </Tooltip>
+            <Tooltip label="Reset Zoom">
+                <Button onClick={() => { options.resetTransform() }}><ResetZoomIcon /></Button>
+            </Tooltip>
+        </div>
+    );
+}
+
+function getCanvasCtx(canvasRef: React.RefObject<HTMLCanvasElement | null>): CanvasRenderingContext2D | undefined {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+        console.error('canvas not set');
+        return;
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        console.error('could not get canvas context');
+        return;
+    }
+    return ctx;
+}
+
+function renderEmpty(canvasRef: React.RefObject<HTMLCanvasElement | null>): void {
+    const ctx = getCanvasCtx(canvasRef);
+    if (!ctx) {
+        return;
+    }
+
+    const squareSize = 50;
+    for (let row = 0; ; row++) {
+        const y = row * squareSize;
+        if (y > ctx.canvas.height) {
+            break;
+        }
+        for (let col = 0; ; col++) {
+            const x = col * squareSize;
+            if (x > ctx.canvas.width) {
+                break;
+            }
+            const isWhite = (row + col) % 2 === 0;
+            ctx.fillStyle = isWhite ? '#ffffff' : '#cccccc';
+            ctx.fillRect(x, y, squareSize, squareSize);
+        }
+    }
+}
+
+function renderDrawEvent(canvasRef: React.RefObject<HTMLCanvasElement | null>, event: DrawEvent): void {
+    const ctx = getCanvasCtx(canvasRef);
+    if (!ctx) {
+        return;
+    }
+
+    const { xmin, xmax, ymin, ymax, data } = event;
+    let i = 0;
+    for (let y = ymin; y < ymax; y++) {
+        for (let x = xmin; x < xmax; x++) {
+            const color = data[i++];
+            const { r, g, b } = color;
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(x, y, 1, 1);
+        }
+    }
+}
+

@@ -1,7 +1,8 @@
 import { Button } from "@mantine/core";
 import { useMyContext } from "../state";
+import type { JSX } from "react";
 
-export function Toolbar() {
+export function Toolbar(): JSX.Element {
     const { render } = useMyContext();
 
     return (<div>

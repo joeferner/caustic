@@ -2,8 +2,9 @@ import { Tabs } from "@mantine/core";
 import { Editor } from "@monaco-editor/react";
 import styles from './Files.module.scss';
 import { useMyContext } from "../state";
+import type { JSX } from "react";
 
-export function Files() {
+export function Files(): JSX.Element {
     const { updateFile, getFile } = useMyContext();
 
     return (

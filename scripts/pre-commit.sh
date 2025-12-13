@@ -12,8 +12,8 @@ banner() {
     local NC='\033[0m' # No Color
     
     echo -e ""
-    echo -e "${YELLOW}${title}"
-    echo -e "${CYAN}--------------------------------------------------------------${NC}"
+    echo -e " ${YELLOW}${title}"
+    echo -e "${CYAN}=============================================================${NC}"
 }
 
 banner "cargo fmt"

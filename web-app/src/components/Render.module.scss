@@ -1,0 +1,28 @@
+.wrapper {
+    width: 100%;
+    height: 100%;
+    border: 1px solid hsl(0, 0%, 33%);
+    position: relative;
+
+    .canvas {
+        border: 1px solid hsl(0, 0%, 50%);
+    }
+}
+
+.miniMap {
+    border: 1px solid hsl(0, 0%, 50%);
+    position: absolute;
+    z-index: 1000;
+    top: 5px;
+    right: 5px;
+}
+
+.controls {
+    position: absolute;
+    z-index: 1000;
+    left: 5px;
+    top: 5px;
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+}

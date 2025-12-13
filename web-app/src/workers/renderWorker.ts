@@ -3,7 +3,7 @@ import { initWasm, loadOpenscad, renderBlock } from "../wasm";
 
 let workerId = -1;
 
-self.onmessage = (e: MessageEvent<RenderData>) => {
+self.onmessage = (e: MessageEvent<RenderData>): void => {
     const { type } = e.data;
 
     if (type === 'init') {
@@ -15,7 +15,7 @@ self.onmessage = (e: MessageEvent<RenderData>) => {
     }
 };
 
-async function init(data: RenderDataInit) {
+async function init(data: RenderDataInit): Promise<void> {
     workerId = data.workerId;
 
     console.log(`[${workerId}] initializing worker`);
@@ -26,7 +26,7 @@ async function init(data: RenderDataInit) {
     self.postMessage(resultsMessage);
 }
 
-function work(data: RenderDataWork) {
+function work(data: RenderDataWork): void {
     const { xmin, xmax, ymin, ymax } = data;
 
     const results = renderBlock(xmin, xmax, ymin, ymax);

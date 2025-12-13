@@ -15,16 +15,16 @@ export class RenderWorkerPool {
     private work: RenderDataWork[] = [];
     private callback?: renderCallbackFn;
 
-    private ensureWorkerCount(threadCount: number) {
+    private ensureWorkerCount(threadCount: number): void {
         if (this.workers.length < threadCount) {
             console.log(`increasing worker count from ${this.workers.length} to ${threadCount}`)
             while (this.workers.length < threadCount) {
                 const worker = new RenderWorker();
                 const workerId = this.workers.length;
-                worker.onerror = (err) => {
+                worker.onerror = (err): void => {
                     this.handleWorkerError(workerId, err);
                 };
-                worker.onmessage = (message) => {
+                worker.onmessage = (message): void => {
                     const response = message.data as RenderResponse;
                     const { type } = response;
                     if (type === 'init') {
@@ -40,37 +40,37 @@ export class RenderWorkerPool {
         }
     }
 
-    private handleWorkerDataResponse(response: RenderResponseData) {
+    private handleWorkerDataResponse(response: RenderResponseData): void {
         this.callback?.(response);
         this.sendMoreWork(response.workerId);
     }
 
-    private handleWorkerInitResponse(response: RenderResponseInit) {
+    private handleWorkerInitResponse(response: RenderResponseInit): void {
         const { workerId } = response;
 
         console.log(`[${workerId}] worker initialized`);
         this.sendMoreWork(workerId);
     }
 
-    private sendMoreWork(workerId: number) {
+    private sendMoreWork(workerId: number): void {
         const work = this.work.pop();
         if (work) {
             this.workers[workerId].postMessage(work)
         }
     }
 
-    private handleWorkerError(workerId: number, err: ErrorEvent) {
+    private handleWorkerError(workerId: number, err: ErrorEvent): void {
         console.error(`[${workerId}] worker error`, err);
     }
 
-    public render(threadCount: number, input: string, options: RenderOptions) {
+    public render(threadCount: number, input: string, options: RenderOptions): void {
         this.callback = options.callback;
         this.ensureWorkerCount(threadCount);
         this.populateWorkQueue(options);
         this.initializeAndBeginRender(threadCount, input);
     }
 
-    private populateWorkQueue(options: RenderOptions) {
+    private populateWorkQueue(options: RenderOptions): void {
         const { blockSize, width, height } = options;
 
         const work: RenderDataWork[] = [];
@@ -89,7 +89,7 @@ export class RenderWorkerPool {
         console.log(`work queue initialized with ${work.length} blocks`);
     }
 
-    private initializeAndBeginRender(threadCount: number, input: string) {
+    private initializeAndBeginRender(threadCount: number, input: string): void {
         for (let i = 0; i < threadCount; i++) {
             const message: RenderDataInit = {
                 type: 'init',

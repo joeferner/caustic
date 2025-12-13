@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import { createContext, use, useRef, useState, type ReactNode } from 'react';
 import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool } from './RenderWorkerPool';
@@ -53,7 +55,7 @@ interface MyProviderProps {
 
 const renderWorkerPool = new RenderWorkerPool();
 
-export function MyProvider({ children }: MyProviderProps) {
+export function MyProvider({ children }: MyProviderProps): void {
     const [renderOptions, _setRenderOptions] = useState<Required<RenderOptions>>({
         blockSize: DEFAULT_RENDER_BLOCK_SIZE,
         threadCount: 2
@@ -75,7 +77,7 @@ export function MyProvider({ children }: MyProviderProps) {
         return files[filename];
     };
 
-    const render = async () => {
+    const render = async (): Promise<void> => {
         const input = files['main.scad'];
 
         await initWasm();
