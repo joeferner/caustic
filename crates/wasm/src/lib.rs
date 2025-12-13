@@ -8,7 +8,7 @@ use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 thread_local! {
-static LOADED_SCENE_DATA: RefCell<Option<SceneData>> = RefCell::new(None);
+static LOADED_SCENE_DATA: RefCell<Option<SceneData>> = const { RefCell::new(None) };
 }
 
 #[wasm_bindgen]

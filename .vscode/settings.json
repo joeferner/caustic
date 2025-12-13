@@ -3,6 +3,7 @@
         "aabb",
         "bbox",
         "bindgen",
+        "clippy",
         "defocus",
         "flamegraph",
         "indicatif",
