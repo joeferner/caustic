@@ -1,13 +1,14 @@
-import { Tooltip, UnstyledButton } from '@mantine/core';
+import { Menu, Tooltip, UnstyledButton } from '@mantine/core';
 import { useMyContext } from '../state';
-import { useEffect, type JSX, type ReactNode } from 'react';
-import { Play as RenderIcon } from 'react-bootstrap-icons';
+import { useCallback, useEffect, type JSX, type ReactNode } from 'react';
+import { Play as RenderIcon, ListTask as ExampleIcon } from 'react-bootstrap-icons';
 import styles from './Navbar.module.scss';
+import { Example, EXAMPLES } from '../utils/examples';
 
 const ICON_SIZE = 30;
 
 export function Navbar(): JSX.Element {
-    const { render } = useMyContext();
+    const { render, updateFile } = useMyContext();
 
     useEffect(() => {
         const handleKeyPress = (event: KeyboardEvent): void => {
@@ -23,6 +24,14 @@ export function Navbar(): JSX.Element {
         };
     }, [render]);
 
+    const loadExample = useCallback(
+        (example: Example): void => {
+            const code = EXAMPLES[example];
+            updateFile('main.scad', code);
+        },
+        [updateFile]
+    );
+
     return (
         <div className={styles.wrapper}>
             <NavbarLink
@@ -32,6 +41,42 @@ export function Navbar(): JSX.Element {
                     void render();
                 }}
             />
+            <Menu
+                position="right-start"
+                withArrow
+                arrowPosition="center"
+                withinPortal={true}
+                closeOnClickOutside={true}
+            >
+                <Menu.Target>
+                    <UnstyledButton className={styles.link}>
+                        <ExampleIcon width={ICON_SIZE} height={ICON_SIZE} />
+                    </UnstyledButton>
+                </Menu.Target>
+                <Menu.Dropdown>
+                    <Menu.Item
+                        onClick={() => {
+                            loadExample(Example.Car);
+                        }}
+                    >
+                        Car
+                    </Menu.Item>
+                    <Menu.Item
+                        onClick={() => {
+                            loadExample(Example.ThreeSpheres);
+                        }}
+                    >
+                        Three Spheres
+                    </Menu.Item>
+                    <Menu.Item
+                        onClick={() => {
+                            loadExample(Example.RandomSpheres);
+                        }}
+                    >
+                        Random Spheres
+                    </Menu.Item>
+                </Menu.Dropdown>
+            </Menu>
         </div>
     );
 }

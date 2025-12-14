@@ -3,28 +3,7 @@
 import { createContext, use, useRef, useState, type JSX, type ReactNode } from 'react';
 import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
-
-const code = `
-// camera
-camera(
-    // aspect_ratio = 1.0,
-    image_width = 400,
-    image_height = 400,
-    samples_per_pixel = 10,
-    max_depth = 10,
-    vertical_fov = 90.0,
-    look_from = [50.0, -50.0, 70.0],
-    look_at = [0.0, 0.0, 0.0],
-    up = [0.0, 0.0, 1.0],
-    defocus_angle = 0.0,
-    focus_distance = 10.0,
-    background = [0.7, 0.8, 1.0]
-);
-
-color([0,125,255]/255)
-    scale([1.2,1,1])
-    cube([60,20,10],center=true);
-`;
+import { Example, EXAMPLES } from './utils/examples';
 
 export type UnsubscribeFn = () => void;
 
@@ -59,7 +38,7 @@ export function MyProvider({ children }: MyProviderProps): JSX.Element {
         threadCount: navigator.hardwareConcurrency ?? 4,
     });
     const [files, setFiles] = useState<Record<string, string>>({
-        'main.scad': code,
+        'main.scad': EXAMPLES[Example.Car],
     });
     const [cameraInfo, setCameraInfo] = useState<CameraInfo | undefined>(undefined);
     const drawEventListeners = useRef(new Set<RenderCallbackFn>());
