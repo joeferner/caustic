@@ -13,6 +13,7 @@ export interface RenderEventInit {
     type: 'init';
     blockSize: number;
     blockCount: number;
+    startTime: Date;
 }
 
 export interface RenderEventRenderResult extends RenderResult {
@@ -102,6 +103,7 @@ export class RenderWorkerPool {
             type: 'init',
             blockSize: options.blockSize,
             blockCount: this.blockCount,
+            startTime: new Date(),
         });
 
         this.initializeAndBeginRender(threadCount, input);

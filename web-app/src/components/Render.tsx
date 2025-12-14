@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useRef, useState, type JSX } from 'react
 import { useMyContext } from '../state';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import styles from './Render.module.scss';
-import { Button, Progress, Tooltip } from '@mantine/core';
+import { Button, Tooltip } from '@mantine/core';
 import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, X as ResetZoomIcon } from 'react-bootstrap-icons';
 import type { RenderResult } from '../types';
 import * as _ from 'radash';
+import { RenderProgress } from './RenderProgress';
 
 export function Render(): JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -13,7 +14,8 @@ export function Render(): JSX.Element {
     const [showMinimap, setShowMinimap] = useState(false);
     const { cameraInfo, subscribeToDrawEvents, renderOptions } = useMyContext();
     const [progress, setProgress] = useState(1.0);
-    const [showProgress, setShowProgress] = useState(false);
+    const [working, setWorking] = useState(false);
+    const [startTime, setStartTime] = useState<Date | undefined>(undefined);
 
     useEffect(() => {
         renderEmpty(canvasRef, renderOptions.blockSize);
@@ -21,32 +23,25 @@ export function Render(): JSX.Element {
     }, [renderOptions]);
 
     useEffect(() => {
-        let showProgressTimeout: number | undefined;
-
         const unsubscribe = subscribeToDrawEvents((event) => {
             if (event.type === 'init') {
-                setShowProgress(false);
                 setProgress(0.0);
-                showProgressTimeout = window.setTimeout(() => {
-                    setShowProgress(true);
-                }, 100);
+                setStartTime(event.startTime);
+                setWorking(true);
                 renderEmpty(canvasRef, renderOptions.blockSize);
                 renderEmpty(canvasMiniRef, renderOptions.blockSize);
             } else if (event.type === 'renderResult') {
-                clearTimeout(showProgressTimeout);
-                if (event.progress >= 0.9999) {
-                    setTimeout(() => {
-                        setShowProgress(false);
-                    }, 500);
-                }
                 setProgress(event.progress);
+                if (event.progress >= 1.0) {
+                    setWorking(false);
+                }
                 renderDrawEvent(canvasRef, event);
                 renderDrawEvent(canvasMiniRef, event);
             }
         });
 
         return unsubscribe;
-    }, [subscribeToDrawEvents, canvasRef, renderOptions, setProgress, setShowProgress]);
+    }, [subscribeToDrawEvents, canvasRef, renderOptions, setProgress, setStartTime]);
 
     const handleOnZoom = useCallback(() => {
         const canvas = canvasRef.current;
@@ -97,12 +92,7 @@ export function Render(): JSX.Element {
                     </React.Fragment>
                 )}
             </TransformWrapper>
-            <Progress
-                radius="xs"
-                size="sm"
-                value={progress * 100.0}
-                style={{ visibility: showProgress ? 'visible' : 'hidden' }}
-            />
+            <RenderProgress progress={progress} startTime={startTime} working={working} />
         </div>
     );
 }
