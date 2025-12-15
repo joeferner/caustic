@@ -3,7 +3,9 @@ use std::{collections::HashMap, rc::Rc, sync::Arc};
 use rust_raytracer_core::{
     Camera, CameraBuilder, Color, Node, SceneData, Vector3,
     material::{Lambertian, Material},
-    object::{BoundingVolumeHierarchy, BoxPrimitive, ConeFrustum, Group, Rotate, Scale, Translate},
+    object::{
+        BoundingVolumeHierarchy, BoxPrimitive, ConeFrustum, Group, Rotate, Scale, Sphere, Translate,
+    },
 };
 
 use crate::interpreter::{Module, ModuleArgument, ModuleInstance, ModuleInstanceTree, Value};
@@ -87,6 +89,7 @@ impl Converter {
 
         match module.instance.module {
             Module::Cube => self.create_cube(&module.instance, child_nodes),
+            Module::Sphere => self.create_sphere(&module.instance, child_nodes),
             Module::Cylinder => self.create_cylinder(&module.instance, child_nodes),
             Module::Translate => self.create_translate(&module.instance, child_nodes),
             Module::Rotate => self.create_rotate(&module.instance, child_nodes),
@@ -163,6 +166,32 @@ impl Converter {
         }
 
         Some(Arc::new(BoxPrimitive::new(a, b, self.current_material())))
+    }
+
+    fn create_sphere(
+        &self,
+        instance: &ModuleInstance,
+        child_nodes: Vec<Arc<dyn Node>>,
+    ) -> Option<Arc<dyn Node>> {
+        if !child_nodes.is_empty() {
+            todo!();
+        }
+
+        let mut radius = 1.0;
+
+        let arguments = self.convert_args(&["r", "d"], &instance.arguments);
+
+        if let Some(arg) = arguments.get("r") {
+            radius = arg.to_number()?;
+        } else if let Some(arg) = arguments.get("d") {
+            radius = arg.to_number()? / 2.0;
+        }
+
+        Some(Arc::new(Sphere::new(
+            Vector3::ZERO,
+            radius,
+            self.current_material(),
+        )))
     }
 
     fn create_cylinder(

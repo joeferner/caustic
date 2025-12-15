@@ -35,3 +35,16 @@ export interface RenderResponseData extends RenderResult {
 }
 
 export type RenderResponse = RenderResponseInit | RenderResponseData;
+
+export interface Project {
+    files: ProjectFile[];
+}
+
+export interface ProjectFile {
+    filename: string;
+    url: string;
+}
+
+export interface WorkingFile extends ProjectFile {
+    contents: string;
+}

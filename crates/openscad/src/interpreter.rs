@@ -15,6 +15,7 @@ pub enum Module {
 
     // 3d
     Cube,
+    Sphere,
     Cylinder,
 
     // transformations
@@ -236,6 +237,7 @@ impl Interpreter {
                 built_in => {
                     let module = match built_in {
                         ModuleId::Cube => Module::Cube,
+                        ModuleId::Sphere => Module::Sphere,
                         ModuleId::Cylinder => Module::Cylinder,
                         ModuleId::Translate => Module::Translate,
                         ModuleId::Rotate => Module::Rotate,
@@ -266,6 +268,7 @@ impl Interpreter {
                 self.evaluate_binary_expression(operator, lhs, rhs)
             }
             Expr::Unary { operator, rhs } => self.evaluate_unary_expression(operator, rhs),
+            Expr::FunctionCall { name, arguments } => self.evaluate_function_call(name, arguments),
         }
     }
 
@@ -402,6 +405,10 @@ impl Interpreter {
         }
 
         todo!("include {filename}")
+    }
+
+    fn evaluate_function_call(&self, name: &str, arguments: &[CallArgumentWithPosition]) -> Value {
+        todo!()
     }
 }
 

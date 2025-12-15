@@ -6,29 +6,39 @@ import type { JSX } from 'react';
 import { registerOpenscadLanguage } from '../monaco-openscad';
 
 export function Files(): JSX.Element {
-    const { updateFile, getFile } = useMyContext();
+    const { updateFile, files } = useMyContext();
 
     return (
         <Tabs defaultValue="main.scad" className={styles.tabs}>
             <Tabs.List>
-                <Tabs.Tab value="main.scad">main.scad</Tabs.Tab>
+                {files.map((file) => {
+                    return (
+                        <Tabs.Tab key={file.filename} value={file.filename}>
+                            {file.filename}
+                        </Tabs.Tab>
+                    );
+                })}
             </Tabs.List>
 
-            <Tabs.Panel value="main.scad" className={styles.tabPanel}>
-                <Editor
-                    height="100%"
-                    language="openscad"
-                    beforeMount={(monaco) => {
-                        registerOpenscadLanguage(monaco);
-                    }}
-                    theme="vs-dark"
-                    value={getFile('main.scad')}
-                    onChange={(code) => {
-                        updateFile('main.scad', code ?? '');
-                    }}
-                    options={{ minimap: { enabled: false } }}
-                />
-            </Tabs.Panel>
+            {files.map((file) => {
+                return (
+                    <Tabs.Panel key={file.filename} value={file.filename} className={styles.tabPanel}>
+                        <Editor
+                            height="100%"
+                            language="openscad"
+                            beforeMount={(monaco) => {
+                                registerOpenscadLanguage(monaco);
+                            }}
+                            theme="vs-dark"
+                            value={file.contents}
+                            onChange={(code) => {
+                                updateFile(file.filename, code ?? '');
+                            }}
+                            options={{ minimap: { enabled: false } }}
+                        />
+                    </Tabs.Panel>
+                );
+            })}
         </Tabs>
     );
 }

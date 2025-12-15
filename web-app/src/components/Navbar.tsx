@@ -1,14 +1,14 @@
 import { Menu, Tooltip, UnstyledButton } from '@mantine/core';
 import { useMyContext } from '../state';
 import { useCallback, useEffect, type JSX, type ReactNode } from 'react';
-import { Play as RenderIcon, ListTask as ExampleIcon } from 'react-bootstrap-icons';
+import { Play as RenderIcon, ListTask as ProjectsIcon } from 'react-bootstrap-icons';
 import styles from './Navbar.module.scss';
-import { Example, EXAMPLES } from '../utils/examples';
+import { Example } from '../utils/examples';
 
 const ICON_SIZE = 30;
 
 export function Navbar(): JSX.Element {
-    const { render, updateFile } = useMyContext();
+    const { render, loadExampleProject } = useMyContext();
 
     useEffect(() => {
         const handleKeyPress = (event: KeyboardEvent): void => {
@@ -26,21 +26,13 @@ export function Navbar(): JSX.Element {
 
     const loadExample = useCallback(
         (example: Example): void => {
-            const code = EXAMPLES[example];
-            updateFile('main.scad', code);
+            void loadExampleProject(example);
         },
-        [updateFile]
+        [loadExampleProject]
     );
 
     return (
         <div className={styles.wrapper}>
-            <NavbarLink
-                label="Render (F5)"
-                icon={<RenderIcon width={ICON_SIZE} height={ICON_SIZE} />}
-                onClick={() => {
-                    void render();
-                }}
-            />
             <Menu
                 position="right-start"
                 withArrow
@@ -50,10 +42,11 @@ export function Navbar(): JSX.Element {
             >
                 <Menu.Target>
                     <UnstyledButton className={styles.link}>
-                        <ExampleIcon width={ICON_SIZE} height={ICON_SIZE} />
+                        <ProjectsIcon width={ICON_SIZE} height={ICON_SIZE} />
                     </UnstyledButton>
                 </Menu.Target>
                 <Menu.Dropdown>
+                    <Menu.Label>Examples</Menu.Label>
                     <Menu.Item
                         onClick={() => {
                             loadExample(Example.Car);
@@ -77,6 +70,13 @@ export function Navbar(): JSX.Element {
                     </Menu.Item>
                 </Menu.Dropdown>
             </Menu>
+            <NavbarLink
+                label="Render (F5)"
+                icon={<RenderIcon width={ICON_SIZE} height={ICON_SIZE} />}
+                onClick={() => {
+                    void render();
+                }}
+            />
         </div>
     );
 }

@@ -1,9 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
 
-import { createContext, use, useRef, useState, type JSX, type ReactNode } from 'react';
+import { createContext, use, useEffect, useRef, useState, type JSX, type ReactNode } from 'react';
 import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
-import { Example, EXAMPLES } from './utils/examples';
+import { Example, getExampleProject } from './utils/examples';
+import type { WorkingFile } from './types';
 
 export type UnsubscribeFn = () => void;
 
@@ -15,13 +16,14 @@ export interface RenderOptions {
 export const DEFAULT_RENDER_BLOCK_SIZE = 50;
 
 interface MyContextType {
-    files: Record<string, string>;
+    files: WorkingFile[];
     cameraInfo: CameraInfo | undefined;
     renderOptions: Required<RenderOptions>;
     render: () => Promise<void>;
     updateFile: (filename: string, content: string) => void;
-    getFile: (filename: string) => string | undefined;
+    getFile: (filename: string) => WorkingFile | undefined;
     subscribeToDrawEvents: (listener: RenderCallbackFn) => UnsubscribeFn;
+    loadExampleProject: (example: Example) => Promise<void>;
 }
 
 const MyContext = createContext<MyContextType | undefined>(undefined);
@@ -37,25 +39,30 @@ export function MyProvider({ children }: MyProviderProps): JSX.Element {
         blockSize: DEFAULT_RENDER_BLOCK_SIZE,
         threadCount: navigator.hardwareConcurrency ?? 4,
     });
-    const [files, setFiles] = useState<Record<string, string>>({
-        'main.scad': EXAMPLES[Example.Car],
-    });
+    const [files, setFiles] = useState<WorkingFile[]>([]);
     const [cameraInfo, setCameraInfo] = useState<CameraInfo | undefined>(undefined);
     const drawEventListeners = useRef(new Set<RenderCallbackFn>());
 
-    const updateFile = (filename: string, content: string): void => {
-        setFiles((prev) => ({
-            ...prev,
-            [filename]: content,
-        }));
+    const updateFile = (filename: string, newContents: string): void => {
+        setFiles((prev) => {
+            return prev.map((f) => {
+                if (f.filename === filename) {
+                    return {
+                        ...f,
+                        contents: newContents,
+                    };
+                }
+                return f;
+            });
+        });
     };
 
-    const getFile = (filename: string): string | undefined => {
-        return files[filename];
+    const getFile = (filename: string): WorkingFile | undefined => {
+        return files.find((f) => f.filename == filename);
     };
 
     const render = async (): Promise<void> => {
-        const input = files['main.scad'];
+        const input = files[0].contents;
 
         await initWasm();
         loadOpenscad(input);
@@ -82,6 +89,28 @@ export function MyProvider({ children }: MyProviderProps): JSX.Element {
         return () => drawEventListeners.current.delete(listener);
     };
 
+    const loadExampleProject = async (example: Example): Promise<void> => {
+        console.log('loadExampleProject', example);
+        const project = getExampleProject(example);
+        const files = await Promise.all(
+            project.files.map(async (f) => {
+                const contents = await (await fetch(f.url)).text();
+                return {
+                    ...f,
+                    contents,
+                } satisfies WorkingFile;
+            })
+        );
+        setFiles(files);
+    };
+
+    useEffect(() => {
+        console.log('load initial project');
+        setTimeout(() => {
+            void loadExampleProject(Example.ThreeSpheres);
+        });
+    }, []);
+
     const value: MyContextType = {
         files,
         cameraInfo,
@@ -90,6 +119,7 @@ export function MyProvider({ children }: MyProviderProps): JSX.Element {
         getFile,
         render,
         subscribeToDrawEvents,
+        loadExampleProject,
     };
 
     return <MyContext value={value}>{children}</MyContext>;

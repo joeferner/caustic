@@ -45,6 +45,7 @@ pub enum Token {
         filename: String,
     },
     Cube,
+    Sphere,
     Cylinder,
     Translate,
     Rotate,
@@ -313,6 +314,8 @@ impl Tokenizer {
                     Token::False
                 } else if identifier == "cube" {
                     Token::Cube
+                } else if identifier == "sphere" {
+                    Token::Sphere
                 } else if identifier == "cylinder" {
                     Token::Cylinder
                 } else if identifier == "translate" {

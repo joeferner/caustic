@@ -70,6 +70,7 @@ pub enum ModuleId {
     /// "for"
     For,
     Cube,
+    Sphere,
     Cylinder,
     Translate,
     Rotate,
@@ -147,7 +148,11 @@ pub enum Expr {
     // TODO '(' <expr> ')'
     // TODO <expr> '?' <expr> ':' <expr>
     // TODO <expr> '[' <expr> ']'
-    // TODO <identifier> <call_arguments>
+    // <identifier> <call_arguments>
+    FunctionCall {
+        name: String,
+        arguments: Vec<CallArgumentWithPosition>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -435,6 +440,7 @@ impl Parser {
                 Token::For => ModuleId::For,
                 Token::Identifier(identifier) => ModuleId::Identifier(identifier.to_owned()),
                 Token::Cube => ModuleId::Cube,
+                Token::Sphere => ModuleId::Sphere,
                 Token::Cylinder => ModuleId::Cylinder,
                 Token::Translate => ModuleId::Translate,
                 Token::Rotate => ModuleId::Rotate,
@@ -591,9 +597,27 @@ impl Parser {
             // "false"
             self.advance();
             ExprWithPosition::new(Expr::False, start, self.current_token_start())
+        } else if let Some(tok) = self.current()
+            && let Token::Identifier(identifier) = &tok.item
+        {
+            // TODO <identifier>
+
+            // <identifier> <call_arguments>
+            if self.peek_matches(1, Token::LeftParen) {
+                let name = identifier.clone();
+
+                self.advance(); // identifier
+                let arguments = self.parse_call_arguments()?;
+                ExprWithPosition::new(
+                    Expr::FunctionCall { name, arguments },
+                    start,
+                    self.current_token_start(),
+                )
+            } else {
+                todo!("add error");
+            }
         }
         // TODO "undef"
-        // TODO <identifier>
         // TODO <expr> '.' <identifier>
         // TODO <string>
         else if let Some(tok) = self.current()
@@ -659,7 +683,6 @@ impl Parser {
         // TODO '(' <expr> ')'
         // TODO <expr> '?' <expr> ':' <expr>
         // TODO <expr> '[' <expr> ']'
-        // TODO <identifier> <call_arguments>
 
         Some(lhs)
     }
@@ -899,6 +922,19 @@ mod tests {
     #[test]
     fn test_include() {
         let result = openscad_parse(openscad_tokenize("include <ray_trace.scad>"));
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
+        assert_eq!(1, result.statements.len());
+    }
+
+    #[test]
+    fn test_function_call() {
+        let result = openscad_parse(openscad_tokenize(
+            "
+            lambertian(checker(scale=0.32, even=[0.2, 0.3, 0.1], odd=[0.9, 0.9, 0.9]))
+                translate([0.0, -1.0, -100.5])
+                    sphere(r=100);
+    ",
+        ));
         assert_eq!(Vec::<ParseError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
