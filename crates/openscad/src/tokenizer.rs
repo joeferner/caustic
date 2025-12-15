@@ -44,16 +44,7 @@ pub enum Token {
     Use {
         filename: String,
     },
-    Cube,
-    Sphere,
-    Cylinder,
-    Translate,
-    Rotate,
-    Scale,
-    Color,
-    Camera,
 
-    // TODO module, function, if, else, let, assign, sphere, polyhedron, square, circle, polygon, union, difference, intersection, mirror, hull, minkowski, linear_extrude, rotate_extrude, projection
     Unknown(char),
     Eof,
 }
@@ -312,22 +303,6 @@ impl Tokenizer {
                     Token::True
                 } else if identifier == "false" {
                     Token::False
-                } else if identifier == "cube" {
-                    Token::Cube
-                } else if identifier == "sphere" {
-                    Token::Sphere
-                } else if identifier == "cylinder" {
-                    Token::Cylinder
-                } else if identifier == "translate" {
-                    Token::Translate
-                } else if identifier == "rotate" {
-                    Token::Rotate
-                } else if identifier == "scale" {
-                    Token::Scale
-                } else if identifier == "color" {
-                    Token::Color
-                } else if identifier == "camera" {
-                    Token::Camera
                 } else {
                     Token::Identifier(identifier)
                 }
@@ -422,7 +397,7 @@ mod tests {
         assert_tokens_with_pos(
             "cube(",
             &vec![
-                TokenWithPosition::new(Token::Cube, 0, 4),
+                TokenWithPosition::new(Token::Identifier("cube".to_string()), 0, 4),
                 TokenWithPosition::new(Token::LeftParen, 4, 5),
                 TokenWithPosition::new(Token::Eof, 5, 5),
             ],
@@ -435,7 +410,7 @@ mod tests {
             "cube(10);",
             &vec![
                 TokenWithPosition {
-                    item: Token::Cube,
+                    item: Token::Identifier("cube".to_string()),
                     start: 0,
                     end: 4,
                 },
@@ -473,7 +448,7 @@ mod tests {
         assert_tokens(
             "cube([20,30,50]);",
             &vec![
-                Token::Cube,
+                Token::Identifier("cube".to_string()),
                 Token::LeftParen,
                 Token::LeftBracket,
                 Token::Number(20.0),
@@ -494,7 +469,7 @@ mod tests {
         assert_tokens(
             "cube(size=20);",
             &vec![
-                Token::Cube,
+                Token::Identifier("cube".to_string()),
                 Token::LeftParen,
                 Token::Identifier("size".to_string()),
                 Token::Equals,

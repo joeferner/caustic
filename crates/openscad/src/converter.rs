@@ -77,6 +77,9 @@ impl Converter {
         if module.instance.module == Module::Color {
             let color = self.create_color(&module.instance)?;
             self.material_stack.push(color);
+        } else if module.instance.module == Module::Lambertian {
+            let color = self.create_lambertian(&module.instance)?;
+            self.material_stack.push(color);
         }
 
         for child_module in module.children.borrow().iter() {
@@ -96,6 +99,10 @@ impl Converter {
             Module::Scale => self.create_scale(&module.instance, child_nodes),
             Module::Camera => self.create_camera(&module.instance, child_nodes),
             Module::Color => {
+                self.material_stack.pop();
+                Some(Arc::new(Group::from_list(&child_nodes)))
+            }
+            Module::Lambertian => {
                 self.material_stack.pop();
                 Some(Arc::new(Group::from_list(&child_nodes)))
             }
@@ -341,6 +348,21 @@ impl Converter {
         if let Some(arg) = arguments.get("c") {
             let color = arg.to_color()?;
             return Some(Arc::new(Lambertian::new_from_color(color)));
+        }
+
+        todo!("missing arg");
+    }
+
+    fn create_lambertian(&self, instance: &ModuleInstance) -> Option<Arc<dyn Material>> {
+        let arguments = self.convert_args(&["c", "t"], &instance.arguments);
+
+        if let Some(arg) = arguments.get("c") {
+            let color = arg.to_color()?;
+            return Some(Arc::new(Lambertian::new_from_color(color)));
+        } else if let Some(arg) = arguments.get("t") {
+            todo!("{arg:?}");
+            // let color = arg.to_color()?;
+            // return Some(Arc::new(Lambertian::new(texture)));
         }
 
         todo!("missing arg");

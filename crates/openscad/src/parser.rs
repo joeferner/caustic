@@ -77,6 +77,7 @@ pub enum ModuleId {
     Scale,
     Color,
     Camera,
+    Lambertian,
     /// <identifier>
     Identifier(String),
 }
@@ -438,15 +439,29 @@ impl Parser {
         if let Some(current) = self.current() {
             let module_id = match &current.item {
                 Token::For => ModuleId::For,
-                Token::Identifier(identifier) => ModuleId::Identifier(identifier.to_owned()),
-                Token::Cube => ModuleId::Cube,
-                Token::Sphere => ModuleId::Sphere,
-                Token::Cylinder => ModuleId::Cylinder,
-                Token::Translate => ModuleId::Translate,
-                Token::Rotate => ModuleId::Rotate,
-                Token::Scale => ModuleId::Scale,
-                Token::Color => ModuleId::Color,
-                Token::Camera => ModuleId::Camera,
+                Token::Identifier(identifier) => {
+                    if identifier == "cube" {
+                        ModuleId::Cube
+                    } else if identifier == "sphere" {
+                        ModuleId::Sphere
+                    } else if identifier == "cylinder" {
+                        ModuleId::Cylinder
+                    } else if identifier == "translate" {
+                        ModuleId::Translate
+                    } else if identifier == "rotate" {
+                        ModuleId::Rotate
+                    } else if identifier == "scale" {
+                        ModuleId::Scale
+                    } else if identifier == "color" {
+                        ModuleId::Color
+                    } else if identifier == "camera" {
+                        ModuleId::Camera
+                    } else if identifier == "lambertian" {
+                        ModuleId::Lambertian
+                    } else {
+                        ModuleId::Identifier(identifier.to_owned())
+                    }
+                }
                 _ => todo!("throw error {:?}", current.item),
             };
             self.advance();

@@ -23,6 +23,7 @@ pub enum Module {
     Rotate,
     Scale,
     Color,
+    Lambertian,
 }
 
 #[derive(Debug)]
@@ -243,6 +244,7 @@ impl Interpreter {
                         ModuleId::Rotate => Module::Rotate,
                         ModuleId::Scale => Module::Scale,
                         ModuleId::Color => Module::Color,
+                        ModuleId::Lambertian => Module::Lambertian,
                         ModuleId::Camera => Module::Camera,
                         ModuleId::For => todo!("already handled"),
                         ModuleId::Identifier(_) => todo!("already handled"),
@@ -408,7 +410,7 @@ impl Interpreter {
     }
 
     fn evaluate_function_call(&self, name: &str, arguments: &[CallArgumentWithPosition]) -> Value {
-        todo!()
+        todo!("evaluate_function_call {name} {arguments:?}")
     }
 }
 

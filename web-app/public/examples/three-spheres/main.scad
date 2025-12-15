@@ -15,7 +15,7 @@ camera(
 );
 
 // ground
-lambertian(checker(scale=0.32, even=[0.2, 0.3, 0.1], odd=[0.9, 0.9, 0.9]))
+lambertian(t=checker(scale=0.32, even=[0.2, 0.3, 0.1], odd=[0.9, 0.9, 0.9]))
   translate([0.0, -1.0, -100.5])
     sphere(r=100);
 
