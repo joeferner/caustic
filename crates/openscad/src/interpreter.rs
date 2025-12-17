@@ -203,7 +203,7 @@ impl Interpreter {
 
     fn interpret(mut self, statements: Vec<StatementWithPosition>) -> InterpreterResults {
         for statement in statements {
-            self.process_statement(statement);
+            self.process_statement(&statement);
         }
         InterpreterResults {
             trees: self.results,
@@ -211,8 +211,8 @@ impl Interpreter {
         }
     }
 
-    fn process_statement(&mut self, statement: StatementWithPosition) {
-        match statement.item {
+    fn process_statement(&mut self, statement: &StatementWithPosition) {
+        match &statement.item {
             Statement::Empty => (),
             Statement::ModuleInstantiation {
                 module_instantiation,
@@ -427,6 +427,11 @@ impl Interpreter {
             ChildStatement::ModuleInstantiation {
                 module_instantiation,
             } => self.process_module_instantiation(module_instantiation),
+            ChildStatement::MultipleStatements { statements } => {
+                for statement in statements {
+                    self.process_statement(statement.as_ref());
+                }
+            }
         }
     }
 
@@ -446,7 +451,7 @@ impl Interpreter {
         self.stack.push(tree);
     }
 
-    fn process_assignment(&mut self, identifier: String, expr: ExprWithPosition) {
+    fn process_assignment(&mut self, identifier: &str, expr: &ExprWithPosition) {
         let value = self.expr_to_value(&expr);
 
         if identifier.starts_with("$") {
@@ -456,10 +461,10 @@ impl Interpreter {
             }
         }
 
-        self.variables.insert(identifier, value);
+        self.variables.insert(identifier.to_owned(), value);
     }
 
-    fn process_include(&self, filename: String) {
+    fn process_include(&self, filename: &str) {
         if filename.ends_with("ray_trace.scad") {
             return;
         }

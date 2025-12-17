@@ -56,7 +56,10 @@ pub type SingleModuleInstantiationWithPosition = WithPosition<SingleModuleInstan
 pub enum ChildStatement {
     // ';'
     Empty,
-    // TODO '{' <child_statements> '}'
+    // '{' <child_statements> '}'
+    MultipleStatements {
+        statements: Vec<Box<StatementWithPosition>>,
+    },
     // <module_instantiation>
     ModuleInstantiation {
         module_instantiation: Box<ModuleInstantiationWithPosition>,
@@ -414,7 +417,7 @@ impl Parser {
 
         // ';'
         if self.current_matches(Token::Semicolon) {
-            self.advance();
+            self.expect(Token::Semicolon);
             return Some(ChildStatementWithPosition::new(
                 ChildStatement::Empty,
                 start,
@@ -423,8 +426,21 @@ impl Parser {
         }
 
         if self.current_matches(Token::LeftCurlyBracket) {
-            // TODO '{' <child_statements> '}'
-            todo!()
+            self.expect(Token::LeftCurlyBracket);
+            let mut child_statments: Vec<Box<StatementWithPosition>> = vec![];
+            while !self.current_matches(Token::RightCurlyBracket) {
+                if let Some(stmt) = self.parse_statement() {
+                    child_statments.push(Box::new(stmt));
+                }
+            }
+            self.expect(Token::RightCurlyBracket);
+            return Some(ChildStatementWithPosition::new(
+                ChildStatement::MultipleStatements {
+                    statements: child_statments,
+                },
+                start,
+                self.current_token_start(),
+            ));
         }
 
         // <module_instantiation>
