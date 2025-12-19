@@ -728,7 +728,9 @@ impl Interpreter {
 
         fn eval_number_number(operator: &BinaryOperator, left: f64, right: f64) -> Value {
             match operator {
-                BinaryOperator::Minus => Value::Number(left - right),
+                BinaryOperator::Add => Value::Number(left + right),
+                BinaryOperator::Subtract => Value::Number(left - right),
+                BinaryOperator::Multiply => Value::Number(left * right),
                 BinaryOperator::Divide => Value::Number(left / right),
             }
         }
@@ -739,8 +741,10 @@ impl Interpreter {
                     .iter()
                     .map(|item| match item {
                         Value::Number(v) => match operator {
-                            BinaryOperator::Minus => Value::Number(v - right),
+                            BinaryOperator::Subtract => Value::Number(v - right),
                             BinaryOperator::Divide => Value::Number(v / right),
+                            BinaryOperator::Add => todo!(),
+                            BinaryOperator::Multiply => todo!(),
                         },
                         Value::Vector { items } => todo!("items {items:?}"),
                         Value::True => todo!("true"),
@@ -1050,48 +1054,53 @@ mod tests {
 
     use super::*;
 
+    fn interpret(expr: &str) -> InterpreterResults {
+        let result = openscad_parse(openscad_tokenize(expr));
+        openscad_interpret(result.statements)
+    }
+
     #[test]
     fn test_binary_expression() {
-        let result = openscad_parse(openscad_tokenize("cube(20 - 0.1);"));
-        let result = openscad_interpret(result.statements);
-
+        let result = interpret("cube(20 - 0.1);");
         assert_eq!(Vec::<InterpreterError>::new(), result.errors);
     }
 
     #[test]
     fn test_unary_expression() {
-        let result = openscad_parse(openscad_tokenize("cube(-20);"));
-        let result = openscad_interpret(result.statements);
-
+        let result = interpret("cube(-20);");
         assert_eq!(Vec::<InterpreterError>::new(), result.errors);
     }
 
     #[test]
     fn test_set_fa() {
-        let result = openscad_parse(openscad_tokenize("$fa = 1;"));
-        let result = openscad_interpret(result.statements);
-
+        let result = interpret("$fa = 1;");
         assert_eq!(Vec::<InterpreterError>::new(), result.errors);
     }
 
     #[test]
     fn test_for_loop() {
-        let result = openscad_parse(openscad_tokenize(
+        let result = interpret(
             "
                 for(a = [-1 : 1])
                     for(b = [0 : 2])
                         echo(a,b);
             ",
-        ));
-        let result = openscad_interpret(result.statements);
-
+        );
         assert_eq!(result.output, "-1, 0\n-1, 1\n0, 0\n0, 1\n");
     }
 
     #[test]
     fn test_rands() {
-        let result = openscad_parse(openscad_tokenize("choose_mat = rands(0,1,1)[0];"));
-        let result = openscad_interpret(result.statements);
+        let result = interpret("choose_mat = rands(0,1,1)[0];");
         assert_eq!(Vec::<InterpreterError>::new(), result.errors);
+    }
+
+    #[test]
+    fn test_order_of_operations() {
+        let result = interpret("echo(2 + 3 * 5);");
+        assert_eq!(result.output, "17\n");
+
+        let result = interpret("echo(2 * 3 + 5);");
+        assert_eq!(result.output, "11\n");
     }
 }

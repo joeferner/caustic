@@ -26,13 +26,11 @@ lambertian(c=[0.5, 0.5, 0.5])
 for(a = [-11 : 11]) {
     for(b = [-11 : 11]) {
         choose_mat = rands(0,1,1)[0];
-        echo(a,b,choose_mat);
-        // TODO
-        //  let center = Vector3::new(
-        //      a as f64 + 0.9 * ctx.random.rand(),
-        //      0.2,
-        //      b as f64 + 0.9 * ctx.random.rand(),
-        //  );
+        center = [
+              a + 0.9 * rands(0,1,1)[0],
+              0.2,
+              b + 0.9 * rands(0,1,1)[0],
+        ];
 
         //  if (center - Vector3::new(4.0, 0.2, 0.0)).length() > 0.9 {
         //      if choose_mat < 0.8 {

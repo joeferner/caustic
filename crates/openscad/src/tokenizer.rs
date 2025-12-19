@@ -24,8 +24,12 @@ pub enum Token {
     Semicolon,
     /// '='
     Equals,
+    /// '+'
+    Plus,
     /// '-'
     Minus,
+    /// '*'
+    Asterisk,
     /// '/'
     ForwardSlash,
     /// '<'
@@ -277,9 +281,17 @@ impl Tokenizer {
                 self.advance();
                 Token::Equals
             }
+            Some('+') => {
+                self.advance();
+                Token::Plus
+            }
             Some('-') => {
                 self.advance();
                 Token::Minus
+            }
+            Some('*') => {
+                self.advance();
+                Token::Asterisk
             }
             Some('/') => {
                 self.advance();

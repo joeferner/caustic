@@ -177,8 +177,19 @@ pub enum Expr {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BinaryOperator {
-    Minus,
+    Add,
+    Subtract,
+    Multiply,
     Divide,
+}
+
+impl BinaryOperator {
+    pub fn precedence(&self) -> u8 {
+        match self {
+            BinaryOperator::Add | BinaryOperator::Subtract => 1,
+            BinaryOperator::Multiply | BinaryOperator::Divide => 2,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -763,9 +774,7 @@ impl Parser {
         // TODO '+' <expr>
         // TODO '!' <expr>
 
-        // TODO <expr> '*' <expr>
         // TODO <expr> '%' <expr>
-        // TODO <expr> '+' <expr>
         // TODO <expr> '<' <expr>
         // TODO <expr> "<=" <expr>
         // TODO <expr> "==" <expr>
@@ -775,8 +784,10 @@ impl Parser {
         // TODO <expr> "&&" <expr>
         // TODO <expr> "||" <expr>
 
-        // <expr> '/' <expr>
+        // <expr> '+' <expr>
         // <expr> '-' <expr>
+        // <expr> '*' <expr>
+        // <expr> '/' <expr>
         if let Some(operator) = self.current_to_binary_operator() {
             self.advance();
             if let Some(rhs) = self.parse_expr() {
@@ -872,7 +883,9 @@ impl Parser {
     fn current_to_binary_operator(&self) -> Option<BinaryOperator> {
         if let Some(current) = self.current() {
             match current.item {
-                Token::Minus => Some(BinaryOperator::Minus),
+                Token::Plus => Some(BinaryOperator::Add),
+                Token::Minus => Some(BinaryOperator::Subtract),
+                Token::Asterisk => Some(BinaryOperator::Multiply),
                 Token::ForwardSlash => Some(BinaryOperator::Divide),
                 _ => None,
             }
