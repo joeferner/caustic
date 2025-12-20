@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::{
     WithPosition,
     tokenizer::{Token, TokenWithPosition},
@@ -17,7 +19,12 @@ pub enum Statement {
     Include { filename: String },
     // TODO "use" <include_file>
     // TODO "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
-    // TODO "function" <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
+    // "function" <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
+    FunctionDecl {
+        function_name: String,
+        arguments: Vec<DeclArgumentWithPosition>,
+        expr: ExprWithPosition,
+    },
     /// <module_instantiation>
     ModuleInstantiation {
         module_instantiation: ModuleInstantiationWithPosition,
@@ -90,7 +97,7 @@ pub enum ModuleId {
 
 pub type ModuleIdWithPosition = WithPosition<ModuleId>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum CallArgument {
     /// <identifier> '=' <expr>
     NamedArgument {
@@ -103,7 +110,20 @@ pub enum CallArgument {
 
 pub type CallArgumentWithPosition = WithPosition<CallArgument>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
+pub enum DeclArgument {
+    /// <identifier> '=' <expr>
+    WithDefault {
+        identifier: String,
+        default_expr: ExprWithPosition,
+    },
+    /// <identifier>
+    Identifier { identifier: String },
+}
+
+pub type DeclArgumentWithPosition = WithPosition<DeclArgument>;
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     // "true"
     True,
@@ -175,7 +195,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum BinaryOperator {
     Add,
     Subtract,
@@ -192,7 +212,7 @@ impl BinaryOperator {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum UnaryOperator {
     Minus,
 }
@@ -266,6 +286,7 @@ impl Parser {
         }
     }
 
+    #[must_use]
     fn expect(&mut self, expected: Token) -> bool {
         match self.current() {
             None => {
@@ -327,6 +348,7 @@ impl Parser {
 
         // TODO '{' <inner_input> '}'
 
+        // TODO "use" <include_file>
         // "include" <include_file>
         if let Some(tok) = self.current()
             && let Token::Include { filename } = &tok.item
@@ -340,9 +362,15 @@ impl Parser {
             ));
         }
 
-        // TODO "use" <include_file>
-        // TODO "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
-        // TODO "function" <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
+        if let Some(identifier) = self.current_matches_identifier() {
+            if identifier == "function" {
+                self.advance(); // function
+                return self.parse_function_decl();
+            } else if identifier == "module" {
+                // TODO "module" <identifier> '(' <arguments_decl> <optional_commas> ')' <statement>
+                todo!("module decl")
+            }
+        }
 
         // <assignment>
         if self.current_matches_identifier().is_some() && self.peek_matches(1, Token::Equals) {
@@ -433,7 +461,9 @@ impl Parser {
 
         // ';'
         if self.current_matches(Token::Semicolon) {
-            self.expect(Token::Semicolon);
+            if !self.expect(Token::Semicolon) {
+                return None;
+            }
             return Some(ChildStatementWithPosition::new(
                 ChildStatement::Empty,
                 start,
@@ -442,14 +472,18 @@ impl Parser {
         }
 
         if self.current_matches(Token::LeftCurlyBracket) {
-            self.expect(Token::LeftCurlyBracket);
+            if !self.expect(Token::LeftCurlyBracket) {
+                return None;
+            }
             let mut child_statments: Vec<Box<StatementWithPosition>> = vec![];
             while !self.current_matches(Token::RightCurlyBracket) {
                 if let Some(stmt) = self.parse_statement() {
                     child_statments.push(Box::new(stmt));
                 }
             }
-            self.expect(Token::RightCurlyBracket);
+            if !self.expect(Token::RightCurlyBracket) {
+                return None;
+            }
             return Some(ChildStatementWithPosition::new(
                 ChildStatement::MultipleStatements {
                     statements: child_statments,
@@ -660,9 +694,13 @@ impl Parser {
 
         // <expr> '[' <expr> ']'
         if self.current_matches(Token::LeftBracket) {
-            self.expect(Token::LeftBracket);
+            if !self.expect(Token::LeftBracket) {
+                return None;
+            }
             if let Some(index) = self.parse_expr() {
-                self.expect(Token::RightBracket);
+                if !self.expect(Token::RightBracket) {
+                    return None;
+                }
                 return Some(ExprWithPosition::new(
                     Expr::Index {
                         lhs: Box::new(lhs),
@@ -723,7 +761,9 @@ impl Parser {
                 while !self.current_matches(Token::RightBracket) {
                     if !found_colon && self.current_matches(Token::Comma) {
                         found_comma = true;
-                        self.expect(Token::Comma);
+                        if !self.expect(Token::Comma) {
+                            return None;
+                        }
                         continue;
                     }
 
@@ -732,7 +772,9 @@ impl Parser {
                             todo!("add error since leading colon is not allowed");
                         }
                         found_colon = true;
-                        self.expect(Token::Colon);
+                        if !self.expect(Token::Colon) {
+                            return None;
+                        }
                         continue;
                     }
 
@@ -742,7 +784,9 @@ impl Parser {
                         todo!("add error, expression is required in colon statements")
                     }
                 }
-                self.expect(Token::RightBracket);
+                if !self.expect(Token::RightBracket) {
+                    return None;
+                }
 
                 if found_colon {
                     let (start_expr, end_expr, increment_expr) = if expressions.len() == 2 {
@@ -910,6 +954,93 @@ impl Parser {
             }
         } else {
             None
+        }
+    }
+
+    /// <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
+    fn parse_function_decl(&mut self) -> Option<StatementWithPosition> {
+        let start = self.current_token_start();
+
+        let function_name = if let Some(identifier) = self.current_matches_identifier() {
+            self.advance(); // identifier
+            identifier
+        } else {
+            return None;
+        };
+
+        let arguments = self.parse_decl_arguments()?;
+
+        if !self.expect(Token::Equals) {
+            return None;
+        }
+
+        let expr = self.parse_expr()?;
+
+        if !self.expect(Token::Semicolon) {
+            return None;
+        }
+
+        Some(StatementWithPosition::new(
+            Statement::FunctionDecl {
+                function_name,
+                arguments,
+                expr,
+            },
+            start,
+            self.current_token_start(),
+        ))
+    }
+
+    /// <empty>
+    /// <argument_decl>
+    /// <arguments_decl> ',' <optional_commas> <argument_decl>
+    fn parse_decl_arguments(&mut self) -> Option<Vec<DeclArgumentWithPosition>> {
+        if !self.expect(Token::LeftParen) {
+            return None;
+        }
+
+        let mut arguments: Vec<DeclArgumentWithPosition> = vec![];
+
+        while let Some(argument) = self.parse_decl_argument() {
+            arguments.push(argument);
+
+            if self.current_matches(Token::RightParen) {
+                break;
+            }
+
+            // ',' <optional_commas>
+            while self.current_matches(Token::Comma) {
+                self.advance();
+            }
+        }
+
+        if !self.expect(Token::RightParen) {
+            return None;
+        }
+
+        Some(arguments)
+    }
+
+    /// <identifier>
+    /// <identifier> '=' <expr>
+    fn parse_decl_argument(&mut self) -> Option<DeclArgumentWithPosition> {
+        let start = self.current_token_start();
+
+        let identifier = if let Some(identifier) = self.current_matches_identifier() {
+            self.advance();
+            identifier
+        } else {
+            return None;
+        };
+
+        if self.current_matches(Token::Equals) {
+            todo!("decl arg with default");
+        } else {
+            Some(DeclArgumentWithPosition::new(
+                DeclArgument::Identifier { identifier },
+                start,
+                self.current_token_start(),
+            ))
         }
     }
 }
@@ -1126,6 +1257,14 @@ mod tests {
     #[test]
     fn test_rands() {
         let result = openscad_parse(openscad_tokenize("choose_mat = rands(0,1,1)[0];"));
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
+        assert_eq!(1, result.statements.len());
+    }
+
+    #[test]
+    fn test_function_decl() {
+        let s = "function distance(pt1, pt2) = sqrt(pow(pt2[0]-pt1[0], 2) + pow(pt2[1]-pt1[1], 2) + pow(pt2[2]-pt1[2], 2));";
+        let result = openscad_parse(openscad_tokenize(s));
         assert_eq!(Vec::<ParseError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }

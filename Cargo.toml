@@ -3,7 +3,8 @@ name = "rust-raytracer"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace.dependencies]
+assert-eq-float = "0.1.4"
 
 [workspace]
 members = ["crates/core", "crates/cli", "crates/wasm", "crates/openscad"]

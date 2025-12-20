@@ -11,7 +11,7 @@ use crate::{
     tokenizer::openscad_tokenize,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct WithPosition<T: PartialEq> {
     pub item: T,
     pub start: usize,

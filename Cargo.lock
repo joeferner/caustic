@@ -908,6 +908,7 @@ dependencies = [
 name = "rust-raytracer-openscad"
 version = "0.1.0"
 dependencies = [
+ "assert-eq-float",
  "rand_mt",
  "rust-raytracer-core",
 ]

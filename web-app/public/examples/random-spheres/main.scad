@@ -22,6 +22,9 @@ lambertian(c=[0.5, 0.5, 0.5])
   translate([0.0, 0.0, -1000.0])
     sphere(r=1000);
 
+// distance function
+function distance(pt1, pt2) = sqrt(pow(pt2[0]-pt1[0], 2) + pow(pt2[1]-pt1[1], 2) + pow(pt2[2]-pt1[2], 2));
+
 // random spheres
 for(a = [-11 : 11]) {
     for(b = [-11 : 11]) {

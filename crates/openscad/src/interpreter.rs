@@ -13,9 +13,9 @@ use rust_raytracer_core::{
 use crate::{
     parser::{
         BinaryOperator, CallArgument, CallArgumentWithPosition, ChildStatement,
-        ChildStatementWithPosition, Expr, ExprWithPosition, ModuleId, ModuleInstantiation,
-        ModuleInstantiationWithPosition, SingleModuleInstantiation, Statement,
-        StatementWithPosition, UnaryOperator,
+        ChildStatementWithPosition, DeclArgument, DeclArgumentWithPosition, Expr, ExprWithPosition,
+        ModuleId, ModuleInstantiation, ModuleInstantiationWithPosition, SingleModuleInstantiation,
+        Statement, StatementWithPosition, UnaryOperator,
     },
     value::{Value, ValueConversionError},
 };
@@ -79,6 +79,37 @@ pub struct InterpreterResults {
     pub errors: Vec<InterpreterError>,
 }
 
+#[derive(Debug)]
+struct Function {
+    pub arguments: Vec<DeclArgumentWithPosition>,
+    pub expr: ExprWithPosition,
+}
+
+struct Scope {
+    variables: RefCell<Vec<HashMap<String, Value>>>,
+}
+
+impl Drop for Scope {
+    fn drop(&mut self) {
+        self.variables.borrow_mut().pop();
+    }
+}
+
+impl Function {
+    pub fn get_argument_names(&self) -> Vec<String> {
+        self.arguments
+            .iter()
+            .map(|arg| match &arg.item {
+                DeclArgument::WithDefault {
+                    identifier,
+                    default_expr: _,
+                } => identifier.to_owned(),
+                DeclArgument::Identifier { identifier } => identifier.to_owned(),
+            })
+            .collect()
+    }
+}
+
 struct Interpreter {
     _modules: HashMap<String, Module>,
     stack: Vec<Rc<ModuleInstance>>,
@@ -87,9 +118,10 @@ struct Interpreter {
     world: Vec<Arc<dyn Node>>,
     lights: Vec<Arc<dyn Node>>,
     material_stack: Vec<Arc<dyn Material>>,
-    variables: HashMap<String, Value>,
+    variables: RefCell<Vec<HashMap<String, Value>>>,
+    functions: HashMap<String, Function>,
     output: String,
-    rng: RefCell<Mt64>,
+    rng: Mt64,
 }
 
 impl Interpreter {
@@ -108,13 +140,14 @@ impl Interpreter {
         Self {
             _modules: HashMap::new(),
             stack: vec![],
-            variables,
+            variables: RefCell::new(vec![variables]),
+            functions: HashMap::new(),
             camera: None,
             world: vec![],
             lights: vec![],
             material_stack: vec![],
             output: String::new(),
-            rng: RefCell::new(Mt64::new_unseeded()),
+            rng: Mt64::new_unseeded(),
         }
     }
 
@@ -171,6 +204,13 @@ impl Interpreter {
                 self.process_assignment(identifier, expr).map(|_| None)
             }
             Statement::Include { filename } => self.process_include(filename),
+            Statement::FunctionDecl {
+                function_name,
+                arguments,
+                expr,
+            } => self
+                .process_function_decl(function_name, arguments, expr)
+                .map(|_| None),
         }
     }
 
@@ -242,7 +282,7 @@ impl Interpreter {
     }
 
     fn create_cube(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
         child: Option<Arc<dyn Node>>,
     ) -> Result<Arc<dyn Node>> {
@@ -274,7 +314,7 @@ impl Interpreter {
     }
 
     fn create_sphere(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
         child: Option<Arc<dyn Node>>,
     ) -> Result<Arc<dyn Node>> {
@@ -300,7 +340,7 @@ impl Interpreter {
     }
 
     fn create_cylinder(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
         child: Option<Arc<dyn Node>>,
     ) -> Result<Arc<dyn Node>> {
@@ -369,7 +409,7 @@ impl Interpreter {
     }
 
     fn create_translate(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
         child: Option<Arc<dyn Node>>,
     ) -> Result<Arc<dyn Node>> {
@@ -388,7 +428,7 @@ impl Interpreter {
     }
 
     fn create_rotate(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
         child: Option<Arc<dyn Node>>,
     ) -> Result<Arc<dyn Node>> {
@@ -425,7 +465,7 @@ impl Interpreter {
     }
 
     fn create_scale(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
         child: Option<Arc<dyn Node>>,
     ) -> Result<Arc<dyn Node>> {
@@ -563,12 +603,15 @@ impl Interpreter {
         Ok(())
     }
 
-    fn expr_to_string(&self, expr: &ExprWithPosition) -> Result<String> {
+    fn expr_to_string(&mut self, expr: &ExprWithPosition) -> Result<String> {
         let value = self.expr_to_value(expr)?;
         Ok(format!("{value}"))
     }
 
-    fn create_color(&self, arguments: &[CallArgumentWithPosition]) -> Result<Arc<dyn Material>> {
+    fn create_color(
+        &mut self,
+        arguments: &[CallArgumentWithPosition],
+    ) -> Result<Arc<dyn Material>> {
         let arguments = self.convert_args(&["c", "alpha"], arguments)?;
 
         if let Some(arg) = arguments.get("alpha") {
@@ -584,7 +627,7 @@ impl Interpreter {
     }
 
     fn create_lambertian(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
     ) -> Result<Arc<dyn Material>> {
         let arguments = self.convert_args(&["c", "t"], arguments)?;
@@ -603,7 +646,7 @@ impl Interpreter {
     }
 
     fn create_dielectric(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
     ) -> Result<Arc<dyn Material>> {
         let arguments = self.convert_args(&["n"], arguments)?;
@@ -616,7 +659,10 @@ impl Interpreter {
         }
     }
 
-    fn create_metal(&self, arguments: &[CallArgumentWithPosition]) -> Result<Arc<dyn Material>> {
+    fn create_metal(
+        &mut self,
+        arguments: &[CallArgumentWithPosition],
+    ) -> Result<Arc<dyn Material>> {
         let arguments = self.convert_args(&["c", "fuzz"], arguments)?;
 
         let mut color = Color::WHITE;
@@ -681,7 +727,7 @@ impl Interpreter {
                 break;
             }
 
-            self.variables.insert(name.to_owned(), Value::Number(i));
+            self.set_variable(name, Value::Number(i));
             self.process_child_statement(child_statement)?;
 
             i += increment;
@@ -690,7 +736,7 @@ impl Interpreter {
         Ok(())
     }
 
-    fn expr_to_value(&self, expr: &ExprWithPosition) -> Result<Value> {
+    fn expr_to_value(&mut self, expr: &ExprWithPosition) -> Result<Value> {
         Ok(match &expr.item {
             Expr::Number(number) => Value::Number(*number),
             Expr::Vector { items } => {
@@ -718,7 +764,7 @@ impl Interpreter {
     }
 
     fn evaluate_binary_expression(
-        &self,
+        &mut self,
         operator: &BinaryOperator,
         lhs: &ExprWithPosition,
         rhs: &ExprWithPosition,
@@ -797,7 +843,7 @@ impl Interpreter {
     }
 
     fn evaluate_unary_expression(
-        &self,
+        &mut self,
         operator: &UnaryOperator,
         rhs: &ExprWithPosition,
     ) -> Result<Value> {
@@ -846,7 +892,7 @@ impl Interpreter {
             }
         }
 
-        self.variables.insert(identifier.to_owned(), value);
+        self.set_variable(identifier, value);
         Ok(())
     }
 
@@ -859,7 +905,7 @@ impl Interpreter {
     }
 
     fn evaluate_function_call(
-        &self,
+        &mut self,
         name: &str,
         arguments: &[CallArgumentWithPosition],
     ) -> Result<Value> {
@@ -868,12 +914,30 @@ impl Interpreter {
         } else if name == "rands" {
             self.evaluate_rands_function_call(arguments)
         } else {
-            todo!("evaluate_function_call {name} {arguments:?}")
+            let (arg_names, expr) = if let Some(function) = self.functions.get(name) {
+                let arg_names = function.get_argument_names();
+                (arg_names, function.expr.clone())
+            } else {
+                todo!("missing function {name}");
+            };
+            let arg_names: Vec<&str> = arg_names.iter().map(|s| s.as_str()).collect();
+
+            let arguments = self.convert_args(&arg_names, arguments)?;
+
+            {
+                let _scope = self.create_scope();
+
+                for (name, value) in arguments {
+                    self.set_variable(&name, value);
+                }
+
+                self.expr_to_value(&expr)
+            }
         }
     }
 
     fn evaluate_rands_function_call(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
     ) -> Result<Value> {
         let arguments = self.convert_args(
@@ -914,7 +978,7 @@ impl Interpreter {
             let rand_value = if let Some(seed_value) = seed_value {
                 todo!("rands with seed {seed_value}");
             } else {
-                self.rng.borrow_mut().next_u64()
+                self.rng.next_u64()
             };
 
             let normalized = rand_value as f64 / u64::MAX as f64;
@@ -925,7 +989,7 @@ impl Interpreter {
     }
 
     fn evaluate_checker_function_call(
-        &self,
+        &mut self,
         arguments: &[CallArgumentWithPosition],
     ) -> Result<Value> {
         let arguments = self.convert_args(&["scale", "even", "odd"], arguments)?;
@@ -952,7 +1016,7 @@ impl Interpreter {
     }
 
     fn convert_args(
-        &self,
+        &mut self,
         arg_names: &[&str],
         arguments: &[CallArgumentWithPosition],
     ) -> Result<HashMap<String, Value>> {
@@ -988,7 +1052,7 @@ impl Interpreter {
     }
 
     fn evaluate_range_expression(
-        &self,
+        &mut self,
         start: &ExprWithPosition,
         end: &ExprWithPosition,
         increment: &Option<Box<ExprWithPosition>>,
@@ -1009,14 +1073,18 @@ impl Interpreter {
     }
 
     fn evaluate_identifier(&self, name: &str) -> Result<Value> {
-        if let Some(v) = self.variables.get(name) {
+        if let Some(v) = self.get_variable(name) {
             Ok(v.clone())
         } else {
             todo!("missing variable {name}");
         }
     }
 
-    fn evaluate_index(&self, lhs: &ExprWithPosition, index: &ExprWithPosition) -> Result<Value> {
+    fn evaluate_index(
+        &mut self,
+        lhs: &ExprWithPosition,
+        index: &ExprWithPosition,
+    ) -> Result<Value> {
         let lhs = self.expr_to_value(lhs)?;
         let index = self.expr_to_value(index)?.to_u64()? as usize;
 
@@ -1041,6 +1109,50 @@ impl Interpreter {
 
         Ok(value)
     }
+
+    fn process_function_decl(
+        &mut self,
+        function_name: &str,
+        arguments: &[DeclArgumentWithPosition],
+        expr: &ExprWithPosition,
+    ) -> Result<()> {
+        self.functions.insert(
+            function_name.to_owned(),
+            Function {
+                arguments: arguments.to_vec(),
+                expr: expr.clone(),
+            },
+        );
+        Ok(())
+    }
+
+    fn set_variable(&self, name: &str, value: Value) {
+        let mut variables = self.variables.borrow_mut();
+        if let Some(scope) = variables.last_mut() {
+            scope.insert(name.to_owned(), value);
+        } else {
+            let mut scope = HashMap::new();
+            scope.insert(name.to_owned(), value);
+            variables.push(scope);
+        }
+    }
+
+    fn get_variable(&self, name: &str) -> Option<Value> {
+        let variables = self.variables.borrow();
+        for scope in variables.iter().rev() {
+            if let Some(v) = scope.get(name) {
+                return Some(v.clone());
+            }
+        }
+        None
+    }
+
+    fn create_scope(&mut self) -> Scope {
+        self.variables.borrow_mut().push(HashMap::new());
+        Scope {
+            variables: self.variables.clone(),
+        }
+    }
 }
 
 pub fn openscad_interpret(statements: Vec<StatementWithPosition>) -> InterpreterResults {
@@ -1050,6 +1162,8 @@ pub fn openscad_interpret(statements: Vec<StatementWithPosition>) -> Interpreter
 
 #[cfg(test)]
 mod tests {
+    use assert_eq_float::assert_eq_float;
+
     use crate::{parser::openscad_parse, tokenizer::openscad_tokenize};
 
     use super::*;
@@ -1102,5 +1216,16 @@ mod tests {
 
         let result = interpret("echo(2 * 3 + 5);");
         assert_eq!(result.output, "11\n");
+    }
+
+    #[test]
+    fn test_function() {
+        let s = "
+            function distance(pt1, pt2) = sqrt(pow(pt2[0]-pt1[0], 2) + pow(pt2[1]-pt1[1], 2) + pow(pt2[2]-pt1[2], 2));
+            echo(distance([7, 4, 3], [17, 6, 2]));
+        ";
+
+        let result = interpret(s);
+        assert_eq_float!(result.output.trim().parse().unwrap(), 10.246951);
     }
 }
