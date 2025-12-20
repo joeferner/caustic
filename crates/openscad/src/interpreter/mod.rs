@@ -197,8 +197,10 @@ impl Interpreter {
         match &statement.item {
             Statement::Empty => Ok(None),
             Statement::ModuleInstantiation {
-                module_instantiation,
-            } => self.process_module_instantiation(module_instantiation),
+                module_id,
+                call_arguments,
+                child_statements,
+            } => self.process_module_instantiation(module_id, call_arguments, child_statements),
             Statement::Assignment { identifier, expr } => {
                 self.process_assignment(identifier, expr).map(|_| None)
             }
@@ -300,7 +302,7 @@ impl Interpreter {
     fn process_for_loop(
         &mut self,
         arguments: &[CallArgumentWithPosition],
-        child_statements: &Vec<StatementWithPosition>,
+        child_statements: &[StatementWithPosition],
     ) -> Result<()> {
         if arguments.len() != 1 {
             todo!("for loop should only have one argument");
@@ -482,7 +484,7 @@ impl Interpreter {
 
     fn process_child_statements(
         &mut self,
-        child_statements: &Vec<StatementWithPosition>,
+        child_statements: &[StatementWithPosition],
     ) -> Result<Option<Arc<dyn Node>>> {
         if child_statements.is_empty() {
             return Ok(None);

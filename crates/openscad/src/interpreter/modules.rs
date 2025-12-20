@@ -8,8 +8,8 @@ use rust_raytracer_core::{
 use crate::{
     interpreter::{Interpreter, Result},
     parser::{
-        CallArgument, CallArgumentWithPosition, ModuleId, ModuleInstantiation,
-        ModuleInstantiationWithPosition, SingleModuleInstantiation,
+        CallArgument, CallArgumentWithPosition, ModuleId, ModuleIdWithPosition,
+        StatementWithPosition,
     },
     value::Value,
 };
@@ -17,60 +17,47 @@ use crate::{
 impl Interpreter {
     pub(super) fn process_module_instantiation(
         &mut self,
-        module_instantiation: &ModuleInstantiationWithPosition,
+        module_id: &ModuleIdWithPosition,
+        arguments: &[CallArgumentWithPosition],
+        child_statements: &[StatementWithPosition],
     ) -> Result<Option<Arc<dyn Node>>> {
-        match &module_instantiation.item {
-            ModuleInstantiation::SingleModuleInstantiation {
-                single_module_instantiation,
-                child_statements,
-            } => match &single_module_instantiation.item {
-                SingleModuleInstantiation::Module {
-                    module_id,
-                    call_arguments: arguments,
-                } => {
-                    if module_id.item == ModuleId::Color {
-                        let color = self.create_color(arguments)?;
-                        self.material_stack.push(color);
-                    } else if module_id.item == ModuleId::Lambertian {
-                        let color = self.create_lambertian(arguments)?;
-                        self.material_stack.push(color);
-                    } else if module_id.item == ModuleId::Dielectric {
-                        let color = self.create_dielectric(arguments)?;
-                        self.material_stack.push(color);
-                    } else if module_id.item == ModuleId::Metal {
-                        let color = self.create_metal(arguments)?;
-                        self.material_stack.push(color);
-                    } else if module_id.item == ModuleId::For {
-                        return self
-                            .process_for_loop(arguments, child_statements)
-                            .map(|_| None);
-                    }
+        if module_id.item == ModuleId::Color {
+            let color = self.create_color(arguments)?;
+            self.material_stack.push(color);
+        } else if module_id.item == ModuleId::Lambertian {
+            let color = self.create_lambertian(arguments)?;
+            self.material_stack.push(color);
+        } else if module_id.item == ModuleId::Dielectric {
+            let color = self.create_dielectric(arguments)?;
+            self.material_stack.push(color);
+        } else if module_id.item == ModuleId::Metal {
+            let color = self.create_metal(arguments)?;
+            self.material_stack.push(color);
+        } else if module_id.item == ModuleId::For {
+            return self
+                .process_for_loop(arguments, child_statements)
+                .map(|_| None);
+        }
 
-                    let child = self.process_child_statements(child_statements)?;
+        let child = self.process_child_statements(child_statements)?;
 
-                    match &module_id.item {
-                        ModuleId::Cube => self.create_cube(arguments, child).map(Some),
-                        ModuleId::Sphere => self.create_sphere(arguments, child).map(Some),
-                        ModuleId::Cylinder => self.create_cylinder(arguments, child).map(Some),
-                        ModuleId::Translate => self.create_translate(arguments, child).map(Some),
-                        ModuleId::Rotate => self.create_rotate(arguments, child).map(Some),
-                        ModuleId::Scale => self.create_scale(arguments, child).map(Some),
-                        ModuleId::Camera => self.create_camera(arguments, child).map(|_| None),
-                        ModuleId::Color
-                        | ModuleId::Lambertian
-                        | ModuleId::Dielectric
-                        | ModuleId::Metal => {
-                            self.material_stack.pop();
-                            Ok(None)
-                        }
-                        ModuleId::For => panic!("already handled"),
-                        ModuleId::Echo => self.evaluate_echo(arguments, child).map(|_| None),
-                        ModuleId::Identifier(identifier) => {
-                            todo!("ModuleId::Identifier {identifier}")
-                        }
-                    }
-                }
-            },
+        match &module_id.item {
+            ModuleId::Cube => self.create_cube(arguments, child).map(Some),
+            ModuleId::Sphere => self.create_sphere(arguments, child).map(Some),
+            ModuleId::Cylinder => self.create_cylinder(arguments, child).map(Some),
+            ModuleId::Translate => self.create_translate(arguments, child).map(Some),
+            ModuleId::Rotate => self.create_rotate(arguments, child).map(Some),
+            ModuleId::Scale => self.create_scale(arguments, child).map(Some),
+            ModuleId::Camera => self.create_camera(arguments, child).map(|_| None),
+            ModuleId::Color | ModuleId::Lambertian | ModuleId::Dielectric | ModuleId::Metal => {
+                self.material_stack.pop();
+                Ok(None)
+            }
+            ModuleId::For => panic!("already handled"),
+            ModuleId::Echo => self.evaluate_echo(arguments, child).map(|_| None),
+            ModuleId::Identifier(identifier) => {
+                todo!("ModuleId::Identifier {identifier}")
+            }
         }
     }
 

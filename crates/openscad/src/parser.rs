@@ -25,39 +25,21 @@ pub enum Statement {
         arguments: Vec<DeclArgumentWithPosition>,
         expr: ExprWithPosition,
     },
-    /// <module_instantiation>
-    ModuleInstantiation {
-        module_instantiation: ModuleInstantiationWithPosition,
-    },
-}
 
-pub type StatementWithPosition = WithPosition<Statement>;
-
-#[derive(Debug, PartialEq)]
-pub enum ModuleInstantiation {
     // TODO '!' <module_instantiation>
     // TODO '#' <module_instantiation>
     // TODO '%' <module_instantiation>
     // TODO '*' <module_instantiation>
     // TODO <ifelse_statement>
     /// <single_module_instantiation> <child_statement>
-    SingleModuleInstantiation {
-        single_module_instantiation: SingleModuleInstantiationWithPosition,
+    ModuleInstantiation {
+        module_id: ModuleIdWithPosition,
+        call_arguments: Vec<CallArgumentWithPosition>,
         child_statements: Vec<StatementWithPosition>,
     },
 }
 
-pub type ModuleInstantiationWithPosition = WithPosition<ModuleInstantiation>;
-
-#[derive(Debug, PartialEq)]
-pub enum SingleModuleInstantiation {
-    Module {
-        module_id: ModuleIdWithPosition,
-        call_arguments: Vec<CallArgumentWithPosition>,
-    },
-}
-
-pub type SingleModuleInstantiationWithPosition = WithPosition<SingleModuleInstantiation>;
+pub type StatementWithPosition = WithPosition<Statement>;
 
 #[derive(Debug, PartialEq)]
 pub enum ModuleId {
@@ -370,13 +352,7 @@ impl Parser {
 
         // <module_instantiation>
         if let Some(module_instantiation) = self.parse_module_instantiation() {
-            return Some(StatementWithPosition::new(
-                Statement::ModuleInstantiation {
-                    module_instantiation,
-                },
-                start,
-                self.current_token_start(),
-            ));
+            return Some(module_instantiation);
         }
 
         todo!();
@@ -389,9 +365,7 @@ impl Parser {
     ///   '*' <module_instantiation>
     ///   <ifelse_statement>
     ///   <single_module_instantiation> <child_statement>
-    fn parse_module_instantiation(&mut self) -> Option<ModuleInstantiationWithPosition> {
-        let start = self.current_token_start();
-
+    fn parse_module_instantiation(&mut self) -> Option<StatementWithPosition> {
         // TODO '!' <module_instantiation>
         // TODO '#' <module_instantiation>
         // TODO '%' <module_instantiation>
@@ -404,56 +378,39 @@ impl Parser {
 
         // <single_module_instantiation> <child_statement>
         if let Some(single_module_instantiation) = self.parse_single_module_instantiation() {
-            if let Some(child_statements) = self.parse_child_statement() {
-                return Some(ModuleInstantiationWithPosition::new(
-                    ModuleInstantiation::SingleModuleInstantiation {
-                        single_module_instantiation,
-                        child_statements,
-                    },
-                    start,
-                    self.current_token_start(),
-                ));
-            } else {
-                todo!("write error");
-            }
+            return Some(single_module_instantiation);
         }
 
         todo!();
     }
 
+    /// <single_module_instantiation> <child_statement>
     /// <single_module_instantiation> ::=
     ///   <module_id> '(' <call_arguments> ')'
-    fn parse_single_module_instantiation(
-        &mut self,
-    ) -> Option<SingleModuleInstantiationWithPosition> {
+    fn parse_single_module_instantiation(&mut self) -> Option<StatementWithPosition> {
         let start = self.current_token_start();
 
         // <module_id> '(' <call_arguments> ')'
-        if let Some(module_id) = self.parse_module_id() {
-            if let Some(call_arguments) = self.parse_call_arguments() {
-                Some(SingleModuleInstantiationWithPosition::new(
-                    SingleModuleInstantiation::Module {
-                        module_id,
-                        call_arguments,
-                    },
-                    start,
-                    self.current_token_start(),
-                ))
-            } else {
-                todo!("write error");
-            }
-        } else {
-            todo!("write error");
-        }
+        let module_id = self.parse_module_id()?;
+        let call_arguments = self.parse_call_arguments()?;
+        let child_statements = self.parse_child_statements()?;
+
+        Some(StatementWithPosition::new(
+            Statement::ModuleInstantiation {
+                module_id,
+                call_arguments,
+                child_statements,
+            },
+            start,
+            self.current_token_start(),
+        ))
     }
 
     /// <child_statement> ::=
     ///   ';'
     ///   '{' <child_statements> '}'
     ///   <module_instantiation>
-    fn parse_child_statement(&mut self) -> Option<Vec<StatementWithPosition>> {
-        let start = self.current_token_start();
-
+    fn parse_child_statements(&mut self) -> Option<Vec<StatementWithPosition>> {
         // ';'
         if self.current_matches(Token::Semicolon) {
             if !self.expect(Token::Semicolon) {
@@ -480,14 +437,7 @@ impl Parser {
 
         // <module_instantiation>
         if let Some(module_instantiation) = self.parse_module_instantiation() {
-            let stmt = Statement::ModuleInstantiation {
-                module_instantiation,
-            };
-            return Some(vec![StatementWithPosition::new(
-                stmt,
-                start,
-                self.current_token_start(),
-            )]);
+            return Some(vec![module_instantiation]);
         }
 
         None
@@ -1028,7 +978,7 @@ impl Parser {
     ///   <if_statement> "else" <child_statement>
     /// <if_statement> ::=
     ///   "if" '(' <expr> ')' <child_statement>
-    fn parse_ifelse_statement(&mut self) -> Option<ModuleInstantiationWithPosition> {
+    fn parse_ifelse_statement(&mut self) -> Option<StatementWithPosition> {
         if !self.expect(Token::If) {
             return None;
         }
@@ -1043,7 +993,7 @@ impl Parser {
             return None;
         }
 
-        let child_statement = self.parse_child_statement()?;
+        let child_statement = self.parse_child_statements()?;
 
         if self.current_matches(Token::Else) {
             todo!("else");
@@ -1082,27 +1032,15 @@ mod tests {
             result.statements,
             vec![StatementWithPosition::new(
                 Statement::ModuleInstantiation {
-                    module_instantiation: ModuleInstantiationWithPosition::new(
-                        ModuleInstantiation::SingleModuleInstantiation {
-                            single_module_instantiation: SingleModuleInstantiationWithPosition::new(
-                                SingleModuleInstantiation::Module {
-                                    module_id: ModuleIdWithPosition::new(ModuleId::Cube, 0, 4),
-                                    call_arguments: vec![CallArgumentWithPosition::new(
-                                        CallArgument::Expr {
-                                            expr: ExprWithPosition::new(Expr::Number(10.0), 5, 7)
-                                        },
-                                        5,
-                                        7
-                                    )]
-                                },
-                                0,
-                                8
-                            ),
-                            child_statements: vec![]
+                    module_id: ModuleIdWithPosition::new(ModuleId::Cube, 0, 4),
+                    call_arguments: vec![CallArgumentWithPosition::new(
+                        CallArgument::Expr {
+                            expr: ExprWithPosition::new(Expr::Number(10.0), 5, 7)
                         },
-                        0,
-                        9
-                    )
+                        5,
+                        7
+                    )],
+                    child_statements: vec![]
                 },
                 0,
                 9
@@ -1118,37 +1056,18 @@ mod tests {
 
         // Statement::ModuleInstantiation
         let stmt = &result.statements[0].item;
-        let module_instantiation_item = if let Statement::ModuleInstantiation {
-            module_instantiation,
-        } = stmt
-        {
-            &module_instantiation.item
-        } else {
-            panic!("expected Statement::ModuleInstantiation");
-        };
 
-        // ModuleInstantiation::SingleModuleInstantiation
-        let (single_module_instantiation, child_statements) =
-            if let ModuleInstantiation::SingleModuleInstantiation {
-                single_module_instantiation,
+        let (module_id, call_arguments, child_statements) =
+            if let Statement::ModuleInstantiation {
+                module_id,
+                call_arguments,
                 child_statements,
-            } = module_instantiation_item
+            } = &stmt
             {
-                (single_module_instantiation, child_statements)
+                (module_id, call_arguments, child_statements)
             } else {
-                panic!("expected ModuleInstantiation::SingleModuleInstantiation")
+                panic!("expected SingleModuleInstantiation::Module");
             };
-
-        // SingleModuleInstantiation::Module
-        let (module_id, call_arguments) = if let SingleModuleInstantiation::Module {
-            module_id,
-            call_arguments,
-        } = &single_module_instantiation.item
-        {
-            (module_id, call_arguments)
-        } else {
-            panic!("expected SingleModuleInstantiation::Module");
-        };
 
         // module_id
         if ModuleId::Cube != module_id.item {
@@ -1276,6 +1195,23 @@ mod tests {
     fn test_function_decl() {
         let s = "function distance(pt1, pt2) = sqrt(pow(pt2[0]-pt1[0], 2) + pow(pt2[1]-pt1[1], 2) + pow(pt2[2]-pt1[2], 2));";
         let result = openscad_parse(openscad_tokenize(s));
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
+        assert_eq!(1, result.statements.len());
+    }
+
+    #[test]
+    fn test_if_else() {
+        let result = openscad_parse(openscad_tokenize(
+            r#"
+            if (1 > 2) {
+              echo("false");
+            } else if (5 > 2) {
+              echo("true");
+            } else {
+              echo("fail");
+            };
+        "#,
+        ));
         assert_eq!(Vec::<ParseError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
