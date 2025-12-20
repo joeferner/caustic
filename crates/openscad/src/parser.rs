@@ -692,28 +692,6 @@ impl Parser {
         // TODO '(' <expr> ')'
         // TODO <expr> '?' <expr> ':' <expr>
 
-        // <expr> '[' <expr> ']'
-        if self.current_matches(Token::LeftBracket) {
-            if !self.expect(Token::LeftBracket) {
-                return None;
-            }
-            if let Some(index) = self.parse_expr() {
-                if !self.expect(Token::RightBracket) {
-                    return None;
-                }
-                return Some(ExprWithPosition::new(
-                    Expr::Index {
-                        lhs: Box::new(lhs),
-                        index: Box::new(index),
-                    },
-                    start,
-                    self.current_token_start(),
-                ));
-            } else {
-                return None;
-            }
-        }
-
         Some(lhs)
     }
 
@@ -746,7 +724,7 @@ impl Parser {
             todo!("error missing token");
         };
 
-        let lhs: ExprWithPosition = match &token.item {
+        let mut lhs: ExprWithPosition = match &token.item {
             Token::LeftBracket => {
                 // '[' (<expr> ',' <optional_commas>)* ']'
                 // '[' <expr> ':' <expr> ']'
@@ -888,6 +866,27 @@ impl Parser {
                 todo!("{:?}", other);
             }
         };
+
+        // <expr> '[' <expr> ']'
+        while self.current_matches(Token::LeftBracket) {
+            if !self.expect(Token::LeftBracket) {
+                return None;
+            }
+
+            let index = self.parse_expr()?;
+
+            if !self.expect(Token::RightBracket) {
+                return None;
+            }
+            lhs = ExprWithPosition::new(
+                Expr::Index {
+                    lhs: Box::new(lhs),
+                    index: Box::new(index),
+                },
+                start,
+                self.current_token_start(),
+            );
+        }
 
         Some(lhs)
     }
@@ -1257,6 +1256,13 @@ mod tests {
     #[test]
     fn test_rands() {
         let result = openscad_parse(openscad_tokenize("choose_mat = rands(0,1,1)[0];"));
+        assert_eq!(Vec::<ParseError>::new(), result.errors);
+        assert_eq!(1, result.statements.len());
+    }
+
+    #[test]
+    fn test_subtract_indexed() {
+        let result = openscad_parse(openscad_tokenize("v = pt2[0][1] - pt1[0];"));
         assert_eq!(Vec::<ParseError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
