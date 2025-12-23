@@ -3,6 +3,9 @@ import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
 import { Example, getExampleProject } from './utils/examples';
 import type { WorkingFile } from './types';
+import { RayTracerApi } from './api';
+
+const rayTracerApi = new RayTracerApi();
 
 export type UnsubscribeFn = () => void;
 
@@ -76,7 +79,6 @@ export const renderAtom = atom(null, async (get, set) => {
     });
 });
 
-// Write-only atom for loadExampleProject
 export const loadExampleProjectAtom = atom(null, async (_get, set, example: Example) => {
     console.log('loadExampleProject', example);
     const project = getExampleProject(example);
@@ -92,7 +94,11 @@ export const loadExampleProjectAtom = atom(null, async (_get, set, example: Exam
     set(filesAtom, files);
 });
 
-// Helper functions for draw events (not atoms, just utilities)
+export const loadUserMeAtom = atom(null, async (_get, _set) => {
+    const me = await rayTracerApi.user.getUserMe();
+    console.log('loadUserMeAtom', me);
+});
+
 export function subscribeToDrawEvents(listener: RenderCallbackFn): UnsubscribeFn {
     drawEventListeners.add(listener);
     return () => drawEventListeners.delete(listener);

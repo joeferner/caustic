@@ -13,3 +13,4 @@ dist-ssr
 *.local
 
 src/wasm
+src/api

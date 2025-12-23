@@ -19,7 +19,8 @@
         "thiserror",
         "tmax",
         "tmin",
-        "tsify"
+        "tsify",
+        "utoipa"
     ],
     "liveServer.settings.port": 5501
 }

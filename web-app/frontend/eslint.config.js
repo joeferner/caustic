@@ -48,7 +48,7 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/wasm/**/*'],
+    files: ['src/wasm/**/*', 'src/api/**/*'],
     linterOptions: {
       reportUnusedDisableDirectives: false,
     },

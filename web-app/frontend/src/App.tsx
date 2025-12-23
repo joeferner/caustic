@@ -5,7 +5,7 @@ import { Provider as JotaiProvider, useSetAtom } from 'jotai';
 import { Render } from './components/Render';
 import { Navbar } from './components/Navbar';
 import { useEffect, type JSX } from 'react';
-import { loadExampleProjectAtom } from './store';
+import { loadExampleProjectAtom, loadUserMeAtom } from './store';
 import { Example } from './utils/examples';
 
 export function App(): JSX.Element {
@@ -18,11 +18,13 @@ export function App(): JSX.Element {
 
 function InnerApp(): JSX.Element {
     const loadExampleProject = useSetAtom(loadExampleProjectAtom);
+    const loadUserMe = useSetAtom(loadUserMeAtom);
 
     useEffect(() => {
         console.log('load initial project');
+        void loadUserMe();
         void loadExampleProject(Example.ThreeSpheres);
-    }, [loadExampleProject]);
+    }, [loadUserMe, loadExampleProject]);
 
     return (
         <div className={styles.main}>
