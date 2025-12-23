@@ -38,15 +38,10 @@ for(a = [-11 : 11]) {
         if (distance(center, [-4.0, 0.0, 0.2]) > 0.9) {
             if (choose_mat < 0.8) {
                 // diffuse
-                // let albedo = Color::random(&*ctx.random) * Color::random(&*ctx.random);
-                // let sphere_material = Arc::new(Lambertian::new_from_color(albedo));
-                // let mut sphere = Sphere::new(center, 0.2, sphere_material);
-                // sphere.set_direction(Vector3::new(
-                //     0.0,
-                //     ctx.random.rand_interval(0.0, 0.5),
-                //     0.0,
-                // ));
-                // world.push(Arc::new(sphere));
+                albedo = rands(0.0, 1.0, 3) * rands(0.0, 1.0, 3);
+                lambertian(albedo)
+                  translate(center)
+                    sphere(r=0.2);
             } else if (choose_mat < 0.95) {
                 // metal
                 albedo = rands(0.5, 1.0, 3);
@@ -56,8 +51,9 @@ for(a = [-11 : 11]) {
                     sphere(r=0.2);
             } else {
                 // glass
-                // let sphere_material = Arc::new(Dielectric::new(1.5));
-                // world.push(Arc::new(Sphere::new(center, 0.2, sphere_material)));
+                dielectric(1.5)
+                  translate(center)
+                    sphere(r=0.2);
             }
         }
     }
