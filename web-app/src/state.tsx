@@ -1,5 +1,6 @@
-import { makeAutoObservable, runInAction } from 'mobx';
-import { createContext, useContext, type JSX } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+
+import { createContext, use, useEffect, useRef, useState, type JSX, type ReactNode } from 'react';
 import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
 import { Example, getExampleProject } from './utils/examples';
@@ -14,69 +15,82 @@ export interface RenderOptions {
 
 export const DEFAULT_RENDER_BLOCK_SIZE = 50;
 
-class AppStore {
-    public files: WorkingFile[] = [];
-    public cameraInfo: CameraInfo | undefined = undefined;
-    public renderOptions: Required<RenderOptions> = {
+interface MyContextType {
+    files: WorkingFile[];
+    cameraInfo: CameraInfo | undefined;
+    renderOptions: Required<RenderOptions>;
+    render: () => Promise<void>;
+    updateFile: (filename: string, content: string) => void;
+    getFile: (filename: string) => WorkingFile | undefined;
+    subscribeToDrawEvents: (listener: RenderCallbackFn) => UnsubscribeFn;
+    loadExampleProject: (example: Example) => Promise<void>;
+}
+
+const MyContext = createContext<MyContextType | undefined>(undefined);
+
+interface MyProviderProps {
+    children: ReactNode;
+}
+
+const renderWorkerPool = new RenderWorkerPool();
+
+export function MyProvider({ children }: MyProviderProps): JSX.Element {
+    const [renderOptions, _setRenderOptions] = useState<Required<RenderOptions>>({
         blockSize: DEFAULT_RENDER_BLOCK_SIZE,
         threadCount: navigator.hardwareConcurrency ?? 4,
-    };
+    });
+    const [files, setFiles] = useState<WorkingFile[]>([]);
+    const [cameraInfo, setCameraInfo] = useState<CameraInfo | undefined>(undefined);
+    const drawEventListeners = useRef(new Set<RenderCallbackFn>());
 
-    private renderWorkerPool = new RenderWorkerPool();
-    private drawEventListeners = new Set<RenderCallbackFn>();
-
-    public constructor() {
-        makeAutoObservable(this);
-
-        // Load initial project
-        console.log('load initial project');
-        setTimeout(() => {
-            void this.loadExampleProject(Example.ThreeSpheres);
+    const updateFile = (filename: string, newContents: string): void => {
+        setFiles((prev) => {
+            return prev.map((f) => {
+                if (f.filename === filename) {
+                    return {
+                        ...f,
+                        contents: newContents,
+                    };
+                }
+                return f;
+            });
         });
-    }
-
-    public updateFile = (filename: string, newContents: string): void => {
-        const file = this.files.find((f) => f.filename === filename);
-        if (file) {
-            file.contents = newContents;
-        }
     };
 
-    public getFile = (filename: string): WorkingFile | undefined => {
-        return this.files.find((f) => f.filename === filename);
+    const getFile = (filename: string): WorkingFile | undefined => {
+        return files.find((f) => f.filename == filename);
     };
 
-    public render = async (): Promise<void> => {
-        const input = this.files[0].contents;
+    const render = async (): Promise<void> => {
+        const input = files[0].contents;
 
         await initWasm();
-        loadOpenscad(input);
+        const results = loadOpenscad(input);
+        console.log(results.output);
 
         const cameraInfo = getCameraInfo();
-        const { threadCount } = this.renderOptions;
+        const { threadCount } = renderOptions;
         console.log(`Begin render ${cameraInfo.width}x${cameraInfo.height}`);
+        setCameraInfo(cameraInfo);
 
-        runInAction(() => {
-            this.cameraInfo = cameraInfo;
-        });
-
-        this.renderWorkerPool.render(threadCount, input, {
+        const localDrawEventListeners = drawEventListeners.current;
+        renderWorkerPool.render(threadCount, input, {
             ...cameraInfo,
-            ...this.renderOptions,
+            ...renderOptions,
             callback: (event) => {
-                for (const listener of this.drawEventListeners) {
-                    listener(event);
+                for (const localDrawEventListener of localDrawEventListeners) {
+                    localDrawEventListener(event);
                 }
             },
         });
     };
 
-    public subscribeToDrawEvents = (listener: RenderCallbackFn): UnsubscribeFn => {
-        this.drawEventListeners.add(listener);
-        return () => this.drawEventListeners.delete(listener);
+    const subscribeToDrawEvents = (listener: RenderCallbackFn): UnsubscribeFn => {
+        drawEventListeners.current.add(listener);
+        return () => drawEventListeners.current.delete(listener);
     };
 
-    public loadExampleProject = async (example: Example): Promise<void> => {
+    const loadExampleProject = async (example: Example): Promise<void> => {
         console.log('loadExampleProject', example);
         const project = getExampleProject(example);
         const files = await Promise.all(
@@ -88,31 +102,34 @@ class AppStore {
                 } satisfies WorkingFile;
             })
         );
+        setFiles(files);
+    };
 
-        runInAction(() => {
-            this.files = files;
+    useEffect(() => {
+        console.log('load initial project');
+        setTimeout(() => {
+            void loadExampleProject(Example.RandomSpheres);
         });
+    }, []);
+
+    const value: MyContextType = {
+        files,
+        cameraInfo,
+        renderOptions,
+        updateFile,
+        getFile,
+        render,
+        subscribeToDrawEvents,
+        loadExampleProject,
     };
 
-    public setRenderOptions = (options: Partial<RenderOptions>): void => {
-        this.renderOptions = {
-            ...this.renderOptions,
-            ...options,
-        };
-    };
+    return <MyContext value={value}>{children}</MyContext>;
 }
 
-const StoreContext = createContext<AppStore | undefined>(undefined);
-
-export function StoreProvider({ children }: { children: React.ReactNode }): JSX.Element {
-    const store = new AppStore();
-    return <StoreContext value={store}>{children}</StoreContext>;
-}
-
-export function useStore(): AppStore {
-    const context = useContext(StoreContext);
+export function useMyContext(): MyContextType {
+    const context = use(MyContext);
     if (!context) {
-        throw new Error('useStore must be used within StoreProvider');
+        throw new Error('useMyContext must be used within MyProvider');
     }
     return context;
 }

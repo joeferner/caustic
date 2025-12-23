@@ -1,17 +1,17 @@
 import { Tabs } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import styles from './Files.module.scss';
-import { useStore } from '../state';
-import { observer } from 'mobx-react-lite';
+import { useMyContext } from '../state';
+import type { JSX } from 'react';
 import { registerOpenscadLanguage } from '../monaco-openscad';
 
-export const Files = observer(() => {
-    const store = useStore();
+export function Files(): JSX.Element {
+    const { updateFile, files } = useMyContext();
 
     return (
         <Tabs defaultValue="main.scad" className={styles.tabs}>
             <Tabs.List>
-                {store.files.map((file) => {
+                {files.map((file) => {
                     return (
                         <Tabs.Tab key={file.filename} value={file.filename}>
                             {file.filename}
@@ -20,7 +20,7 @@ export const Files = observer(() => {
                 })}
             </Tabs.List>
 
-            {store.files.map((file) => {
+            {files.map((file) => {
                 return (
                     <Tabs.Panel key={file.filename} value={file.filename} className={styles.tabPanel}>
                         <Editor
@@ -32,7 +32,7 @@ export const Files = observer(() => {
                             theme="vs-dark"
                             value={file.contents}
                             onChange={(code) => {
-                                store.updateFile(file.filename, code ?? '');
+                                updateFile(file.filename, code ?? '');
                             }}
                             options={{ minimap: { enabled: false } }}
                         />
@@ -41,4 +41,4 @@ export const Files = observer(() => {
             })}
         </Tabs>
     );
-});
+}

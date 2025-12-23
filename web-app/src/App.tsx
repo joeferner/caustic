@@ -1,14 +1,14 @@
 import styles from './App.module.scss';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Files } from './components/Files';
-import { StoreProvider } from './state';
+import { MyProvider } from './state';
 import { Render } from './components/Render';
 import { Navbar } from './components/Navbar';
 import type { JSX } from 'react';
 
 export function App(): JSX.Element {
     return (
-        <StoreProvider>
+        <MyProvider>
             <div className={styles.main}>
                 <Navbar />
                 <PanelGroup autoSaveId="example" direction="horizontal">
@@ -21,6 +21,6 @@ export function App(): JSX.Element {
                     </Panel>
                 </PanelGroup>
             </div>
-        </StoreProvider>
+        </MyProvider>
     );
 }

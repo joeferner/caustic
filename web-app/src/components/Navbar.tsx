@@ -1,21 +1,20 @@
 import { Menu, Tooltip, UnstyledButton } from '@mantine/core';
-import { useStore } from '../state';
+import { useMyContext } from '../state';
 import { useCallback, useEffect, type JSX, type ReactNode } from 'react';
 import { Play as RenderIcon, ListTask as ProjectsIcon } from 'react-bootstrap-icons';
 import styles from './Navbar.module.scss';
 import { Example } from '../utils/examples';
-import { observer } from 'mobx-react-lite';
 
 const ICON_SIZE = 30;
 
-export const Navbar = observer(() => {
-    const store = useStore();
+export function Navbar(): JSX.Element {
+    const { render, loadExampleProject } = useMyContext();
 
     useEffect(() => {
         const handleKeyPress = (event: KeyboardEvent): void => {
             if (event.key === 'F5' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
                 event.preventDefault();
-                void store.render();
+                void render();
             }
         };
 
@@ -23,11 +22,14 @@ export const Navbar = observer(() => {
         return (): void => {
             document.removeEventListener('keydown', handleKeyPress);
         };
-    }, [store]);
+    }, [render]);
 
-    const loadExample = useCallback((example: Example): void => {
-        void store.loadExampleProject(example);
-    }, [store]);
+    const loadExample = useCallback(
+        (example: Example): void => {
+            void loadExampleProject(example);
+        },
+        [loadExampleProject]
+    );
 
     return (
         <div className={styles.wrapper}>
@@ -72,12 +74,12 @@ export const Navbar = observer(() => {
                 label="Render (F5)"
                 icon={<RenderIcon width={ICON_SIZE} height={ICON_SIZE} />}
                 onClick={() => {
-                    void store.render();
+                    void render();
                 }}
             />
         </div>
     );
-});
+}
 
 interface NavbarLinkProps {
     icon: ReactNode;
