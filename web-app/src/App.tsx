@@ -1,7 +1,7 @@
 import styles from './App.module.scss';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Files } from './components/Files';
-import { StoreProvider } from './state';
+import { StoreProvider } from './StoreProvider.tsx';
 import { Render } from './components/Render';
 import { Navbar } from './components/Navbar';
 import type { JSX } from 'react';

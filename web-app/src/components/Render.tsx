@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, type JSX } from 'react';
-import { useStore } from '../state';
+import { useStore } from '../store';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import styles from './Render.module.scss';
 import { Button, Tooltip } from '@mantine/core';
@@ -8,6 +8,7 @@ import type { RenderResult } from '../types';
 import * as _ from 'radash';
 import { RenderProgress } from './RenderProgress';
 import { observer } from 'mobx-react-lite';
+import { reaction } from 'mobx';
 
 export const Render = observer(() => {
     const store = useStore();
@@ -19,9 +20,18 @@ export const Render = observer(() => {
     const [startTime, setStartTime] = useState<Date | undefined>(undefined);
 
     useEffect(() => {
-        renderEmpty(canvasRef, store.renderOptions.blockSize);
-        renderEmpty(canvasMiniRef, store.renderOptions.blockSize);
-    }, [store.renderOptions]);
+        // React to blockSize changes
+        const dispose = reaction(
+            () => store.renderOptions.blockSize,
+            (blockSize) => {
+                renderEmpty(canvasRef, blockSize);
+                renderEmpty(canvasMiniRef, blockSize);
+            },
+            { fireImmediately: true } // Run once on mount
+        );
+
+        return dispose;
+    }, [store]);
 
     useEffect(() => {
         const unsubscribe = store.subscribeToDrawEvents((event) => {
@@ -42,7 +52,7 @@ export const Render = observer(() => {
         });
 
         return unsubscribe;
-    }, [store, canvasRef, store.renderOptions, setProgress, setStartTime]);
+    }, [store]);
 
     const handleOnZoom = useCallback(() => {
         const canvas = canvasRef.current;
