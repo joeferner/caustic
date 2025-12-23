@@ -1,12 +1,14 @@
 import { Tabs } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import styles from './Files.module.scss';
-import { useMyContext } from '../state';
+import { filesAtom, updateFileAtom } from '../store';
 import type { JSX } from 'react';
 import { registerOpenscadLanguage } from '../monaco-openscad';
+import { useAtomValue, useSetAtom } from 'jotai';
 
 export function Files(): JSX.Element {
-    const { updateFile, files } = useMyContext();
+    const files = useAtomValue(filesAtom);
+    const updateFile = useSetAtom(updateFileAtom);
 
     return (
         <Tabs defaultValue="main.scad" className={styles.tabs}>
@@ -32,7 +34,7 @@ export function Files(): JSX.Element {
                             theme="vs-dark"
                             value={file.contents}
                             onChange={(code) => {
-                                updateFile(file.filename, code ?? '');
+                                updateFile({ filename: file.filename, content: code ?? '' });
                             }}
                             options={{ minimap: { enabled: false } }}
                         />

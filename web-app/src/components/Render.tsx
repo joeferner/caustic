@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, type JSX } from 'react';
-import { useMyContext } from '../state';
+import { cameraInfoAtom, renderOptionsAtom, subscribeToDrawEvents } from '../store';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import styles from './Render.module.scss';
 import { Button, Tooltip } from '@mantine/core';
@@ -7,12 +7,14 @@ import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, X as ResetZoomIcon } from
 import type { RenderResult } from '../types';
 import * as _ from 'radash';
 import { RenderProgress } from './RenderProgress';
+import { useAtomValue } from 'jotai';
 
 export function Render(): JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const canvasMiniRef = useRef<HTMLCanvasElement | null>(null);
     const [showMinimap, setShowMinimap] = useState(false);
-    const { cameraInfo, subscribeToDrawEvents, renderOptions } = useMyContext();
+    const cameraInfo = useAtomValue(cameraInfoAtom);
+    const renderOptions = useAtomValue(renderOptionsAtom);
     const [progress, setProgress] = useState(1.0);
     const [working, setWorking] = useState(false);
     const [startTime, setStartTime] = useState<Date | undefined>(undefined);
@@ -41,7 +43,7 @@ export function Render(): JSX.Element {
         });
 
         return unsubscribe;
-    }, [subscribeToDrawEvents, canvasRef, renderOptions, setProgress, setStartTime]);
+    }, [canvasRef, renderOptions, setProgress, setStartTime]);
 
     const handleOnZoom = useCallback(() => {
         const canvas = canvasRef.current;

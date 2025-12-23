@@ -1,14 +1,16 @@
 import { Menu, Tooltip, UnstyledButton } from '@mantine/core';
-import { useMyContext } from '../state';
+import { loadExampleProjectAtom, renderAtom } from '../store';
 import { useCallback, useEffect, type JSX, type ReactNode } from 'react';
 import { Play as RenderIcon, ListTask as ProjectsIcon } from 'react-bootstrap-icons';
 import styles from './Navbar.module.scss';
 import { Example } from '../utils/examples';
+import { useSetAtom } from 'jotai';
 
 const ICON_SIZE = 30;
 
 export function Navbar(): JSX.Element {
-    const { render, loadExampleProject } = useMyContext();
+    const render = useSetAtom(renderAtom);
+    const loadExampleProject = useSetAtom(loadExampleProjectAtom);
 
     useEffect(() => {
         const handleKeyPress = (event: KeyboardEvent): void => {
