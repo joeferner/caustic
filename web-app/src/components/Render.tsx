@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState, type JSX } from 'react';
-import { useMyContext } from '../state';
+import { useStore } from '../state';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import styles from './Render.module.scss';
 import { Button, Tooltip } from '@mantine/core';
@@ -7,29 +7,30 @@ import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, X as ResetZoomIcon } from
 import type { RenderResult } from '../types';
 import * as _ from 'radash';
 import { RenderProgress } from './RenderProgress';
+import { observer } from 'mobx-react-lite';
 
-export function Render(): JSX.Element {
+export const Render = observer(() => {
+    const store = useStore();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const canvasMiniRef = useRef<HTMLCanvasElement | null>(null);
     const [showMinimap, setShowMinimap] = useState(false);
-    const { cameraInfo, subscribeToDrawEvents, renderOptions } = useMyContext();
     const [progress, setProgress] = useState(1.0);
     const [working, setWorking] = useState(false);
     const [startTime, setStartTime] = useState<Date | undefined>(undefined);
 
     useEffect(() => {
-        renderEmpty(canvasRef, renderOptions.blockSize);
-        renderEmpty(canvasMiniRef, renderOptions.blockSize);
-    }, [renderOptions]);
+        renderEmpty(canvasRef, store.renderOptions.blockSize);
+        renderEmpty(canvasMiniRef, store.renderOptions.blockSize);
+    }, [store.renderOptions]);
 
     useEffect(() => {
-        const unsubscribe = subscribeToDrawEvents((event) => {
+        const unsubscribe = store.subscribeToDrawEvents((event) => {
             if (event.type === 'init') {
                 setProgress(0.0);
                 setStartTime(event.startTime);
                 setWorking(true);
-                renderEmpty(canvasRef, renderOptions.blockSize);
-                renderEmpty(canvasMiniRef, renderOptions.blockSize);
+                renderEmpty(canvasRef, store.renderOptions.blockSize);
+                renderEmpty(canvasMiniRef, store.renderOptions.blockSize);
             } else if (event.type === 'renderResult') {
                 setProgress(event.progress);
                 if (event.progress >= 1.0) {
@@ -41,7 +42,7 @@ export function Render(): JSX.Element {
         });
 
         return unsubscribe;
-    }, [subscribeToDrawEvents, canvasRef, renderOptions, setProgress, setStartTime]);
+    }, [store, canvasRef, store.renderOptions, setProgress, setStartTime]);
 
     const handleOnZoom = useCallback(() => {
         const canvas = canvasRef.current;
@@ -75,8 +76,8 @@ export function Render(): JSX.Element {
                             <MiniMap width={150} height={150}>
                                 <canvas
                                     ref={canvasMiniRef}
-                                    width={cameraInfo?.width ?? 500}
-                                    height={cameraInfo?.height ?? 500}
+                                    width={store.cameraInfo?.width ?? 500}
+                                    height={store.cameraInfo?.height ?? 500}
                                 />
                             </MiniMap>
                         </div>
@@ -85,8 +86,8 @@ export function Render(): JSX.Element {
                             <canvas
                                 className={styles.canvas}
                                 ref={canvasRef}
-                                width={cameraInfo?.width ?? 500}
-                                height={cameraInfo?.height ?? 500}
+                                width={store.cameraInfo?.width ?? 500}
+                                height={store.cameraInfo?.height ?? 500}
                             />
                         </TransformComponent>
                     </React.Fragment>
@@ -95,7 +96,7 @@ export function Render(): JSX.Element {
             <RenderProgress progress={progress} startTime={startTime} working={working} />
         </div>
     );
-}
+});
 
 function Controls(options: ReactZoomPanPinchHandlers): JSX.Element {
     return (
