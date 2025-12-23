@@ -26,7 +26,7 @@ export class AppStore {
     private drawEventListeners = new Set<RenderCallbackFn>();
 
     public constructor() {
-        makeAutoObservable(this, { subscribeToDrawEvents: false });
+        makeAutoObservable(this);
 
         console.log('load initial project');
         setTimeout(() => {
@@ -70,11 +70,10 @@ export class AppStore {
         });
     };
 
-    public subscribeToDrawEvents(listener: RenderCallbackFn): UnsubscribeFn {
-        // not a mobx function because it does not modify state
+    public subscribeToDrawEvents = (listener: RenderCallbackFn): UnsubscribeFn => {
         this.drawEventListeners.add(listener);
         return () => this.drawEventListeners.delete(listener);
-    }
+    };
 
     public loadExampleProject = async (example: Example): Promise<void> => {
         console.log('loadExampleProject', example);
