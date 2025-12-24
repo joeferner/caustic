@@ -2,7 +2,7 @@ import { Menu, Tooltip, UnstyledButton } from '@mantine/core';
 import { loadExampleProjectAtom, renderAtom } from '../store';
 import { useCallback, useEffect, type JSX, type ReactNode } from 'react';
 import { Play as RenderIcon, ListTask as ProjectsIcon } from 'react-bootstrap-icons';
-import styles from './Navbar.module.scss';
+import classes from './Navbar.module.scss';
 import { Example } from '../utils/examples';
 import { useSetAtom } from 'jotai';
 
@@ -34,7 +34,7 @@ export function Navbar(): JSX.Element {
     );
 
     return (
-        <div className={styles.wrapper}>
+        <div className={classes.wrapper}>
             <Menu
                 position="right-start"
                 withArrow
@@ -43,7 +43,7 @@ export function Navbar(): JSX.Element {
                 closeOnClickOutside={true}
             >
                 <Menu.Target>
-                    <UnstyledButton className={styles.link}>
+                    <UnstyledButton className={classes.link}>
                         <ProjectsIcon width={ICON_SIZE} height={ICON_SIZE} />
                     </UnstyledButton>
                 </Menu.Target>
@@ -92,7 +92,7 @@ interface NavbarLinkProps {
 function NavbarLink({ icon, label, onClick }: NavbarLinkProps): JSX.Element {
     return (
         <Tooltip label={label} position="right" transitionProps={{ duration: 0 }}>
-            <UnstyledButton onClick={onClick} className={styles.link}>
+            <UnstyledButton onClick={onClick} className={classes.link}>
                 {icon}
             </UnstyledButton>
         </Tooltip>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { cameraInfoAtom, renderOptionsAtom, subscribeToDrawEvents } from '../store';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
-import styles from './Render.module.scss';
+import classes from './Render.module.scss';
 import { Button, Tooltip } from '@mantine/core';
 import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, X as ResetZoomIcon } from 'react-bootstrap-icons';
 import type { RenderResult } from '../types';
@@ -69,11 +69,11 @@ export function Render(): JSX.Element {
     }, []);
 
     return (
-        <div className={styles.wrapper}>
+        <div className={classes.wrapper}>
             <TransformWrapper onZoom={handleOnZoom}>
                 {(utils) => (
                     <React.Fragment>
-                        <div className={styles.miniMap} style={{ display: showMinimap ? 'block' : 'none' }}>
+                        <div className={classes.miniMap} style={{ display: showMinimap ? 'block' : 'none' }}>
                             <MiniMap width={150} height={150}>
                                 <canvas
                                     ref={canvasMiniRef}
@@ -85,7 +85,7 @@ export function Render(): JSX.Element {
                         <Controls {...utils} />
                         <TransformComponent>
                             <canvas
-                                className={styles.canvas}
+                                className={classes.canvas}
                                 ref={canvasRef}
                                 width={cameraInfo?.width ?? 500}
                                 height={cameraInfo?.height ?? 500}
@@ -101,7 +101,7 @@ export function Render(): JSX.Element {
 
 function Controls(options: ReactZoomPanPinchHandlers): JSX.Element {
     return (
-        <div className={styles.controls}>
+        <div className={classes.controls}>
             <Tooltip label="Zoom In">
                 <Button
                     onClick={() => {

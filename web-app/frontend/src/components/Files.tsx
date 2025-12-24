@@ -1,6 +1,6 @@
 import { Tabs } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
-import styles from './Files.module.scss';
+import classes from './Files.module.scss';
 import { filesAtom, updateFileAtom } from '../store';
 import type { JSX } from 'react';
 import { registerOpenscadLanguage } from '../monaco-openscad';
@@ -11,7 +11,7 @@ export function Files(): JSX.Element {
     const updateFile = useSetAtom(updateFileAtom);
 
     return (
-        <Tabs defaultValue="main.scad" className={styles.tabs}>
+        <Tabs defaultValue="main.scad" className={classes.tabs}>
             <Tabs.List>
                 {files.map((file) => {
                     return (
@@ -24,7 +24,7 @@ export function Files(): JSX.Element {
 
             {files.map((file) => {
                 return (
-                    <Tabs.Panel key={file.filename} value={file.filename} className={styles.tabPanel}>
+                    <Tabs.Panel key={file.filename} value={file.filename} className={classes.tabPanel}>
                         <Editor
                             height="100%"
                             language="openscad"

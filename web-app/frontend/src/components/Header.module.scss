@@ -1,0 +1,36 @@
+.header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+
+    .title {
+        margin: 5px;
+    }
+
+    .userInfo {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        margin-right: 10px;
+
+        img {
+            border-radius: calc(35px / 2);
+        }
+
+        .details {
+            display: flex;
+            flex-direction: column;
+            gap: 0px;
+
+            .name {
+                margin-bottom: -5px;
+            }
+
+            .email {
+                font-size: 8pt;
+            }
+        }
+    }
+}

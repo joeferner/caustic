@@ -3,9 +3,11 @@ import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
 import { Example, getExampleProject } from './utils/examples';
 import type { WorkingFile } from './types';
-import { RayTracerApi } from './api';
+import { RayTracerApi, type UserMe } from './api';
+import { atomWithStorage } from 'jotai/utils';
+import type { GoogleCredentialResponse } from './components/GoogleLogin';
 
-const rayTracerApi = new RayTracerApi();
+export const rayTracerApi = new RayTracerApi();
 
 export type UnsubscribeFn = () => void;
 
@@ -21,6 +23,8 @@ const renderWorkerPool = new RenderWorkerPool();
 const drawEventListeners = new Set<RenderCallbackFn>();
 
 // Base atoms
+export const jwtTokenAtom = atomWithStorage<string | undefined>('jwtToken', undefined, undefined, { getOnInit: true });
+export const userAtom = atom<UserMe | undefined>(undefined);
 export const filesAtom = atom<WorkingFile[]>([]);
 export const cameraInfoAtom = atom<CameraInfo | undefined>(undefined);
 export const renderOptionsAtom = atom<Required<RenderOptions>>({
@@ -79,6 +83,33 @@ export const renderAtom = atom(null, async (get, set) => {
     });
 });
 
+export const handleGoogleCredentialResponseAtom = atom(
+    null,
+    async (get, set, { response }: { response: GoogleCredentialResponse }) => {
+        try {
+            const data = await rayTracerApi.user.googleTokenVerify({
+                token: response.credential,
+            });
+
+            const user = get(userAtom);
+            if (!user) {
+                throw new Error('invalid state');
+            }
+
+            set(jwtTokenAtom, data.token);
+            set(userAtom, {
+                ...user,
+                userId: data.claims.sub,
+                email: data.claims.email,
+                name: data.claims.name,
+                picture: data.claims.picture,
+            });
+        } catch (err) {
+            console.error('onGoogleCredentialResponse', err instanceof Error ? err : new Error('Unknown error'));
+        }
+    }
+);
+
 export const loadExampleProjectAtom = atom(null, async (_get, set, example: Example) => {
     console.log('loadExampleProject', example);
     const project = getExampleProject(example);
@@ -94,9 +125,15 @@ export const loadExampleProjectAtom = atom(null, async (_get, set, example: Exam
     set(filesAtom, files);
 });
 
-export const loadUserMeAtom = atom(null, async (_get, _set) => {
+export const loadUserMeAtom = atom(null, async (get, set) => {
+    const jwtToken = get(jwtTokenAtom);
+    console.log('jwtToken', jwtToken);
+    if (jwtToken) {
+        rayTracerApi.request.config.TOKEN = jwtToken;
+    }
+
     const me = await rayTracerApi.user.getUserMe();
-    console.log('loadUserMeAtom', me);
+    set(userAtom, me);
 });
 
 export function subscribeToDrawEvents(listener: RenderCallbackFn): UnsubscribeFn {

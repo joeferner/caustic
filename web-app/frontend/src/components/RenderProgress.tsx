@@ -1,6 +1,6 @@
 import { Progress } from '@mantine/core';
 import { useEffect, useState, type JSX } from 'react';
-import styles from './RenderProgress.module.scss';
+import classes from './RenderProgress.module.scss';
 import { formatDuration } from '../utils/time';
 
 export interface RenderProgressOptions {
@@ -53,9 +53,9 @@ export function RenderProgress(options: RenderProgressOptions): JSX.Element | nu
     const progressLabel = `${progressPercentStr}% ${durationStr} ${etaStr}`;
 
     return (
-        <Progress.Root radius="xs" size={30} className={styles.progressRoot}>
+        <Progress.Root radius="xs" size={30} className={classes.progressRoot}>
             <Progress.Section value={progress * 100.0} />
-            <Progress.Section value={0.0001} className={styles.label}>
+            <Progress.Section value={0.0001} className={classes.label}>
                 <Progress.Label>{progressLabel}</Progress.Label>
             </Progress.Section>
         </Progress.Root>

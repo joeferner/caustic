@@ -6,6 +6,8 @@
         "chrono",
         "clippy",
         "defocus",
+        "dotenv",
+        "dotenvy",
         "flamegraph",
         "indicatif",
         "jsonwebtoken",
