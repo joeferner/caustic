@@ -70,7 +70,7 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
         // Verify and decode JWT
         let token_data = decode::<Claims>(
             token,
-            &DecodingKey::from_secret(state.jwt_secret.as_bytes()),
+            &DecodingKey::from_secret(state.settings.jwt_secret.as_bytes()),
             &Validation::default(),
         )
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
@@ -143,7 +143,7 @@ pub async fn get_user_me(
     Json(UserMeResponse {
         user,
         settings: Settings {
-            google_client_id: state.google_client_id.clone(),
+            google_client_id: state.settings.google_client_id.clone(),
         },
     })
 }
@@ -174,7 +174,7 @@ pub async fn google_token_verify(
         StatusCode::UNAUTHORIZED
     })?;
 
-    let exp_duration = chrono::Duration::hours(state.jwt_expire_duration_hours as i64);
+    let exp_duration = chrono::Duration::hours(state.settings.jwt_expire_duration_hours as i64);
     let now = chrono::Utc::now();
     let exp = now + exp_duration;
 
@@ -187,8 +187,8 @@ pub async fn google_token_verify(
         exp: exp.timestamp() as usize,
     };
 
-    let jwt_token =
-        generate_jwt(&claims, &state.jwt_secret).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let jwt_token = generate_jwt(&claims, &state.settings.jwt_secret)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(AuthResponse {
         token: jwt_token,

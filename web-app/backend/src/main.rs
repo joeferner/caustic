@@ -1,3 +1,4 @@
+pub mod repository;
 pub mod routes;
 pub mod state;
 pub mod utils;
@@ -44,8 +45,8 @@ struct ApiDoc;
 async fn main() -> Result<(), WebAppError> {
     let env = Env::default().default_filter_or("info");
     env_logger::init_from_env(env);
-    let state = Arc::new(AppState::new()?);
-    let bind = state.bind.clone();
+    let state = Arc::new(AppState::new().await?);
+    let bind = state.settings.bind.clone();
 
     let cors = CorsLayer::new()
         .allow_origin(cors::Any)
