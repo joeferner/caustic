@@ -1,16 +1,16 @@
-import { Menu, Tooltip, UnstyledButton } from '@mantine/core';
-import { loadExampleProjectAtom, renderAtom } from '../store';
-import { useCallback, useEffect, type JSX, type ReactNode } from 'react';
+import { Tooltip, UnstyledButton } from '@mantine/core';
+import { renderAtom } from '../store';
+import { useEffect, useState, type JSX, type ReactNode } from 'react';
 import { Play as RenderIcon, Folder as OpenIcon } from 'react-bootstrap-icons';
 import classes from './Navbar.module.scss';
-import { Example } from '../utils/examples';
 import { useSetAtom } from 'jotai';
+import { OpenProjectDialog } from './OpenProjectDialog';
 
-const ICON_SIZE = 30;
+const ICON_SIZE = 25;
 
 export function Navbar(): JSX.Element {
     const render = useSetAtom(renderAtom);
-    const loadExampleProject = useSetAtom(loadExampleProjectAtom);
+    const [openProjectDialogOpened, setOpenProjectDialogOpened] = useState(false);
 
     useEffect(() => {
         const handleKeyPress = (event: KeyboardEvent): void => {
@@ -26,52 +26,21 @@ export function Navbar(): JSX.Element {
         };
     }, [render]);
 
-    const loadExample = useCallback(
-        (example: Example): void => {
-            void loadExampleProject(example);
-        },
-        [loadExampleProject]
-    );
-
     return (
         <div className={classes.wrapper}>
-            <Menu
-                position="right-start"
-                withArrow
-                arrowPosition="center"
-                withinPortal={true}
-                closeOnClickOutside={true}
-            >
-                <Menu.Target>
-                    <UnstyledButton className={classes.link}>
-                        <OpenIcon width={ICON_SIZE} height={ICON_SIZE} />
-                    </UnstyledButton>
-                </Menu.Target>
-                <Menu.Dropdown>
-                    <Menu.Label>Examples</Menu.Label>
-                    <Menu.Item
-                        onClick={() => {
-                            loadExample(Example.Car);
-                        }}
-                    >
-                        Car
-                    </Menu.Item>
-                    <Menu.Item
-                        onClick={() => {
-                            loadExample(Example.ThreeSpheres);
-                        }}
-                    >
-                        Three Spheres
-                    </Menu.Item>
-                    <Menu.Item
-                        onClick={() => {
-                            loadExample(Example.RandomSpheres);
-                        }}
-                    >
-                        Random Spheres
-                    </Menu.Item>
-                </Menu.Dropdown>
-            </Menu>
+            <OpenProjectDialog
+                opened={openProjectDialogOpened}
+                onClose={() => {
+                    setOpenProjectDialogOpened(false);
+                }}
+            />
+            <NavbarLink
+                label="Open Project"
+                icon={<OpenIcon width={ICON_SIZE} height={ICON_SIZE} />}
+                onClick={() => {
+                    setOpenProjectDialogOpened(true);
+                }}
+            />
             <NavbarLink
                 label="Render (F5)"
                 icon={<RenderIcon width={ICON_SIZE} height={ICON_SIZE} />}

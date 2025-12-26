@@ -3,7 +3,7 @@ import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
 import { Example, getExampleProject } from './utils/examples';
 import type { WorkingFile } from './types';
-import { RayTracerApi, type Settings, type User } from './api';
+import { RayTracerApi, type Project, type Settings, type User } from './api';
 import { atomWithStorage } from 'jotai/utils';
 import type { GoogleCredentialResponse } from './components/GoogleLogin';
 
@@ -26,6 +26,7 @@ const drawEventListeners = new Set<RenderCallbackFn>();
 export const jwtTokenAtom = atomWithStorage<string | undefined>('jwtToken', undefined, undefined, { getOnInit: true });
 export const userAtom = atom<User | undefined>(undefined);
 export const settingsAtom = atom<Settings | undefined>(undefined);
+export const projectAtom = atom<Project | undefined>(undefined);
 export const filesAtom = atom<WorkingFile[]>([]);
 export const cameraInfoAtom = atom<CameraInfo | undefined>(undefined);
 export const renderOptionsAtom = atom<Required<RenderOptions>>({
@@ -109,18 +110,32 @@ export const handleLogOutAtom = atom(null, (_get, set) => {
     set(jwtTokenAtom, undefined);
 });
 
-export const loadExampleProjectAtom = atom(null, async (_get, set, example: Example) => {
-    console.log('loadExampleProject', example);
-    const project = getExampleProject(example);
-    const files = await Promise.all(
+async function loadProjectFiles(project: Project): Promise<WorkingFile[]> {
+    return await Promise.all(
         project.files.map(async (f) => {
-            const contents = await (await fetch(f.url)).text();
+            const resp = await fetch(f.url);
+            const contents = await resp.text();
             return {
                 ...f,
                 contents,
             } satisfies WorkingFile;
         })
     );
+}
+
+export const loadExampleProjectAtom = atom(null, async (_get, set, example: Example) => {
+    console.log('loadExampleProject', example);
+    const project = getExampleProject(example);
+    const files = await loadProjectFiles(project);
+    set(projectAtom, project);
+    set(filesAtom, files);
+});
+
+export const createProjectAtom = atom(null, async (_get, set, { name }: { name: string }) => {
+    console.log('creating new project', name);
+    const project = await rayTracerApi.project.createProject({ name });
+    const files = await loadProjectFiles(project);
+    set(projectAtom, project);
     set(filesAtom, files);
 });
 

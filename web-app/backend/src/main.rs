@@ -7,6 +7,7 @@ use thiserror::Error;
 
 use std::sync::Arc;
 
+use routes::project::{__path_create_project, create_project};
 use routes::user::{
     __path_get_user_me, __path_google_token_verify, get_user_me, google_token_verify,
 };
@@ -17,6 +18,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::state::AppState;
 
+pub const PROJECT_TAG: &str = "project";
 pub const USER_TAG: &str = "user";
 
 #[derive(Error, Debug)]
@@ -32,7 +34,8 @@ pub enum WebAppError {
 #[derive(OpenApi)]
 #[openapi(
     tags(
-        (name = USER_TAG, description = "User management endpoints")
+        (name = PROJECT_TAG, description = "Project management endpoints"),
+        (name = USER_TAG, description = "User management endpoints"),
     )
 )]
 struct ApiDoc;
@@ -50,7 +53,9 @@ async fn main() -> Result<(), WebAppError> {
         .allow_headers(cors::Any);
 
     let (router, api) = OpenApiRouter::with_openapi(ApiDoc::openapi())
-        .routes(routes!(get_user_me, google_token_verify))
+        .routes(routes!(get_user_me))
+        .routes(routes!(google_token_verify))
+        .routes(routes!(create_project))
         .with_state(state)
         .layer(cors)
         .split_for_parts();

@@ -1,0 +1,33 @@
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    .item {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        width: 100%;
+
+        :global(.mantine-Radio-root) {
+            margin-top: 3px;
+        }
+    }
+}
+
+.existingProjects {
+    gap: 5px;
+    width: 100%;
+
+    :global(.mantine-UnstyledButton-root) {
+        padding: 2px;
+
+        &:hover {
+            background-color: var(--mantine-primary-color-filled);
+        }
+    }
+}
+
+.footer {
+    width: 100%;
+}
