@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    routes::user::AuthUser,
+    routes::user_routes::AuthUser,
     utils::s3::{email_to_s3_key, read_json_from_s3, write_json_to_s3},
 };
 

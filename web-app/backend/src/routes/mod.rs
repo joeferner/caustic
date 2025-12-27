@@ -1,2 +1,2 @@
-pub mod project;
-pub mod user;
+pub mod project_routes;
+pub mod user_routes;

@@ -9,11 +9,11 @@ use env_logger::Env;
 
 use std::sync::Arc;
 
-use routes::project::{
+use routes::project_routes::{
     __path_create_project, __path_get_project, __path_get_project_file, __path_get_projects,
     create_project, get_project, get_project_file, get_projects,
 };
-use routes::user::{
+use routes::user_routes::{
     __path_get_user_me, __path_google_token_verify, get_user_me, google_token_verify,
 };
 use tower_http::{cors, cors::CorsLayer};

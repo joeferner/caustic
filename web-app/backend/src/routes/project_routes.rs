@@ -21,7 +21,7 @@ use crate::{
         project_repository::{CONTENT_TYPE_OPENSCAD, PROJECT_OWNER_EXAMPLE, Project, ProjectFile},
         user_repository::{UserData, UserDataProject},
     },
-    routes::user::AuthUser,
+    routes::user_routes::AuthUser,
     state::AppState,
 };
 
