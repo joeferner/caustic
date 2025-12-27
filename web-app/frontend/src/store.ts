@@ -16,6 +16,10 @@ export interface RenderOptions {
     threadCount?: number;
 }
 
+export interface StoreProject extends Project {
+    readOnly: boolean;
+}
+
 export const DEFAULT_RENDER_BLOCK_SIZE = 50;
 
 // Singleton worker pool and draw event listeners
@@ -27,7 +31,7 @@ export const jwtTokenAtom = atomWithStorage<string | undefined>('jwtToken', unde
 export const userAtom = atom<User | undefined>(undefined);
 export const settingsAtom = atom<Settings | undefined>(undefined);
 export const projectsAtom = atom<UserDataProject[] | undefined>(undefined);
-export const projectAtom = atom<Project | undefined>(undefined);
+export const projectAtom = atom<StoreProject | undefined>(undefined);
 export const filesAtom = atom<WorkingFile[]>([]);
 export const cameraInfoAtom = atom<CameraInfo | undefined>(undefined);
 export const renderOptionsAtom = atom<Required<RenderOptions>>({
@@ -134,10 +138,19 @@ export const loadProjectsAtom = atom(null, async (_get, set) => {
     set(projectsAtom, response.projects);
 });
 
-export const loadProjectAtom = atom(null, async (_get, set, { projectId }: { projectId: string }) => {
+export const loadProjectAtom = atom(null, async (get, set, { projectId }: { projectId: string }) => {
+    let projects = get(projectsAtom);
+    if (!projects) {
+        await set(loadProjectsAtom);
+        projects = get(projectsAtom);
+    }
+    const userProject = projects?.find((project) => project.id === projectId);
+    if (!userProject) {
+        throw new Error(`project ${projectId} not found in user projects`);
+    }
     const project = await rayTracerApi.project.getProject(projectId);
     const files = await loadProjectFiles(project);
-    set(projectAtom, project);
+    set(projectAtom, { ...project, readOnly: userProject.readonly });
     set(filesAtom, files);
 });
 
@@ -145,7 +158,7 @@ export const createProjectAtom = atom(null, async (_get, set, { name }: { name: 
     console.log('creating new project', name);
     const project = await rayTracerApi.project.createProject({ name });
     const files = await loadProjectFiles(project);
-    set(projectAtom, project);
+    set(projectAtom, { ...project, readOnly: false });
     set(filesAtom, files);
 });
 

@@ -21,9 +21,11 @@ function InnerApp(): JSX.Element {
     const loadUserMe = useSetAtom(loadUserMeAtom);
 
     useEffect(() => {
-        console.log('load initial project');
-        void loadUserMe();
-        void loadProject({ projectId: 'cad84577-c808-41a9-8d77-25a4626fe65f' }); // Example: Car
+        void (async (): Promise<void> => {
+            console.log('load initial project');
+            await loadUserMe();
+            await loadProject({ projectId: 'cad84577-c808-41a9-8d77-25a4626fe65f' }); // Example: Car
+        })();
     }, [loadUserMe, loadProject]);
 
     return (
