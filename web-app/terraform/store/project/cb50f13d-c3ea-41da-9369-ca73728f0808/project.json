@@ -1,0 +1,10 @@
+{
+    "id": "cb50f13d-c3ea-41da-9369-ca73728f0808",
+    "owner": "example",
+    "name": "Example: Random Spheres",
+    "files": [
+        {
+            "filename": "main.scad"
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "id": "cad84577-c808-41a9-8d77-25a4626fe65f",
+    "owner": "example",
+    "name": "Example: Car",
+    "files": [
+        {
+            "filename": "main.scad"
+        }
+    ]
+}

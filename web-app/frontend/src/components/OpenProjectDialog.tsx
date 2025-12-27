@@ -2,13 +2,14 @@ import { Button, Divider, Group, Loader, Modal, Stack, TextInput, UnstyledButton
 import { useCallback, useEffect, useState, type JSX } from 'react';
 import classes from './OpenProjectDialog.module.scss';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { createProjectAtom, loadExampleProjectAtom, userAtom } from '../store';
-import { Example } from '../utils/examples';
+import { createProjectAtom, loadProjectAtom, loadProjectsAtom, projectsAtom, userAtom } from '../store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
 
 export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClose: () => void }): JSX.Element {
     const user = useAtomValue(userAtom);
-    const loadExampleProject = useSetAtom(loadExampleProjectAtom);
+    const projects = useAtomValue(projectsAtom);
+    const storeLoadProjects = useSetAtom(loadProjectsAtom);
+    const storeLoadProject = useSetAtom(loadProjectAtom);
     const createProject = useSetAtom(createProjectAtom);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<ErrorMessageProps | undefined>(undefined);
@@ -16,27 +17,44 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
     const [canSubmit, setCanSubmit] = useState(false);
 
     useEffect(() => {
-        setNewProjectName('');
-        setError(undefined);
-        setLoading(false);
-    }, [opened, setNewProjectName, setError]);
+        const loadProjects = async (): Promise<void> => {
+            try {
+                setError(undefined);
+                setLoading(true);
+                await storeLoadProjects();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Unknown error';
+                setError({
+                    title: 'Error Loading Projects',
+                    message,
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (opened) {
+            setNewProjectName('');
+            void loadProjects();
+        }
+    }, [opened, setNewProjectName, setError, storeLoadProjects]);
 
     useEffect(() => {
         setCanSubmit(newProjectName.trim().length > 0 && !loading);
     }, [newProjectName, loading]);
 
-    const loadExample = useCallback(
-        (example: Example): void => {
+    const loadProject = useCallback(
+        (projectId: string): void => {
             void (async (): Promise<void> => {
                 try {
                     setLoading(true);
                     setError(undefined);
-                    await loadExampleProject(example);
+                    await storeLoadProject({ projectId });
                     onClose();
                 } catch (err) {
                     const message = err instanceof Error ? err.message : 'Unknown error';
                     setError({
-                        title: 'Error Loading Example',
+                        title: 'Error Loading Project',
                         message,
                     });
                 } finally {
@@ -44,7 +62,7 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                 }
             })();
         },
-        [loadExampleProject, onClose, setError, setLoading]
+        [storeLoadProject, onClose, setError, setLoading]
     );
 
     const onCancelClick = useCallback((): void => {
@@ -96,27 +114,18 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                 />
                 <div className={classes.item}>
                     <Stack className={classes.existingProjects}>
-                        <UnstyledButton
-                            onClick={() => {
-                                loadExample(Example.Car);
-                            }}
-                        >
-                            Example: Car
-                        </UnstyledButton>
-                        <UnstyledButton
-                            onClick={() => {
-                                loadExample(Example.ThreeSpheres);
-                            }}
-                        >
-                            Example: Three Spheres
-                        </UnstyledButton>
-                        <UnstyledButton
-                            onClick={() => {
-                                loadExample(Example.RandomSpheres);
-                            }}
-                        >
-                            Example: Random Spheres
-                        </UnstyledButton>
+                        {projects?.map((project) => {
+                            return (
+                                <UnstyledButton
+                                    key={project.id}
+                                    onClick={() => {
+                                        loadProject(project.id);
+                                    }}
+                                >
+                                    {project.name}
+                                </UnstyledButton>
+                            );
+                        })}
                     </Stack>
                 </div>
 

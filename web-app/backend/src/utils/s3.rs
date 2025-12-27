@@ -8,18 +8,14 @@ pub async fn write_json_to_s3<T: Serialize>(
     data: &T,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let json_string = serde_json::to_string(data)?;
-
-    client
-        .put_object()
-        .bucket(bucket)
-        .key(key)
-        .body(ByteStream::from(json_string.into_bytes()))
-        .content_type("application/json") // Set content type
-        .send()
-        .await?;
-
-    println!("Uploaded JSON to s3://{}/{}", bucket, key);
-    Ok(())
+    write_to_s3(
+        client,
+        bucket,
+        key,
+        "application/json",
+        ByteStream::from(json_string.into_bytes()),
+    )
+    .await
 }
 
 pub async fn read_json_from_s3<T: for<'de> Deserialize<'de>>(
@@ -27,27 +23,14 @@ pub async fn read_json_from_s3<T: for<'de> Deserialize<'de>>(
     bucket: &str,
     key: &str,
 ) -> Result<Option<T>, Box<dyn std::error::Error>> {
-    let resp = client.get_object().bucket(bucket).key(key).send().await;
-
-    // Check if the error is NoSuchKey (file doesn't exist)
-    match resp {
-        Ok(output) => {
-            // File exists, read and parse it
-            let data = output.body.collect().await?;
-            let bytes = data.into_bytes();
-            let parsed: T = serde_json::from_slice(&bytes)?;
-            Ok(Some(parsed))
-        }
-        Err(err) => {
-            // Check if it's a NoSuchKey error
-            if let Some(service_err) = err.as_service_error()
-                && service_err.is_no_such_key()
-            {
-                return Ok(None);
-            }
-            // If it's a different error, propagate it
-            Err(Box::new(err))
-        }
+    let resp = read_from_s3(client, bucket, key).await?;
+    if let Some(resp) = resp {
+        let data = resp.body.collect().await?;
+        let bytes = data.into_bytes();
+        let parsed: T = serde_json::from_slice(&bytes)?;
+        Ok(Some(parsed))
+    } else {
+        Ok(None)
     }
 }
 
@@ -55,29 +38,48 @@ pub async fn write_to_s3(
     client: &S3Client,
     bucket: &str,
     key: &str,
-    data: &[u8],
+    content_type: &str,
+    data: ByteStream,
 ) -> Result<(), Box<dyn std::error::Error>> {
     client
         .put_object()
         .bucket(bucket)
         .key(key)
-        .body(ByteStream::from(data.to_vec()))
+        .body(data)
+        .content_type(content_type)
         .send()
         .await?;
-
-    println!("Uploaded to s3://{}/{}", bucket, key);
     Ok(())
+}
+
+pub struct ReadFromS3Data {
+    pub content_type: Option<String>,
+    pub body: ByteStream,
 }
 
 pub async fn read_from_s3(
     client: &S3Client,
     bucket: &str,
     key: &str,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let resp = client.get_object().bucket(bucket).key(key).send().await?;
-
-    let data = resp.body.collect().await?;
-    Ok(data.into_bytes().to_vec())
+) -> Result<Option<ReadFromS3Data>, Box<dyn std::error::Error>> {
+    let resp = client.get_object().bucket(bucket).key(key).send().await;
+    match resp {
+        Ok(resp) => {
+            let content_type = resp.content_type().map(|s| s.to_string());
+            let body = resp.body;
+            Ok(Some(ReadFromS3Data { content_type, body }))
+        }
+        Err(err) => {
+            // Check if it's a NoSuchKey error
+            if let Some(service_err) = err.as_service_error()
+                && service_err.is_no_such_key()
+            {
+                Ok(None)
+            } else {
+                Err(Box::new(err))
+            }
+        }
+    }
 }
 
 /// Converts an email address into a valid S3 key by replacing or removing

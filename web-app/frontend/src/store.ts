@@ -1,11 +1,11 @@
 import { atom } from 'jotai';
 import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
-import { Example, getExampleProject } from './utils/examples';
 import type { WorkingFile } from './types';
-import { RayTracerApi, type Project, type Settings, type User } from './api';
+import { RayTracerApi, type Project, type Settings, type User, type UserDataProject } from './api';
 import { atomWithStorage } from 'jotai/utils';
 import type { GoogleCredentialResponse } from './components/GoogleLogin';
+import * as R from 'radash';
 
 export const rayTracerApi = new RayTracerApi();
 
@@ -26,6 +26,7 @@ const drawEventListeners = new Set<RenderCallbackFn>();
 export const jwtTokenAtom = atomWithStorage<string | undefined>('jwtToken', undefined, undefined, { getOnInit: true });
 export const userAtom = atom<User | undefined>(undefined);
 export const settingsAtom = atom<Settings | undefined>(undefined);
+export const projectsAtom = atom<UserDataProject[] | undefined>(undefined);
 export const projectAtom = atom<Project | undefined>(undefined);
 export const filesAtom = atom<WorkingFile[]>([]);
 export const cameraInfoAtom = atom<CameraInfo | undefined>(undefined);
@@ -113,19 +114,28 @@ export const handleLogOutAtom = atom(null, (_get, set) => {
 async function loadProjectFiles(project: Project): Promise<WorkingFile[]> {
     return await Promise.all(
         project.files.map(async (f) => {
-            const resp = await fetch(f.url);
-            const contents = await resp.text();
-            return {
-                ...f,
-                contents,
-            } satisfies WorkingFile;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            const contents = await rayTracerApi.project.getProjectFile(project.id, f.filename);
+            if (R.isString(contents)) {
+                return {
+                    ...f,
+                    contents,
+                } satisfies WorkingFile;
+            } else {
+                console.log('unhandled file contents', contents);
+                throw new Error('todo');
+            }
         })
     );
 }
 
-export const loadExampleProjectAtom = atom(null, async (_get, set, example: Example) => {
-    console.log('loadExampleProject', example);
-    const project = getExampleProject(example);
+export const loadProjectsAtom = atom(null, async (_get, set) => {
+    const response = await rayTracerApi.project.getProjects();
+    set(projectsAtom, response.projects);
+});
+
+export const loadProjectAtom = atom(null, async (_get, set, { projectId }: { projectId: string }) => {
+    const project = await rayTracerApi.project.getProject(projectId);
     const files = await loadProjectFiles(project);
     set(projectAtom, project);
     set(filesAtom, files);

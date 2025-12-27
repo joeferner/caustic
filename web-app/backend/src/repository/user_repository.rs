@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use aws_sdk_s3::Client as S3Client;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -13,13 +14,25 @@ use crate::{
 #[derive(ToSchema, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserData {
-    email: String,
+    pub email: String,
+    pub projects: Vec<UserDataProject>,
+}
+
+#[derive(ToSchema, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserDataProject {
+    pub id: String,
+    pub name: String,
+    pub readonly: bool,
+    #[schema(value_type = String)]
+    pub last_modified: DateTime<Utc>,
 }
 
 impl UserData {
     pub fn new(user: &AuthUser) -> Self {
         Self {
             email: user.email.to_owned(),
+            projects: vec![],
         }
     }
 }
@@ -43,7 +56,11 @@ impl UserRepository {
         let key = self.get_user_key_from_auth_user(user);
         read_json_from_s3::<UserData>(&self.client, bucket, &key)
             .await
-            .map_err(|err| RepositoryError::FailedToRead(format!("s3://{bucket}/{key} {err}")))
+            .map_err(|err| RepositoryError::FailedToRead {
+                bucket: self.bucket.to_owned(),
+                key,
+                cause: err,
+            })
     }
 
     pub async fn save(&self, data: &UserData) -> Result<()> {
@@ -51,7 +68,11 @@ impl UserRepository {
         let key = self.get_user_key_from_user_data(data);
         write_json_to_s3(&self.client, bucket, &key, data)
             .await
-            .map_err(|err| RepositoryError::FailedToWrite(format!("s3://{bucket}/{key} {err}")))
+            .map_err(|err| RepositoryError::FailedToWrite {
+                bucket: self.bucket.to_owned(),
+                key,
+                cause: err,
+            })
     }
 
     fn get_user_key_from_auth_user(&self, user: &AuthUser) -> String {

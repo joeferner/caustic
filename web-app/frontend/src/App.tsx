@@ -5,8 +5,7 @@ import { Provider as JotaiProvider, useSetAtom } from 'jotai';
 import { Render } from './components/Render';
 import { Navbar } from './components/Navbar';
 import { useEffect, type JSX } from 'react';
-import { loadExampleProjectAtom, loadUserMeAtom } from './store';
-import { Example } from './utils/examples';
+import { loadProjectAtom, loadUserMeAtom } from './store';
 import { Header } from './components/Header';
 
 export function App(): JSX.Element {
@@ -18,21 +17,21 @@ export function App(): JSX.Element {
 }
 
 function InnerApp(): JSX.Element {
-    const loadExampleProject = useSetAtom(loadExampleProjectAtom);
+    const loadProject = useSetAtom(loadProjectAtom);
     const loadUserMe = useSetAtom(loadUserMeAtom);
 
     useEffect(() => {
         console.log('load initial project');
         void loadUserMe();
-        void loadExampleProject(Example.ThreeSpheres);
-    }, [loadUserMe, loadExampleProject]);
+        void loadProject({ projectId: 'cad84577-c808-41a9-8d77-25a4626fe65f' }); // Example: Car
+    }, [loadUserMe, loadProject]);
 
     return (
         <div className={classes.main}>
             <Header />
             <div className={classes.inner}>
                 <Navbar />
-                <PanelGroup autoSaveId="example" direction="horizontal">
+                <PanelGroup autoSaveId="editRender" direction="horizontal">
                     <Panel defaultSize={50}>
                         <Files />
                     </Panel>

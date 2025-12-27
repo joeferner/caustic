@@ -7,7 +7,7 @@ edition = "2024"
 aws-config = "1.8.12"
 aws-sdk-s3 = "1.119.0"
 axum = { version = "0.8.8", features = ["macros"] }
-chrono = "0.4.42"
+chrono = { version = "0.4.42", features = ["serde"] }
 dotenvy = "0.15.7"
 env_logger = "0.11.8"
 envy = "0.4.2"

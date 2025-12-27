@@ -1,4 +1,13 @@
 
+# Running
+
+## Webapp
+
+### Running
+
+1. [Run backend](web-app/backend/README.md)
+1. [Run frontend](web-app/frontend/README.md)
+
 # References
 
 - [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)
