@@ -33,7 +33,7 @@ pub struct AppState {
 }
 
 fn default_bind() -> String {
-    "0.0.0.0:3000".to_string()
+    "0.0.0.0:8080".to_string()
 }
 
 fn default_jwt_expire_duration_hours() -> u32 {
@@ -42,7 +42,7 @@ fn default_jwt_expire_duration_hours() -> u32 {
 
 impl AppState {
     pub async fn new() -> Result<AppState> {
-        dotenvy::dotenv()?;
+        dotenvy::dotenv().ok();
 
         let settings = Arc::new(envy::prefixed("RAYTRACE_").from_env::<AppStateSettings>()?);
 

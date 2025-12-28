@@ -25,6 +25,7 @@
         "thiserror",
         "tmax",
         "tmin",
+        "trixie",
         "tsify",
         "utoipa"
     ],

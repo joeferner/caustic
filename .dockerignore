@@ -1,0 +1,4 @@
+web-app/frontend/node_modules
+web-app/frontend/dist
+web-app/frontend/src/api
+web-app/frontend/src/wasm

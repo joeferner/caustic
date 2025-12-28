@@ -1,0 +1,114 @@
+# Stage 1: Build Rust workspace ----------------------------------------------------------------------------------
+FROM rust:1.92-slim AS rust-builder
+
+# Install required dependencies
+RUN \
+  apt-get update \
+  && apt-get install -y pkg-config libssl-dev curl \
+  && rm -rf /var/lib/apt/lists/*
+RUN \
+  cargo install wasm-pack \
+  && rustup target add wasm32-unknown-unknown
+
+WORKDIR /app
+
+# Copy Cargo files
+RUN mkdir -p src crates/cli/src crates/core/src crates/openscad/src crates/wasm/src web-app/backend/src
+COPY Cargo.toml Cargo.lock ./
+COPY crates/cli/Cargo.toml crates/cli/
+COPY crates/core/Cargo.toml crates/core/
+COPY crates/openscad/Cargo.toml crates/openscad/
+COPY crates/wasm/Cargo.toml crates/wasm/
+COPY web-app/backend/Cargo.toml web-app/backend/
+
+# Create dummy source files to build dependencies
+RUN \
+  echo "fn main() {}" > crates/cli/src/main.rs \
+  && echo "fn main() {}" > web-app/backend/src/main.rs \
+  && echo "pub fn dummy() {}" > src/lib.rs \
+  && echo "pub fn dummy() {}" > crates/core/src/lib.rs \
+  && echo "pub fn dummy() {}" > crates/openscad/src/lib.rs \
+  && echo "pub fn dummy() {}" > crates/wasm/src/lib.rs
+
+# Build dependencies (this layer will be cached)
+RUN cargo build --release --workspace --exclude rust-raytracer-wasm
+RUN cargo build --release --package rust-raytracer-wasm --target wasm32-unknown-unknown
+
+# Remove the dummy build artifacts
+RUN rm -rf \
+  target/release/.fingerprint/rust-raytracer-* \
+  target/release/deps/rust-raytracer-* \
+  target/wasm32-unknown-unknown/release/.fingerprint/rust-raytracer-* \
+  target/wasm32-unknown-unknown/release/deps/rust-raytracer-*
+
+# Copy all workspace members
+COPY src/ ./src
+COPY crates/cli/src/ ./crates/cli/src
+COPY crates/core/src/ ./crates/core/src
+COPY crates/openscad/src/ ./crates/openscad/src
+COPY crates/wasm/src/ ./crates/wasm/src
+COPY web-app/backend/src/ ./web-app/backend/src
+
+# Build in release mode
+RUN \
+  cargo build --release --workspace --exclude rust-raytracer-wasm \
+  && cd /app/crates/wasm \
+  && wasm-pack build --target web --release \
+  && cd /app \
+  && cp /app/target/release/rust-raytracer-webapp /app/target/release/rust-raytracer-cli /app/ \
+  && mv /app/crates/wasm/pkg /app/wasm \
+  && rm -rf target Cargo.lock Cargo.toml backend crates src web-app /usr/local/cargo/registry
+RUN /app/rust-raytracer-webapp --write-swagger /app/openapi.json
+
+# Stage 2: Build React frontend ----------------------------------------------------------------------------------
+FROM ubuntu:noble AS frontend-builder
+
+WORKDIR /frontend
+
+# Install required dependencies
+RUN \
+  apt-get update \
+  && apt-get install -y pkg-config libssl-dev curl \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install node
+COPY web-app/frontend/.nvmrc ./
+RUN \
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
+  && . /root/.nvm/nvm.sh || echo "ok" \
+  && nvm install \
+  && nvm use \
+  && nvm alias default $(cat .nvmrc) \
+  && ln -s "$NVM_DIR/versions/node/$(nvm current)/bin/node" /usr/local/bin/node \
+  && ln -s "$NVM_DIR/versions/node/$(nvm current)/bin/npm" /usr/local/bin/npm \
+  && ln -s "$NVM_DIR/versions/node/$(nvm current)/bin/npx" /usr/local/bin/npx
+
+# Install dependencies
+COPY web-app/frontend/package*.json ./
+RUN npm ci
+
+# Copy frontend source
+COPY web-app/frontend/ ./
+COPY --from=rust-builder /app/openapi.json /app/
+COPY --from=rust-builder /app/wasm/* /frontend/src/wasm/
+
+# Build the React app
+RUN npm run build
+
+# # Stage 3: Runtime image -----------------------------------------------------------------------------------------
+FROM debian:trixie-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=rust-builder /app/rust-raytracer-webapp /app/rust-raytracer-webapp
+COPY --from=frontend-builder /frontend/dist/assets/ /app/static
+EXPOSE 8080
+
+# Run the webserver
+CMD ["/app/rust-raytracer-webapp"]

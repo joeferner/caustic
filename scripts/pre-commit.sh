@@ -52,5 +52,9 @@ npm run lint
 banner "npm build"
 npm run build
 
+banner "docker build"
+cd "${SCRIPT_DIR}/.."
+docker build .
+
 echo ""
 echo "complete!"
