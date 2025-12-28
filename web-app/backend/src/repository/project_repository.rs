@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::utils::s3::{
-    ReadFromS3Data, read_from_s3, read_json_from_s3, write_json_to_s3, write_to_s3,
+    ReadFromS3Data, copy_s3_file, read_from_s3, read_json_from_s3, write_json_to_s3, write_to_s3,
 };
 
 #[derive(ToSchema, Debug, Serialize, Deserialize)]
@@ -85,6 +85,22 @@ impl ProjectRepository {
             .await
             .with_context(|| {
                 format!("saving project file (project id: {project_id}, filename: {filename})")
+            })
+    }
+
+    pub async fn copy_file(
+        &self,
+        from_project_id: &str,
+        to_project_id: &str,
+        filename: &str,
+    ) -> Result<()> {
+        let bucket = &self.bucket;
+        let from_key = self.get_project_file_key(from_project_id, filename)?;
+        let to_key = self.get_project_file_key(to_project_id, filename)?;
+        copy_s3_file(&self.client, bucket, &from_key, &to_key)
+            .await
+            .with_context(|| {
+                format!("copying project file (from project id: {from_project_id}, to project id: {to_project_id}, filename: {filename})")
             })
     }
 

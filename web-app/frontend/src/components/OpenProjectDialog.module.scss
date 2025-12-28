@@ -19,11 +19,27 @@
     gap: 5px;
     width: 100%;
 
-    :global(.mantine-UnstyledButton-root) {
+    :global(.mantine-Paper-root) {
         padding: 2px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        cursor: pointer;
 
         &:hover {
             background-color: var(--mantine-primary-color-filled);
+
+            .projectActions {
+                display: flex;
+            }
+        }
+
+        .projectName {
+        }
+
+        .projectActions {
+            display: none;
+            margin-right: 5px;
         }
     }
 }

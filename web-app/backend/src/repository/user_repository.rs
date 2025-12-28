@@ -30,16 +30,6 @@ pub struct UserDataProject {
     pub last_modified: DateTime<Utc>,
 }
 
-impl UserData {
-    pub fn new(user: &AuthUser) -> Self {
-        Self {
-            email: user.email.to_owned(),
-            projects: vec![],
-            created: Utc::now(),
-        }
-    }
-}
-
 pub struct UserRepository {
     client: Arc<S3Client>,
     bucket: String,

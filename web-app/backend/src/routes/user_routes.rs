@@ -170,7 +170,7 @@ pub async fn google_token_verify(
     Json(payload): Json<GoogleVerifyRequest>,
 ) -> Result<Json<AuthResponse>, StatusCode> {
     let info = google_verify_token(&payload.token).await.map_err(|err| {
-        error!("failed to verify token: {err}");
+        error!("failed to verify token: {err:?}");
         StatusCode::UNAUTHORIZED
     })?;
 

@@ -57,6 +57,23 @@ pub async fn write_to_s3(
     Ok(())
 }
 
+pub async fn copy_s3_file(
+    client: &S3Client,
+    bucket: &str,
+    from_key: &str,
+    to_key: &str,
+) -> Result<()> {
+    client
+        .copy_object()
+        .copy_source(format!("{bucket}/{from_key}"))
+        .bucket(bucket)
+        .key(to_key)
+        .send()
+        .await
+        .with_context(|| format!("copying s3://{bucket}/{from_key} to s3://{bucket}/{to_key}"))?;
+    Ok(())
+}
+
 pub struct ReadFromS3Data {
     pub content_type: Option<String>,
     pub body: ByteStream,

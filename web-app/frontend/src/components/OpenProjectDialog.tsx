@@ -1,15 +1,36 @@
-import { Button, Divider, Group, Loader, Modal, Stack, TextInput, UnstyledButton } from '@mantine/core';
-import { useCallback, useEffect, useState, type JSX } from 'react';
+import {
+    ActionIcon,
+    Button,
+    Divider,
+    Group,
+    Loader,
+    Modal,
+    Paper,
+    Stack,
+    TextInput,
+    UnstyledButton,
+} from '@mantine/core';
+import { useCallback, useEffect, useState, type JSX, type MouseEvent } from 'react';
 import classes from './OpenProjectDialog.module.scss';
 import { useAtomValue, useSetAtom } from 'jotai';
-import { createProjectAtom, loadProjectAtom, loadProjectsAtom, projectsAtom, userAtom } from '../store';
+import {
+    copyProjectAtom,
+    createProjectAtom,
+    loadProjectAtom,
+    loadProjectsAtom,
+    projectsAtom,
+    userAtom,
+} from '../store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
+import { Copy as CopyIcon } from 'react-bootstrap-icons';
+import type { UserDataProject } from '../api';
 
 export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClose: () => void }): JSX.Element {
     const user = useAtomValue(userAtom);
     const projects = useAtomValue(projectsAtom);
     const storeLoadProjects = useSetAtom(loadProjectsAtom);
     const storeLoadProject = useSetAtom(loadProjectAtom);
+    const storeCopyProject = useSetAtom(copyProjectAtom);
     const createProject = useSetAtom(createProjectAtom);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<ErrorMessageProps | undefined>(undefined);
@@ -65,6 +86,28 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
         [storeLoadProject, onClose, setError, setLoading]
     );
 
+    const copyProject = useCallback(
+        (projectId: string): void => {
+            void (async (): Promise<void> => {
+                try {
+                    setLoading(true);
+                    setError(undefined);
+                    await storeCopyProject({ projectId });
+                    onClose();
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : 'Unknown error';
+                    setError({
+                        title: 'Error Coping Project',
+                        message,
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            })();
+        },
+        [storeCopyProject, onClose, setError, setLoading]
+    );
+
     const onCancelClick = useCallback((): void => {
         onClose();
     }, [onClose]);
@@ -114,18 +157,18 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                 />
                 <div className={classes.item}>
                     <Stack className={classes.existingProjects}>
-                        {projects?.map((project) => {
-                            return (
-                                <UnstyledButton
-                                    key={project.id}
-                                    onClick={() => {
-                                        loadProject(project.id);
-                                    }}
-                                >
-                                    {project.name}
-                                </UnstyledButton>
-                            );
-                        })}
+                        {projects?.map((project) => (
+                            <ProjectButton
+                                key={project.id}
+                                project={project}
+                                onClick={() => {
+                                    loadProject(project.id);
+                                }}
+                                onCopyProject={() => {
+                                    copyProject(project.id);
+                                }}
+                            />
+                        ))}
                     </Stack>
                 </div>
 
@@ -138,5 +181,41 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                 </Group>
             </Stack>
         </Modal>
+    );
+}
+
+function ProjectButton({
+    project,
+    onClick,
+    onCopyProject,
+}: {
+    project: UserDataProject;
+    onClick: () => void;
+    onCopyProject: () => void;
+}): JSX.Element {
+    const onCopyProjectClick = useCallback(
+        (event: MouseEvent) => {
+            event.stopPropagation();
+            onCopyProject();
+        },
+        [onCopyProject]
+    );
+
+    return (
+        <Paper key={project.id} onClick={onClick}>
+            <div className={classes.projectName}>{project.name}</div>
+            <div className={classes.projectActions}>
+                <ActionIcon
+                    onClick={(event) => {
+                        onCopyProjectClick(event);
+                    }}
+                    variant="filled"
+                    size="sm"
+                    aria-label="Clone Project"
+                >
+                    <CopyIcon />
+                </ActionIcon>
+            </div>
+        </Paper>
     );
 }

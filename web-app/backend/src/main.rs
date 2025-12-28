@@ -10,8 +10,8 @@ use env_logger::Env;
 use std::sync::Arc;
 
 use routes::project_routes::{
-    __path_create_project, __path_get_project, __path_get_project_file, __path_get_projects,
-    create_project, get_project, get_project_file, get_projects,
+    __path_copy_project, __path_create_project, __path_get_project, __path_get_project_file,
+    __path_get_projects, copy_project, create_project, get_project, get_project_file, get_projects,
 };
 use routes::user_routes::{
     __path_get_user_me, __path_google_token_verify, get_user_me, google_token_verify,
@@ -54,6 +54,7 @@ async fn main() -> Result<()> {
         .routes(routes!(get_projects))
         .routes(routes!(get_project_file))
         .routes(routes!(create_project))
+        .routes(routes!(copy_project))
         .with_state(state)
         .layer(cors)
         .split_for_parts();

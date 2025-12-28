@@ -177,6 +177,13 @@ export const createProjectAtom = atom(null, async (_get, set, { name }: { name: 
     set(filesAtom, files);
 });
 
+export const copyProjectAtom = atom(null, async (_get, set, { projectId }: { projectId: string }) => {
+    const newProject = await rayTracerApi.project.copyProject({ projectId });
+    const files = await loadProjectFiles(newProject);
+    set(projectAtom, { ...newProject, readOnly: false });
+    set(filesAtom, files);
+});
+
 export const loadUserMeAtom = atom(null, async (get, set) => {
     const jwtToken = get(jwtTokenAtom);
     if (jwtToken) {
