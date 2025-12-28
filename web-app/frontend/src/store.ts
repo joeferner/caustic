@@ -138,6 +138,7 @@ async function loadProjectFiles(project: Project): Promise<WorkingFile[]> {
             if (R.isString(contents)) {
                 return {
                     ...f,
+                    originalContents: contents,
                     contents,
                 } satisfies WorkingFile;
             } else {

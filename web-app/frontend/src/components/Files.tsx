@@ -1,17 +1,14 @@
 import { Tabs } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import classes from './Files.module.scss';
-import { filesAtom, projectAtom, updateFileAtom } from '../store';
+import { filesAtom, updateFileAtom } from '../store';
 import type { JSX } from 'react';
 import { registerOpenscadLanguage } from '../monaco-openscad';
 import { useAtomValue, useSetAtom } from 'jotai';
 
 export function Files(): JSX.Element {
-    const project = useAtomValue(projectAtom);
     const files = useAtomValue(filesAtom);
     const updateFile = useSetAtom(updateFileAtom);
-
-    const readOnly = project?.readOnly ?? true;
 
     return (
         <Tabs defaultValue="main.scad" className={classes.tabs}>
@@ -19,8 +16,12 @@ export function Files(): JSX.Element {
                 {files.map((file) => {
                     return (
                         <Tabs.Tab key={file.filename} value={file.filename}>
-                            {file.filename}
-                            {readOnly ? ' [read only]' : null}
+                            <div className={classes.tabFilename}>
+                                {file.filename}
+                                <div className={classes.unsavedIndicator}>
+                                    {file.contents != file.originalContents ? '*' : ' '}
+                                </div>
+                            </div>
                         </Tabs.Tab>
                     );
                 })}
@@ -40,7 +41,7 @@ export function Files(): JSX.Element {
                             onChange={(code) => {
                                 updateFile({ filename: file.filename, content: code ?? '' });
                             }}
-                            options={{ minimap: { enabled: false }, readOnly }}
+                            options={{ minimap: { enabled: false } }}
                         />
                     </Tabs.Panel>
                 );

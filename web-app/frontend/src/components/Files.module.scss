@@ -7,3 +7,12 @@
 .tabPanel {
     height: 100%;
 }
+
+.tabFilename {
+    display: flex;
+    flex-direction: row;
+
+    .unsavedIndicator {
+        width: 8px;
+    }
+}

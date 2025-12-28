@@ -38,5 +38,6 @@ export interface RenderResponseData extends RenderResult {
 export type RenderResponse = RenderResponseInit | RenderResponseData;
 
 export interface WorkingFile extends ProjectFile {
+    originalContents: string;
     contents: string;
 }
