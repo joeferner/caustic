@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, anyhow};
-use aws_sdk_s3::{Client as S3Client, primitives::ByteStream};
+use aws_sdk_s3::{Client as S3Client, primitives::ByteStream, types::ObjectIdentifier};
 use serde::{Deserialize, Serialize};
 
 pub async fn write_json_to_s3<T: Serialize>(
@@ -71,6 +71,78 @@ pub async fn copy_s3_file(
         .send()
         .await
         .with_context(|| format!("copying s3://{bucket}/{from_key} to s3://{bucket}/{to_key}"))?;
+    Ok(())
+}
+
+pub async fn delete_s3_objects_with_prefix(
+    client: &S3Client,
+    bucket: &str,
+    prefix: &str,
+) -> Result<()> {
+    let mut continuation_token: Option<String> = None;
+
+    loop {
+        // List objects with the prefix
+        let mut list_request = client.list_objects_v2().bucket(bucket).prefix(prefix);
+        if let Some(token) = continuation_token {
+            list_request = list_request.continuation_token(token);
+        }
+
+        let response = list_request
+            .send()
+            .await
+            .with_context(|| format!("listing s3://{bucket}/{prefix}"))?;
+
+        // Get the objects from the response
+        if response.contents().is_empty() {
+            break;
+        }
+
+        // Prepare objects for deletion
+        let to_delete = {
+            let mut to_delete: Vec<ObjectIdentifier> = vec![];
+            for obj in response.contents() {
+                if let Some(key) = &obj.key {
+                    to_delete.push(ObjectIdentifier::builder().key(key).build()?);
+                }
+            }
+            to_delete
+        };
+
+        if !to_delete.is_empty() {
+            // Delete the objects
+            let delete_response = client
+                .delete_objects()
+                .bucket(bucket)
+                .delete(
+                    aws_sdk_s3::types::Delete::builder()
+                        .set_objects(Some(to_delete.clone()))
+                        .build()?,
+                )
+                .send()
+                .await?;
+
+            // Check for errors
+            if !delete_response.errors().is_empty() {
+                let mut message = String::new();
+                for error in delete_response.errors() {
+                    message += &format!(
+                        "Error deleting {}: {:?}",
+                        error.key().unwrap_or("unknown"),
+                        error.message()
+                    );
+                }
+                return Err(anyhow!(message));
+            }
+        }
+
+        // Check if there are more objects to list
+        continuation_token = response.next_continuation_token().map(|s| s.to_string());
+        if continuation_token.is_none() {
+            break;
+        }
+    }
+
     Ok(())
 }
 

@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::utils::s3::{
-    ReadFromS3Data, copy_s3_file, read_from_s3, read_json_from_s3, write_json_to_s3, write_to_s3,
+    ReadFromS3Data, copy_s3_file, delete_s3_objects_with_prefix, read_from_s3, read_json_from_s3,
+    write_json_to_s3, write_to_s3,
 };
 
 #[derive(ToSchema, Debug, Serialize, Deserialize)]
@@ -104,15 +105,30 @@ impl ProjectRepository {
             })
     }
 
+    pub async fn delete_project(&self, project_id: &str) -> Result<()> {
+        let prefix = self.get_project_prefix(project_id);
+        delete_s3_objects_with_prefix(&self.client, &self.bucket, &prefix)
+            .await
+            .with_context(|| {
+                format!("deleting project files (project id: {project_id}, prefix: {prefix})")
+            })
+    }
+
+    fn get_project_prefix(&self, project_id: &str) -> String {
+        format!("store/project/{}", project_id)
+    }
+
     fn get_project_json_key(&self, project_id: &str) -> String {
-        format!("store/project/{}/project.json", project_id)
+        let prefix = self.get_project_prefix(project_id);
+        format!("{prefix}/project.json")
     }
 
     fn get_project_file_key(&self, project_id: &str, filename: &str) -> Result<String> {
         if filename == "project.json" {
             Err(anyhow!("invalid filename, cannot be project.json"))
         } else {
-            Ok(format!("store/project/{project_id}/{filename}"))
+            let prefix = self.get_project_prefix(project_id);
+            Ok(format!("{prefix}/{filename}"))
         }
     }
 }

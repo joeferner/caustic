@@ -7,11 +7,17 @@ import { Navbar } from './components/Navbar';
 import { useEffect, type JSX } from 'react';
 import { initializeAtom } from './store';
 import { Header } from './components/Header';
+import { ModalsProvider } from '@mantine/modals';
+import { MantineProvider } from '@mantine/core';
 
 export function App(): JSX.Element {
     return (
         <JotaiProvider>
-            <InnerApp />
+            <MantineProvider>
+                <ModalsProvider>
+                    <InnerApp />
+                </ModalsProvider>
+            </MantineProvider>
         </JotaiProvider>
     );
 }

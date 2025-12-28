@@ -38,6 +38,12 @@ pub struct CopyProjectRequest {
     project_id: String,
 }
 
+#[derive(ToSchema, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteProjectRequest {
+    project_id: String,
+}
+
 #[derive(ToSchema, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetProjectsResponse {
@@ -59,6 +65,19 @@ async fn assert_load_project(
             error!("failed to load project (project id: {project_id}): {err:?}");
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
+    }
+}
+
+async fn assert_load_project_owner(
+    project_service: &ProjectService,
+    project_id: &str,
+    user: &AuthUser,
+) -> Result<Project, StatusCode> {
+    let project = assert_load_project(project_service, project_id, user).await?;
+    if project.owner == user.email {
+        Ok(project)
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
     }
 }
 
@@ -262,6 +281,57 @@ pub async fn create_project(
         })?;
 
     Ok(Json(project))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/v1/project/copy",
+    responses(
+        (status = OK, body = Project),
+        (status = UNAUTHORIZED),
+        (status = INTERNAL_SERVER_ERROR)
+    ),
+    tag = PROJECT_TAG
+)]
+pub async fn delete_project(
+    State(state): State<Arc<AppState>>,
+    user: AuthUser,
+    Json(payload): Json<DeleteProjectRequest>,
+) -> Result<(), StatusCode> {
+    info!(
+        "deleting project (project id: {}, username: {})",
+        payload.project_id, user.email
+    );
+
+    let mut user_data = assert_load_user_data(&state.user_repository, &user).await?;
+    let project =
+        match assert_load_project_owner(&state.project_service, &payload.project_id, &user).await {
+            Ok(project) => project,
+            Err(err) => return Err(err),
+        };
+
+    state
+        .project_repository
+        .delete_project(&payload.project_id)
+        .await
+        .map_err(|err| {
+            error!("failed to delete project files: {err:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // remove project from user data
+    user_data.projects.retain_mut(|p| p.id != project.id);
+
+    state
+        .user_repository
+        .save(&user_data)
+        .await
+        .map_err(|err| {
+            error!("failed to save user: {err:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(())
 }
 
 #[utoipa::path(

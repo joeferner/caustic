@@ -15,6 +15,7 @@
   "dependencies": {
     "@mantine/core": "^8.3.10",
     "@mantine/hooks": "^8.3.10",
+    "@mantine/modals": "^8.3.10",
     "@monaco-editor/react": "^4.7.0",
     "jotai": "^2.16.0",
     "prettier": "^3.7.4",

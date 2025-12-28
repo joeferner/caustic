@@ -1,3 +1,4 @@
+import { modals } from '@mantine/modals';
 import {
     ActionIcon,
     Button,
@@ -7,7 +8,9 @@ import {
     Modal,
     Paper,
     Stack,
+    Text,
     TextInput,
+    Tooltip,
     UnstyledButton,
 } from '@mantine/core';
 import { useCallback, useEffect, useState, type JSX, type MouseEvent } from 'react';
@@ -16,13 +19,14 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import {
     copyProjectAtom,
     createProjectAtom,
+    deleteProjectAtom,
     loadProjectAtom,
     loadProjectsAtom,
     projectsAtom,
     userAtom,
 } from '../store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
-import { Copy as CopyIcon } from 'react-bootstrap-icons';
+import { Copy as CopyIcon, Trash as DeleteIcon } from 'react-bootstrap-icons';
 import type { UserDataProject } from '../api';
 
 export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClose: () => void }): JSX.Element {
@@ -31,6 +35,7 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
     const storeLoadProjects = useSetAtom(loadProjectsAtom);
     const storeLoadProject = useSetAtom(loadProjectAtom);
     const storeCopyProject = useSetAtom(copyProjectAtom);
+    const storeDeleteProject = useSetAtom(deleteProjectAtom);
     const createProject = useSetAtom(createProjectAtom);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<ErrorMessageProps | undefined>(undefined);
@@ -108,6 +113,27 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
         [storeCopyProject, onClose, setError, setLoading]
     );
 
+    const deleteProject = useCallback(
+        (projectId: string): void => {
+            void (async (): Promise<void> => {
+                try {
+                    setLoading(true);
+                    setError(undefined);
+                    await storeDeleteProject({ projectId });
+                } catch (err) {
+                    const message = err instanceof Error ? err.message : 'Unknown error';
+                    setError({
+                        title: 'Error Deleting Project',
+                        message,
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            })();
+        },
+        [storeDeleteProject, setError, setLoading]
+    );
+
     const onCancelClick = useCallback((): void => {
         onClose();
     }, [onClose]);
@@ -167,6 +193,9 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                                 onCopyProject={() => {
                                     copyProject(project.id);
                                 }}
+                                onDeleteProject={() => {
+                                    deleteProject(project.id);
+                                }}
                             />
                         ))}
                     </Stack>
@@ -188,10 +217,12 @@ function ProjectButton({
     project,
     onClick,
     onCopyProject,
+    onDeleteProject,
 }: {
     project: UserDataProject;
     onClick: () => void;
     onCopyProject: () => void;
+    onDeleteProject: () => void;
 }): JSX.Element {
     const onCopyProjectClick = useCallback(
         (event: MouseEvent) => {
@@ -201,20 +232,55 @@ function ProjectButton({
         [onCopyProject]
     );
 
+    const onDeleteProjectClick = useCallback(
+        (event: MouseEvent) => {
+            event.stopPropagation();
+            modals.openConfirmModal({
+                title: 'Delete Project',
+                children: (
+                    <Text size="sm">
+                        Are you sure you want to delete project "{project.name}"? This action cannot be undone.
+                    </Text>
+                ),
+                labels: { confirm: 'Delete', cancel: 'Cancel' },
+                confirmProps: { color: 'red' },
+                onConfirm: () => {
+                    onDeleteProject();
+                },
+                zIndex: 5000,
+            });
+        },
+        [onDeleteProject, project]
+    );
+
     return (
         <Paper key={project.id} onClick={onClick}>
             <div className={classes.projectName}>{project.name}</div>
             <div className={classes.projectActions}>
-                <ActionIcon
-                    onClick={(event) => {
-                        onCopyProjectClick(event);
-                    }}
-                    variant="filled"
-                    size="sm"
-                    aria-label="Clone Project"
-                >
-                    <CopyIcon />
-                </ActionIcon>
+                <Tooltip label="Clone Project" zIndex={5000}>
+                    <ActionIcon
+                        onClick={(event) => {
+                            onCopyProjectClick(event);
+                        }}
+                        variant="filled"
+                        size="sm"
+                    >
+                        <CopyIcon />
+                    </ActionIcon>
+                </Tooltip>
+                {project.readonly ? null : (
+                    <Tooltip label="Delete Project" zIndex={5000}>
+                        <ActionIcon
+                            onClick={(event) => {
+                                onDeleteProjectClick(event);
+                            }}
+                            variant="filled"
+                            size="sm"
+                        >
+                            <DeleteIcon />
+                        </ActionIcon>
+                    </Tooltip>
+                )}
             </div>
         </Paper>
     );

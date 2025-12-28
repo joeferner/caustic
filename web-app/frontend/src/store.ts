@@ -175,6 +175,7 @@ export const createProjectAtom = atom(null, async (_get, set, { name }: { name: 
     const files = await loadProjectFiles(project);
     set(projectAtom, { ...project, readOnly: false });
     set(filesAtom, files);
+    set(lastLoadedProjectIdAtom, project.id);
 });
 
 export const copyProjectAtom = atom(null, async (_get, set, { projectId }: { projectId: string }) => {
@@ -182,6 +183,22 @@ export const copyProjectAtom = atom(null, async (_get, set, { projectId }: { pro
     const files = await loadProjectFiles(newProject);
     set(projectAtom, { ...newProject, readOnly: false });
     set(filesAtom, files);
+    set(lastLoadedProjectIdAtom, newProject.id);
+});
+
+export const deleteProjectAtom = atom(null, async (get, set, { projectId }: { projectId: string }) => {
+    await rayTracerApi.project.deleteProject({ projectId });
+    set(
+        projectsAtom,
+        get(projectsAtom)?.filter((p) => p.id !== projectId)
+    );
+
+    if (projectId == get(projectAtom)?.id) {
+        const newestProject = get(projectsAtom)?.[0];
+        if (newestProject) {
+            await set(loadProjectAtom, { projectId: newestProject.id });
+        }
+    }
 });
 
 export const loadUserMeAtom = atom(null, async (get, set) => {
