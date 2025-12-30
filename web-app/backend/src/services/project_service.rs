@@ -26,15 +26,19 @@ impl ProjectService {
     pub async fn load_project(
         &self,
         project_id: &str,
-        user: &AuthUser,
+        user: &Option<AuthUser>,
     ) -> Result<LoadProjectResult> {
         let project = self.project_repository.load(project_id).await?;
         match project {
             Some(project) => {
-                if project.owner != user.email && project.owner != PROJECT_OWNER_EXAMPLE {
-                    Ok(LoadProjectResult::AccessDenied)
-                } else {
+                if project.owner == PROJECT_OWNER_EXAMPLE {
                     Ok(LoadProjectResult::Project(project))
+                } else if let Some(user) = &user
+                    && project.owner != user.email
+                {
+                    Ok(LoadProjectResult::Project(project))
+                } else {
+                    Ok(LoadProjectResult::AccessDenied)
                 }
             }
             None => Ok(LoadProjectResult::NotFound),

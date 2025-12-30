@@ -22,6 +22,7 @@
         "rustup",
         "Schlick's",
         "serde",
+        "sqlx",
         "thiserror",
         "tmax",
         "tmin",

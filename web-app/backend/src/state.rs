@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    repository::{project_repository::ProjectRepository, user_repository::UserRepository},
+    repository::{
+        create_db_pool, project_repository::ProjectRepository, user_repository::UserRepository,
+    },
     services::{examples_service::ExampleService, project_service::ProjectService},
 };
 use anyhow::Result;
@@ -21,6 +23,7 @@ pub struct AppStateSettings {
     #[serde(default = "default_jwt_expire_duration_hours")]
     pub jwt_expire_duration_hours: u32,
     pub data_bucket: String,
+    pub sqlite_connection_string: String,
 }
 
 #[derive(Clone)]
@@ -53,11 +56,13 @@ impl AppState {
             .await;
         let s3_client = Arc::new(S3Client::new(&config));
 
+        let db_pool = create_db_pool(&settings.sqlite_connection_string).await?;
+
         let project_repository = Arc::new(ProjectRepository::new(
             s3_client.clone(),
             &settings.data_bucket,
         ));
-        let user_repository = Arc::new(UserRepository::new(s3_client, &settings.data_bucket));
+        let user_repository = Arc::new(UserRepository::new(db_pool));
 
         let example_service = Arc::new(ExampleService::new(project_repository.clone()).await?);
 

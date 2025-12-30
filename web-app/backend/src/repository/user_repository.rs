@@ -1,19 +1,17 @@
-use std::sync::Arc;
+use std::collections::HashMap;
 
-use anyhow::{Context, Result};
-use aws_sdk_s3::Client as S3Client;
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::prelude::FromRow;
 use utoipa::ToSchema;
 
-use crate::{
-    routes::user_routes::AuthUser,
-    utils::s3::{email_to_s3_key, read_json_from_s3, write_json_to_s3},
-};
+use crate::{repository::DbPool, routes::user_routes::AuthUser};
 
 #[derive(ToSchema, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserData {
+    pub user_id: String,
     pub email: String,
     pub projects: Vec<UserDataProject>,
     #[schema(value_type = String)]
@@ -31,39 +29,81 @@ pub struct UserDataProject {
 }
 
 pub struct UserRepository {
-    client: Arc<S3Client>,
-    bucket: String,
+    db_pool: DbPool,
 }
 
 impl UserRepository {
-    pub fn new(client: Arc<S3Client>, bucket: &str) -> Self {
-        Self {
-            client,
-            bucket: bucket.to_owned(),
-        }
+    pub fn new(db_pool: DbPool) -> Self {
+        Self { db_pool }
     }
 
     pub async fn load(&self, user: &AuthUser) -> Result<Option<UserData>> {
-        let bucket = &self.bucket;
-        let key = self.get_user_key_from_auth_user(user);
-        read_json_from_s3::<UserData>(&self.client, bucket, &key)
-            .await
-            .with_context(|| format!("loading user (user id: {})", user.email))
+        #[derive(Debug, FromRow)]
+        struct UserProjectRow {
+            user_id: String,
+            user_email: String,
+            user_created: String,
+            project_id: Option<String>,
+            project_name: Option<String>,
+            project_last_modified: Option<String>,
+        }
+
+        let rows = sqlx::query_as::<_, UserProjectRow>(
+            r#"
+            SELECT 
+                u.user_id as user_id,
+                u.email as user_email,
+                u.created as user_created,
+                p.project_id as project_id,
+                p.name as project_name,
+                p.last_modified as project_last_modified
+            FROM caustic_user u
+            LEFT JOIN caustic_project p ON u.user_id = p.owner_user_id
+            WHERE u.user_id = ?
+            ORDER BY p.last_modified DESC
+            "#,
+        )
+        .bind(&user.user_id)
+        .fetch_all(&self.db_pool)
+        .await
+        .context("Failed to read user with projects")?;
+
+        let mut users: HashMap<String, UserData> = HashMap::new();
+
+        for row in rows {
+            let user = users.entry(row.user_id.clone()).or_insert(UserData {
+                user_id: row.user_id,
+                created: row.user_created.parse()?,
+                email: row.user_email,
+                projects: vec![],
+            });
+
+            if let (Some(project_id), Some(project_name), Some(project_last_modified)) =
+                (row.project_id, row.project_name, row.project_last_modified)
+            {
+                user.projects.push(UserDataProject {
+                    id: project_id,
+                    name: project_name,
+                    readonly: false,
+                    last_modified: project_last_modified.parse()?,
+                });
+            }
+        }
+
+        if users.is_empty() {
+            Ok(None)
+        } else if users.len() == 1 {
+            Ok(users.remove(&user.user_id))
+        } else {
+            Err(anyhow!(
+                "expected 1 user but found {} (user_id: {})",
+                users.len(),
+                user.user_id
+            ))
+        }
     }
 
     pub async fn save(&self, data: &UserData) -> Result<()> {
-        let bucket = &self.bucket;
-        let key = self.get_user_key_from_user_data(data);
-        write_json_to_s3(&self.client, bucket, &key, data)
-            .await
-            .with_context(|| format!("saving user (user id: {})", data.email))
-    }
-
-    fn get_user_key_from_auth_user(&self, user: &AuthUser) -> String {
-        format!("store/user/{}.json", email_to_s3_key(&user.email))
-    }
-
-    fn get_user_key_from_user_data(&self, data: &UserData) -> String {
-        format!("store/user/{}.json", email_to_s3_key(&data.email))
+        todo!();
     }
 }

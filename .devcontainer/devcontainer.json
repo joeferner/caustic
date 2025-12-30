@@ -23,7 +23,8 @@
         "streetsidesoftware.code-spell-checker",
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
-        "hashicorp.terraform"
+        "hashicorp.terraform",
+        "yy0931.vscode-sqlite3-editor"
       ]
     }
   }

@@ -20,7 +20,8 @@ RUN \
 # aws cli
 RUN apt-get install -y awscli
 
-# install node
+# install node and sqlx-cli
 USER vscode
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+RUN cargo install sqlx-cli --root ~/.local
 USER root

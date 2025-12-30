@@ -21,7 +21,7 @@ use crate::{
         project_repository::{CONTENT_TYPE_OPENSCAD, Project, ProjectFile},
         user_repository::{UserData, UserDataProject, UserRepository},
     },
-    routes::user_routes::AuthUser,
+    routes::user_routes::{AuthUser, MaybeAuthUser},
     services::project_service::{LoadProjectResult, ProjectService},
     state::AppState,
 };
@@ -53,9 +53,9 @@ pub struct GetProjectsResponse {
 async fn assert_load_project(
     project_service: &ProjectService,
     project_id: &str,
-    user: &AuthUser,
+    user: &Option<AuthUser>,
 ) -> Result<Project, StatusCode> {
-    match project_service.load_project(project_id, user).await {
+    match project_service.load_project(project_id, &user).await {
         Ok(project) => match project {
             LoadProjectResult::Project(project) => Ok(project),
             LoadProjectResult::NotFound => Err(StatusCode::NOT_FOUND),
@@ -71,10 +71,12 @@ async fn assert_load_project(
 async fn assert_load_project_owner(
     project_service: &ProjectService,
     project_id: &str,
-    user: &AuthUser,
+    user: &Option<AuthUser>,
 ) -> Result<Project, StatusCode> {
     let project = assert_load_project(project_service, project_id, user).await?;
-    if project.owner == user.email {
+    if let Some(user) = user
+        && project.owner == user.user_id
+    {
         Ok(project)
     } else {
         Err(StatusCode::UNAUTHORIZED)
@@ -107,17 +109,22 @@ async fn assert_load_user_data(
 )]
 pub async fn get_projects(
     State(state): State<Arc<AppState>>,
-    user: AuthUser,
+    user: MaybeAuthUser,
 ) -> Result<Json<GetProjectsResponse>, StatusCode> {
-    let user_data = state.user_repository.load(&user).await.map_err(|err| {
-        error!("failed to load user data: {err:?}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let mut projects = vec![];
 
-    let mut projects = match user_data {
-        Some(user_data) => user_data.projects,
-        None => vec![],
-    };
+    if let Some(user) = user.user {
+        let user_data = state.user_repository.load(&user).await.map_err(|err| {
+            error!("failed to load user data: {err:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        if let Some(user_data) = user_data {
+            for project in user_data.projects {
+                projects.push(project);
+            }
+        }
+    }
 
     for example in &state.example_service.examples {
         projects.push(example.clone());
@@ -141,10 +148,10 @@ pub async fn get_projects(
 )]
 pub async fn get_project(
     State(state): State<Arc<AppState>>,
-    user: AuthUser,
+    user: MaybeAuthUser,
     Path(project_id): Path<String>,
 ) -> Result<Json<Project>, StatusCode> {
-    match assert_load_project(&state.project_service, &project_id, &user).await {
+    match assert_load_project(&state.project_service, &project_id, &user.user).await {
         Ok(project) => Ok(Json(project)),
         Err(err) => Err(err),
     }
@@ -162,10 +169,10 @@ pub async fn get_project(
 )]
 pub async fn get_project_file(
     State(state): State<Arc<AppState>>,
-    user: AuthUser,
+    user: MaybeAuthUser,
     Path((project_id, filename)): Path<(String, String)>,
 ) -> Result<Response, StatusCode> {
-    assert_load_project(&state.project_service, &project_id, &user).await?;
+    assert_load_project(&state.project_service, &project_id, &user.user).await?;
 
     let file_data = state
         .project_repository
@@ -305,7 +312,9 @@ pub async fn delete_project(
 
     let mut user_data = assert_load_user_data(&state.user_repository, &user).await?;
     let project =
-        match assert_load_project_owner(&state.project_service, &payload.project_id, &user).await {
+        match assert_load_project_owner(&state.project_service, &payload.project_id, &Some(user))
+            .await
+        {
             Ok(project) => project,
             Err(err) => return Err(err),
         };
@@ -357,7 +366,7 @@ pub async fn copy_project(
     let mut user_data = assert_load_user_data(&state.user_repository, &user).await?;
 
     let existing_project =
-        match assert_load_project(&state.project_service, &payload.project_id, &user).await {
+        match assert_load_project(&state.project_service, &payload.project_id, &Some(user)).await {
             Ok(project) => project,
             Err(err) => return Err(err),
         };
@@ -365,7 +374,7 @@ pub async fn copy_project(
     let mut new_project = Project {
         id: Uuid::new_v4().to_string(),
         name: format!("{} Copy", existing_project.name),
-        owner: user.email,
+        owner: user_data.user_id.clone(),
         files: vec![],
         last_modified: Utc::now(),
     };
