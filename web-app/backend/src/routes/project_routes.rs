@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use aws_sdk_s3::primitives::ByteStream;
 use axum::{
     Json,
     body::Body,
@@ -9,7 +8,7 @@ use axum::{
     response::Response,
 };
 use chrono::Utc;
-use log::{error, info};
+use log::{error, info, warn};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -55,7 +54,7 @@ async fn assert_load_project(
     project_id: &str,
     user: &Option<AuthUser>,
 ) -> Result<Project, StatusCode> {
-    match project_service.load_project(project_id, &user).await {
+    match project_service.load_project(project_id, user).await {
         Ok(project) => match project {
             LoadProjectResult::Project(project) => Ok(project),
             LoadProjectResult::NotFound => Err(StatusCode::NOT_FOUND),
@@ -75,7 +74,7 @@ async fn assert_load_project_owner(
 ) -> Result<Project, StatusCode> {
     let project = assert_load_project(project_service, project_id, user).await?;
     if let Some(user) = user
-        && project.owner == user.user_id
+        && project.owner_user_id == user.user_id
     {
         Ok(project)
     } else {
@@ -88,7 +87,7 @@ async fn assert_load_user_data(
     user: &AuthUser,
 ) -> Result<UserData, StatusCode> {
     user_repository
-        .load(user)
+        .find_by_user_id(&user.user_id)
         .await
         .map_err(|err| {
             error!("failed to load user: {err:?}");
@@ -111,13 +110,17 @@ pub async fn get_projects(
     State(state): State<Arc<AppState>>,
     user: MaybeAuthUser,
 ) -> Result<Json<GetProjectsResponse>, StatusCode> {
-    let mut projects = vec![];
+    let mut projects: Vec<UserDataProject> = vec![];
 
     if let Some(user) = user.user {
-        let user_data = state.user_repository.load(&user).await.map_err(|err| {
-            error!("failed to load user data: {err:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        let user_data = state
+            .user_repository
+            .find_by_user_id(&user.user_id)
+            .await
+            .map_err(|err| {
+                error!("failed to load user data: {err:?}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
         if let Some(user_data) = user_data {
             for project in user_data.projects {
@@ -126,8 +129,21 @@ pub async fn get_projects(
         }
     }
 
-    for example in &state.example_service.examples {
-        projects.push(example.clone());
+    let example_projects = state
+        .project_service
+        .get_example_projects()
+        .await
+        .map_err(|err| {
+            error!("failed to load example projects: {err:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+    for project in example_projects {
+        projects.push(UserDataProject {
+            id: project.id,
+            name: project.name,
+            last_modified: project.last_modified,
+            readonly: true,
+        });
     }
 
     let response = GetProjectsResponse { projects };
@@ -172,11 +188,17 @@ pub async fn get_project_file(
     user: MaybeAuthUser,
     Path((project_id, filename)): Path<(String, String)>,
 ) -> Result<Response, StatusCode> {
-    assert_load_project(&state.project_service, &project_id, &user.user).await?;
+    let project = assert_load_project(&state.project_service, &project_id, &user.user).await?;
+    let project_file = project.files.iter().find(|f| f.filename == filename);
+    let project_file = if let Some(project_file) = project_file {
+        project_file
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
 
     let file_data = state
         .project_repository
-        .load_file(&project_id, &filename)
+        .load_project_file_data(&project_id, &filename)
         .await
         .map_err(|err| {
             error!("failed to load project file: {err:?}");
@@ -184,11 +206,7 @@ pub async fn get_project_file(
         })?;
 
     if let Some(file_data) = file_data {
-        let bytes = file_data.body.collect().await.map_err(|err| {
-            error!("failed to load file data bytes: {err:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-        let body = Body::from(bytes.into_bytes());
+        let body = Body::from(file_data);
         let mut response = Response::new(body);
         response.headers_mut().insert(
             header::CONTENT_DISPOSITION,
@@ -200,17 +218,19 @@ pub async fn get_project_file(
             )?,
         );
 
-        if let Some(content_type) = file_data.content_type {
-            response.headers_mut().insert(
-                header::CONTENT_TYPE,
-                content_type
-                    .parse()
-                    .unwrap_or_else(|_| "application/octet-stream".parse().unwrap()),
-            );
-        }
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            project_file
+                .content_type
+                .parse()
+                .unwrap_or_else(|_| "application/octet-stream".parse().unwrap()),
+        );
 
         Ok(response)
     } else {
+        warn!(
+            "found project file but missing file data (project_id: {project_id}, filename: {filename})"
+        );
         Err(StatusCode::NOT_FOUND)
     }
 }
@@ -230,62 +250,62 @@ pub async fn create_project(
     user: AuthUser,
     Json(payload): Json<CreateProjectRequest>,
 ) -> Result<Json<Project>, StatusCode> {
+    let now = Utc::now();
+
     info!(
-        "creating project (name: {}, username: {})",
-        payload.name, user.email
+        "creating project (name: {}, user_id: {})",
+        payload.name, user.user_id
     );
 
-    let mut user_data = assert_load_user_data(&state.user_repository, &user).await?;
+    assert_load_user_data(&state.user_repository, &user).await?;
 
+    // create project
     let project_id = Uuid::new_v4().to_string();
 
-    let file = ProjectFile {
-        filename: "main.scad".to_string(),
-    };
-    let project = Project {
+    let mut project = Project {
         id: project_id.clone(),
-        owner: user.email,
+        owner_user_id: user.user_id,
         name: payload.name.clone(),
         last_modified: Utc::now(),
-        files: vec![file],
+        files: vec![],
     };
-
-    user_data.projects.push(UserDataProject {
-        id: project_id,
-        readonly: false,
-        name: payload.name,
-        last_modified: Utc::now(),
-    });
-
     state
         .project_repository
-        .save_file(
+        .insert_or_update_project(
             &project.id,
-            "main.scad",
-            CONTENT_TYPE_OPENSCAD,
-            ByteStream::from("".to_string().into_bytes()),
+            &project.name,
+            &project.owner_user_id,
+            &now,
+            &now,
+        )
+        .await
+        .map_err(|err| {
+            error!("failed to save project: {err:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // create project file
+    let file = ProjectFile {
+        filename: "main.scad".to_string(),
+        content_type: CONTENT_TYPE_OPENSCAD.to_string(),
+    };
+    let contents = "".to_string().into_bytes();
+    state
+        .project_repository
+        .insert_or_update_project_file(
+            &project_id,
+            &file.filename,
+            &file.content_type,
+            &now,
+            &now,
+            &contents,
         )
         .await
         .map_err(|err| {
             error!("failed to save project file: {err:?}");
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-    state
-        .project_repository
-        .save(&project)
-        .await
-        .map_err(|err| {
-            error!("failed to save project: {err:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-    state
-        .user_repository
-        .save(&user_data)
-        .await
-        .map_err(|err| {
-            error!("failed to save user: {err:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+    project.files.push(file);
 
     Ok(Json(project))
 }
@@ -306,8 +326,8 @@ pub async fn delete_project(
     Json(payload): Json<DeleteProjectRequest>,
 ) -> Result<(), StatusCode> {
     info!(
-        "deleting project (project id: {}, username: {})",
-        payload.project_id, user.email
+        "deleting project (project id: {}, user_id: {})",
+        payload.project_id, user.user_id
     );
 
     let mut user_data = assert_load_user_data(&state.user_repository, &user).await?;
@@ -331,15 +351,6 @@ pub async fn delete_project(
     // remove project from user data
     user_data.projects.retain_mut(|p| p.id != project.id);
 
-    state
-        .user_repository
-        .save(&user_data)
-        .await
-        .map_err(|err| {
-            error!("failed to save user: {err:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
     Ok(())
 }
 
@@ -358,12 +369,14 @@ pub async fn copy_project(
     user: AuthUser,
     Json(payload): Json<CopyProjectRequest>,
 ) -> Result<Json<Project>, StatusCode> {
+    let now = Utc::now();
+
     info!(
-        "copying project (project id: {}, username: {})",
-        payload.project_id, user.email
+        "copying project (project id: {}, user_id: {})",
+        payload.project_id, user.user_id
     );
 
-    let mut user_data = assert_load_user_data(&state.user_repository, &user).await?;
+    let user_data = assert_load_user_data(&state.user_repository, &user).await?;
 
     let existing_project =
         match assert_load_project(&state.project_service, &payload.project_id, &Some(user)).await {
@@ -374,10 +387,24 @@ pub async fn copy_project(
     let mut new_project = Project {
         id: Uuid::new_v4().to_string(),
         name: format!("{} Copy", existing_project.name),
-        owner: user_data.user_id.clone(),
+        owner_user_id: user_data.user_id.clone(),
         files: vec![],
         last_modified: Utc::now(),
     };
+    state
+        .project_repository
+        .insert_or_update_project(
+            &new_project.id,
+            &new_project.name,
+            &new_project.owner_user_id,
+            &now,
+            &now,
+        )
+        .await
+        .map_err(|err| {
+            error!("failed to load user: {err:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     for file in &existing_project.files {
         state
@@ -390,33 +417,9 @@ pub async fn copy_project(
             })?;
         new_project.files.push(ProjectFile {
             filename: file.filename.to_owned(),
+            content_type: file.content_type.to_owned(),
         });
     }
-
-    state
-        .project_repository
-        .save(&new_project)
-        .await
-        .map_err(|err| {
-            error!("failed to load user: {err:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    user_data.projects.push(UserDataProject {
-        id: new_project.id.to_owned(),
-        readonly: false,
-        name: new_project.name.to_owned(),
-        last_modified: Utc::now(),
-    });
-
-    state
-        .user_repository
-        .save(&user_data)
-        .await
-        .map_err(|err| {
-            error!("failed to save user: {err:?}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
 
     Ok(Json(new_project))
 }

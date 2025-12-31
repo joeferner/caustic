@@ -46,6 +46,17 @@ pub struct AuthUser {
     pub picture: Option<String>,
 }
 
+impl AuthUser {
+    fn from_claims(claims: &Claims) -> AuthUser {
+        AuthUser {
+            user_id: claims.sub.clone(),
+            email: claims.email.clone(),
+            name: claims.name.clone(),
+            picture: claims.picture.clone(),
+        }
+    }
+}
+
 impl FromRequestParts<Arc<AppState>> for AuthUser {
     type Rejection = StatusCode;
 
@@ -75,12 +86,7 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
         )
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
-        Ok(AuthUser {
-            user_id: token_data.claims.sub,
-            email: token_data.claims.email,
-            name: token_data.claims.name,
-            picture: token_data.claims.picture,
-        })
+        Ok(AuthUser::from_claims(&token_data.claims))
     }
 }
 
@@ -187,8 +193,20 @@ pub async fn google_token_verify(
         exp: exp.timestamp() as usize,
     };
 
-    let jwt_token = generate_jwt(&claims, &state.settings.jwt_secret)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let jwt_token = generate_jwt(&claims, &state.settings.jwt_secret).map_err(|err| {
+        error!("failed to generate jwt: {err:?}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let auth_user = AuthUser::from_claims(&claims);
+    state
+        .user_service
+        .load_or_create_user(&auth_user)
+        .await
+        .map_err(|err| {
+            error!("failed to load or create user: {err:?}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     Ok(Json(AuthResponse {
         token: jwt_token,

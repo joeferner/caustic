@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use utoipa::ToSchema;
 
-use crate::{repository::DbPool, routes::user_routes::AuthUser};
+use crate::repository::DbPool;
 
 #[derive(ToSchema, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,7 +37,7 @@ impl UserRepository {
         Self { db_pool }
     }
 
-    pub async fn load(&self, user: &AuthUser) -> Result<Option<UserData>> {
+    pub async fn find_by_user_id(&self, user_id: &str) -> Result<Option<UserData>> {
         #[derive(Debug, FromRow)]
         struct UserProjectRow {
             user_id: String,
@@ -63,7 +63,7 @@ impl UserRepository {
             ORDER BY p.last_modified DESC
             "#,
         )
-        .bind(&user.user_id)
+        .bind(user_id)
         .fetch_all(&self.db_pool)
         .await
         .context("Failed to read user with projects")?;
@@ -93,17 +93,25 @@ impl UserRepository {
         if users.is_empty() {
             Ok(None)
         } else if users.len() == 1 {
-            Ok(users.remove(&user.user_id))
+            Ok(users.remove(user_id))
         } else {
             Err(anyhow!(
                 "expected 1 user but found {} (user_id: {})",
                 users.len(),
-                user.user_id
+                user_id
             ))
         }
     }
 
-    pub async fn save(&self, data: &UserData) -> Result<()> {
-        todo!();
+    pub async fn create(&self, data: &UserData) -> Result<()> {
+        sqlx::query("INSERT INTO caustic_user (user_id, email, created) VALUES (?, ?, ?)")
+            .bind(&data.user_id)
+            .bind(&data.email)
+            .bind(data.created)
+            .execute(&self.db_pool)
+            .await
+            .context("Failed to insert user")?;
+
+        Ok(())
     }
 }

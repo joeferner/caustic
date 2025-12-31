@@ -6,12 +6,16 @@ import type { JSX } from 'react';
 import { registerOpenscadLanguage } from '../monaco-openscad';
 import { useAtomValue, useSetAtom } from 'jotai';
 
-export function Files(): JSX.Element {
+export function Files(): JSX.Element | null {
     const files = useAtomValue(filesAtom);
     const updateFile = useSetAtom(updateFileAtom);
 
+    if (files.length === 0) {
+        return null;
+    }
+
     return (
-        <Tabs defaultValue="main.scad" className={classes.tabs}>
+        <Tabs defaultValue={files[0].filename} className={classes.tabs}>
             <Tabs.List>
                 {files.map((file) => {
                     return (

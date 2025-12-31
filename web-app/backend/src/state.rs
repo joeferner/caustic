@@ -1,14 +1,12 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     repository::{
         create_db_pool, project_repository::ProjectRepository, user_repository::UserRepository,
     },
-    services::{examples_service::ExampleService, project_service::ProjectService},
+    services::{project_service::ProjectService, user_service::UserService},
 };
 use anyhow::Result;
-use aws_config::{BehaviorVersion, meta::region::RegionProviderChain};
-use aws_sdk_s3::Client as S3Client;
 use dotenvy;
 use serde::Deserialize;
 
@@ -22,8 +20,8 @@ pub struct AppStateSettings {
     pub bind: String,
     #[serde(default = "default_jwt_expire_duration_hours")]
     pub jwt_expire_duration_hours: u32,
-    pub data_bucket: String,
     pub sqlite_connection_string: String,
+    pub data_path: PathBuf,
 }
 
 #[derive(Clone)]
@@ -32,7 +30,7 @@ pub struct AppState {
     pub project_repository: Arc<ProjectRepository>,
     pub user_repository: Arc<UserRepository>,
     pub project_service: Arc<ProjectService>,
-    pub example_service: Arc<ExampleService>,
+    pub user_service: Arc<UserService>,
 }
 
 fn default_bind() -> String {
@@ -49,22 +47,13 @@ impl AppState {
 
         let settings = Arc::new(envy::prefixed("RAYTRACE_").from_env::<AppStateSettings>()?);
 
-        let region_provider = RegionProviderChain::default_provider().or_else("us-east-1");
-        let config = aws_config::defaults(BehaviorVersion::v2025_08_07())
-            .region(region_provider)
-            .load()
-            .await;
-        let s3_client = Arc::new(S3Client::new(&config));
-
         let db_pool = create_db_pool(&settings.sqlite_connection_string).await?;
 
-        let project_repository = Arc::new(ProjectRepository::new(
-            s3_client.clone(),
-            &settings.data_bucket,
-        ));
+        let project_repository =
+            Arc::new(ProjectRepository::new(db_pool.clone(), &settings.data_path));
         let user_repository = Arc::new(UserRepository::new(db_pool));
 
-        let example_service = Arc::new(ExampleService::new(project_repository.clone()).await?);
+        let user_service = Arc::new(UserService::new(user_repository.clone()));
 
         let project_service = Arc::new(ProjectService::new(project_repository.clone()));
 
@@ -72,7 +61,7 @@ impl AppState {
             settings,
             project_repository,
             user_repository,
-            example_service,
+            user_service,
             project_service,
         })
     }

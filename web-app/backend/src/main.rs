@@ -5,6 +5,9 @@ pub mod state;
 pub mod utils;
 
 use anyhow::Result;
+use axum::extract::Request;
+use axum::middleware::{self, Next};
+use axum::response::Response;
 use clap::Parser;
 use env_logger::Env;
 
@@ -46,18 +49,6 @@ struct Args {
     write_swagger: Option<String>,
 }
 
-fn build_api_router() -> OpenApiRouter<Arc<AppState>> {
-    OpenApiRouter::with_openapi(ApiDoc::openapi())
-        .routes(routes!(get_user_me))
-        .routes(routes!(google_token_verify))
-        .routes(routes!(get_project))
-        .routes(routes!(get_projects))
-        .routes(routes!(get_project_file))
-        .routes(routes!(create_project))
-        .routes(routes!(copy_project))
-        .routes(routes!(delete_project))
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let env = Env::default().default_filter_or("info");
@@ -94,4 +85,28 @@ async fn main() -> Result<()> {
     println!("listening http://{bind}");
     axum::serve(listener, router).await?;
     Ok(())
+}
+
+fn build_api_router() -> OpenApiRouter<Arc<AppState>> {
+    OpenApiRouter::with_openapi(ApiDoc::openapi())
+        .routes(routes!(get_user_me))
+        .routes(routes!(google_token_verify))
+        .routes(routes!(get_project))
+        .routes(routes!(get_projects))
+        .routes(routes!(get_project_file))
+        .routes(routes!(create_project))
+        .routes(routes!(copy_project))
+        .routes(routes!(delete_project))
+        .layer(middleware::from_fn(access_logs))
+}
+
+async fn access_logs(req: Request, next: Next) -> Response {
+    let method = req.method().clone();
+    let uri = req.uri().clone();
+
+    let response = next.run(req).await;
+
+    info!("{} {} -> {}", method, uri, response.status());
+
+    response
 }

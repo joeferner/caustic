@@ -5,8 +5,9 @@ use anyhow::Result;
 use crate::{
     repository::project_repository::{Project, ProjectRepository},
     routes::user_routes::AuthUser,
-    services::examples_service::PROJECT_OWNER_EXAMPLE,
 };
+
+pub const PROJECT_EXAMPLE_OWNER_ID: &str = "examples";
 
 pub enum LoadProjectResult {
     Project(Project),
@@ -28,13 +29,16 @@ impl ProjectService {
         project_id: &str,
         user: &Option<AuthUser>,
     ) -> Result<LoadProjectResult> {
-        let project = self.project_repository.load(project_id).await?;
+        let project = self
+            .project_repository
+            .find_by_project_id(project_id)
+            .await?;
         match project {
             Some(project) => {
-                if project.owner == PROJECT_OWNER_EXAMPLE {
+                if project.owner_user_id == PROJECT_EXAMPLE_OWNER_ID {
                     Ok(LoadProjectResult::Project(project))
                 } else if let Some(user) = &user
-                    && project.owner != user.email
+                    && project.owner_user_id != user.user_id
                 {
                     Ok(LoadProjectResult::Project(project))
                 } else {
@@ -43,5 +47,11 @@ impl ProjectService {
             }
             None => Ok(LoadProjectResult::NotFound),
         }
+    }
+
+    pub async fn get_example_projects(&self) -> Result<Vec<Project>> {
+        self.project_repository
+            .find_by_owner_user_id(PROJECT_EXAMPLE_OWNER_ID)
+            .await
     }
 }

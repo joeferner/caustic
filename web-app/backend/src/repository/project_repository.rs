@@ -1,21 +1,22 @@
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result, anyhow};
-use aws_sdk_s3::{Client as S3Client, primitives::ByteStream};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::prelude::FromRow;
 use utoipa::ToSchema;
 
-use crate::utils::s3::{
-    ReadFromS3Data, copy_s3_file, delete_s3_objects_with_prefix, read_from_s3, read_json_from_s3,
-    write_json_to_s3, write_to_s3,
-};
+use crate::repository::DbPool;
 
 #[derive(ToSchema, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Project {
     pub id: String,
-    pub owner: String,
+    pub owner_user_id: String,
     pub name: String,
     #[schema(value_type = String)]
     pub last_modified: DateTime<Utc>,
@@ -26,67 +27,168 @@ pub struct Project {
 #[serde(rename_all = "camelCase")]
 pub struct ProjectFile {
     pub filename: String,
+    pub content_type: String,
+}
+
+#[derive(Debug, FromRow)]
+struct ProjectProjectFileRow {
+    pub project_id: String,
+    pub project_owner_user_id: String,
+    pub project_name: String,
+    pub project_last_modified: String,
+    pub project_file_filename: Option<String>,
+    pub project_file_content_type: Option<String>,
+}
+
+pub struct ReadProjectFileData {
+    pub content_type: Option<String>,
+    pub body: Vec<u8>,
 }
 
 pub struct ProjectRepository {
-    client: Arc<S3Client>,
-    bucket: String,
+    db_pool: DbPool,
+    data_path: PathBuf,
 }
 
 pub const CONTENT_TYPE_OPENSCAD: &str = "application/x-openscad";
 
 impl ProjectRepository {
-    pub fn new(client: Arc<S3Client>, bucket: &str) -> Self {
+    pub fn new(db_pool: DbPool, data_path: &Path) -> Self {
         Self {
-            client,
-            bucket: bucket.to_owned(),
+            db_pool,
+            data_path: data_path.to_path_buf(),
         }
     }
 
-    pub async fn load(&self, project_id: &str) -> Result<Option<Project>> {
-        let bucket = &self.bucket;
-        let key = self.get_project_json_key(project_id);
-        read_json_from_s3::<Project>(&self.client, bucket, &key)
-            .await
-            .with_context(|| format!("loading project {project_id}"))
+    pub async fn find_by_owner_user_id(&self, owner_user_id: &str) -> Result<Vec<Project>> {
+        let rows = sqlx::query_as::<_, ProjectProjectFileRow>(
+            r#"
+            SELECT 
+                p.project_id AS project_id,
+                p.owner_user_id AS project_owner_user_id,
+                p.name AS project_name,
+                p.last_modified AS project_last_modified,
+                pf.filename AS project_file_filename,
+                pf.content_type AS project_file_content_type
+            FROM caustic_project p
+            LEFT JOIN caustic_project_file pf ON p.project_id = pf.project_id
+            WHERE p.owner_user_id = ?
+            ORDER BY p.last_modified DESC
+            "#,
+        )
+        .bind(owner_user_id)
+        .fetch_all(&self.db_pool)
+        .await
+        .context("Failed to read project with project files")?;
+
+        project_project_file_rows_to_projects(rows)
     }
 
-    pub async fn load_file(
+    pub async fn find_by_project_id(&self, project_id: &str) -> Result<Option<Project>> {
+        let rows = sqlx::query_as::<_, ProjectProjectFileRow>(
+            r#"
+            SELECT 
+                p.project_id AS project_id,
+                p.owner_user_id AS project_owner_user_id,
+                p.name AS project_name,
+                p.last_modified AS project_last_modified,
+                pf.filename AS project_file_filename,
+                pf.content_type AS project_file_content_type
+            FROM caustic_project p
+            LEFT JOIN caustic_project_file pf ON p.project_id = pf.project_id
+            WHERE p.project_id = ?
+            ORDER BY p.last_modified DESC
+            "#,
+        )
+        .bind(project_id)
+        .fetch_all(&self.db_pool)
+        .await
+        .context("Failed to read project with project files")?;
+
+        let mut projects = project_project_file_rows_to_projects(rows)?;
+        if projects.is_empty() {
+            Ok(None)
+        } else if projects.len() == 1 {
+            Ok(projects.pop())
+        } else {
+            Err(anyhow!("expected 1 project but found {}", projects.len()))
+        }
+    }
+
+    pub async fn load_project_file_data(
         &self,
         project_id: &str,
         filename: &str,
-    ) -> Result<Option<ReadFromS3Data>> {
-        let bucket = &self.bucket;
-        let key = self.get_project_file_key(project_id, filename)?;
-        read_from_s3(&self.client, bucket, &key)
-            .await
-            .with_context(|| {
-                format!("loading project file (project id: {project_id}, filename: {filename})")
-            })
+    ) -> Result<Option<Vec<u8>>> {
+        let path = self.data_path.join(project_id).join(filename);
+        if path.exists() {
+            let contents = fs::read(&path).with_context(|| format!("loading file {path:?}"))?;
+            Ok(Some(contents))
+        } else {
+            Ok(None)
+        }
     }
 
-    pub async fn save(&self, project: &Project) -> Result<()> {
-        let bucket = &self.bucket;
-        let key = self.get_project_json_key(&project.id);
-        write_json_to_s3(&self.client, bucket, &key, project)
-            .await
-            .with_context(|| format!("saving project (project id: {}", project.id))
+    pub async fn insert_or_update_project(
+        &self,
+        project_id: &str,
+        name: &str,
+        owner_user_id: &str,
+        created: &DateTime<Utc>,
+        last_modified: &DateTime<Utc>,
+    ) -> Result<()> {
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO caustic_project (
+                project_id,
+                name,
+                owner_user_id,
+                created,
+                last_modified
+            ) VALUES (?, ?, ?, ?, ?)"#,
+        )
+        .bind(project_id)
+        .bind(name)
+        .bind(owner_user_id)
+        .bind(created)
+        .bind(last_modified)
+        .execute(&self.db_pool)
+        .await
+        .context("Failed to insert or update project")?;
+        Ok(())
     }
 
-    pub async fn save_file(
+    pub async fn insert_or_update_project_file(
         &self,
         project_id: &str,
         filename: &str,
         content_type: &str,
-        data: ByteStream,
+        created: &DateTime<Utc>,
+        last_modified: &DateTime<Utc>,
+        data: &Vec<u8>,
     ) -> Result<()> {
-        let bucket = &self.bucket;
-        let key = self.get_project_file_key(project_id, filename)?;
-        write_to_s3(&self.client, bucket, &key, content_type, data)
-            .await
-            .with_context(|| {
-                format!("saving project file (project id: {project_id}, filename: {filename})")
-            })
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO caustic_project_file (
+                project_id,
+                filename,
+                content_type,
+                created,
+                last_modified
+            ) VALUES (?, ?, ?, ?, ?)"#,
+        )
+        .bind(project_id)
+        .bind(filename)
+        .bind(content_type)
+        .bind(created)
+        .bind(last_modified)
+        .execute(&self.db_pool)
+        .await
+        .context("Failed to insert or update project file")?;
+
+        let path = self.data_path.join(project_id).join(filename);
+        fs::write(&path, data).with_context(|| format!("saving file {path:?}"))?;
+        Ok(())
     }
 
     pub async fn copy_file(
@@ -95,40 +197,35 @@ impl ProjectRepository {
         to_project_id: &str,
         filename: &str,
     ) -> Result<()> {
-        let bucket = &self.bucket;
-        let from_key = self.get_project_file_key(from_project_id, filename)?;
-        let to_key = self.get_project_file_key(to_project_id, filename)?;
-        copy_s3_file(&self.client, bucket, &from_key, &to_key)
-            .await
-            .with_context(|| {
-                format!("copying project file (from project id: {from_project_id}, to project id: {to_project_id}, filename: {filename})")
-            })
+        todo!("copy file {from_project_id} {to_project_id} {filename}");
     }
 
     pub async fn delete_project(&self, project_id: &str) -> Result<()> {
-        let prefix = self.get_project_prefix(project_id);
-        delete_s3_objects_with_prefix(&self.client, &self.bucket, &prefix)
-            .await
-            .with_context(|| {
-                format!("deleting project files (project id: {project_id}, prefix: {prefix})")
-            })
+        todo!("delete project {project_id}");
     }
+}
 
-    fn get_project_prefix(&self, project_id: &str) -> String {
-        format!("store/project/{}", project_id)
-    }
+fn project_project_file_rows_to_projects(rows: Vec<ProjectProjectFileRow>) -> Result<Vec<Project>> {
+    let mut projects: HashMap<String, Project> = HashMap::new();
 
-    fn get_project_json_key(&self, project_id: &str) -> String {
-        let prefix = self.get_project_prefix(project_id);
-        format!("{prefix}/project.json")
-    }
+    for row in rows {
+        let project = projects.entry(row.project_id.clone()).or_insert(Project {
+            id: row.project_id,
+            owner_user_id: row.project_owner_user_id,
+            name: row.project_name,
+            last_modified: row.project_last_modified.parse()?,
+            files: vec![],
+        });
 
-    fn get_project_file_key(&self, project_id: &str, filename: &str) -> Result<String> {
-        if filename == "project.json" {
-            Err(anyhow!("invalid filename, cannot be project.json"))
-        } else {
-            let prefix = self.get_project_prefix(project_id);
-            Ok(format!("{prefix}/{filename}"))
+        if let (Some(project_file_filename), Some(project_file_content_type)) =
+            (row.project_file_filename, row.project_file_content_type)
+        {
+            project.files.push(ProjectFile {
+                filename: project_file_filename,
+                content_type: project_file_content_type,
+            });
         }
     }
+
+    Ok(projects.into_values().collect())
 }

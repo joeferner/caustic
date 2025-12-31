@@ -133,6 +133,8 @@ export const handleLogOutAtom = atom(null, (_get, set) => {
 async function loadProjectFiles(project: Project): Promise<WorkingFile[]> {
     return await Promise.all(
         project.files.map(async (f) => {
+            console.log(`getting project file (projectId: ${project.id}, filename: ${f.filename})`);
+
             // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const contents = await rayTracerApi.project.getProjectFile(project.id, f.filename);
             if (R.isString(contents)) {
@@ -163,6 +165,7 @@ export const loadProjectAtom = atom(null, async (get, set, { projectId }: { proj
     if (!userProject) {
         throw new Error(`project ${projectId} not found in user projects`);
     }
+    console.log(`getting project (projectId: ${projectId})`);
     const project = await rayTracerApi.project.getProject(projectId);
     const files = await loadProjectFiles(project);
     set(projectAtom, { ...project, readOnly: userProject.readonly });
