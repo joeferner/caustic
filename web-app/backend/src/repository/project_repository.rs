@@ -194,17 +194,26 @@ impl ProjectRepository {
         Ok(())
     }
 
-    pub async fn copy_file(
-        &self,
-        from_project_id: &str,
-        to_project_id: &str,
-        filename: &str,
-    ) -> Result<()> {
-        todo!("copy file {from_project_id} {to_project_id} {filename}");
-    }
-
     pub async fn delete_project(&self, project_id: &str) -> Result<()> {
-        todo!("delete project {project_id}");
+        let project_path = self.data_path.join(project_id);
+        if fs::exists(&project_path)? {
+            fs::remove_dir_all(&project_path)
+                .with_context(|| format!("Failed to delete project directory {project_path:?}"))?;
+        }
+
+        sqlx::query("DELETE FROM caustic_project_file WHERE project_id = ?")
+            .bind(project_id)
+            .execute(&self.db_pool)
+            .await
+            .context("Failed to delete project files")?;
+
+        sqlx::query("DELETE FROM caustic_project WHERE project_id = ?")
+            .bind(project_id)
+            .execute(&self.db_pool)
+            .await
+            .context("Failed to delete project")?;
+
+        Ok(())
     }
 }
 

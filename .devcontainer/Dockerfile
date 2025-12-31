@@ -17,9 +17,6 @@ RUN \
   && apt update \
   && apt-get install terraform
 
-# aws cli
-RUN apt-get install -y awscli
-
 # install node and sqlx-cli
 USER vscode
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash

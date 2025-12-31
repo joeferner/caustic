@@ -330,14 +330,8 @@ pub async fn delete_project(
         payload.project_id, user.user_id
     );
 
-    let mut user_data = assert_load_user_data(&state.user_repository, &user).await?;
-    let project =
-        match assert_load_project_owner(&state.project_service, &payload.project_id, &Some(user))
-            .await
-        {
-            Ok(project) => project,
-            Err(err) => return Err(err),
-        };
+    assert_load_user_data(&state.user_repository, &user).await?;
+    assert_load_project_owner(&state.project_service, &payload.project_id, &Some(user)).await?;
 
     state
         .project_repository
@@ -347,9 +341,6 @@ pub async fn delete_project(
             error!("failed to delete project files: {err:?}");
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
-
-    // remove project from user data
-    user_data.projects.retain_mut(|p| p.id != project.id);
 
     Ok(())
 }
@@ -407,12 +398,43 @@ pub async fn copy_project(
         })?;
 
     for file in &existing_project.files {
-        state
+        let data = state
             .project_repository
-            .copy_file(&existing_project.id, &new_project.id, &file.filename)
+            .load_project_file_data(&existing_project.id, &file.filename)
             .await
             .map_err(|err| {
-                error!("failed to copy file: {err:?}");
+                error!(
+                    "failed to read existing project file (project_id: {}, filename: {}): {err:?}",
+                    existing_project.id, file.filename
+                );
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+        let data = if let Some(data) = data {
+            data
+        } else {
+            error!(
+                "missing existing project file data (project_id: {}, filename: {})",
+                existing_project.id, file.filename
+            );
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        };
+
+        state
+            .project_repository
+            .insert_or_update_project_file(
+                &new_project.id,
+                &file.filename,
+                &file.content_type,
+                &now,
+                &now,
+                &data,
+            )
+            .await
+            .map_err(|err| {
+                error!(
+                    "failed to copy file (project_id: {}, filename: {}): {err:?}",
+                    existing_project.id, file.filename
+                );
                 StatusCode::INTERNAL_SERVER_ERROR
             })?;
         new_project.files.push(ProjectFile {
