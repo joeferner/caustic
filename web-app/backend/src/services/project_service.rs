@@ -38,7 +38,7 @@ impl ProjectService {
                 if project.owner_user_id == PROJECT_EXAMPLE_OWNER_ID {
                     Ok(LoadProjectResult::Project(project))
                 } else if let Some(user) = &user
-                    && project.owner_user_id != user.user_id
+                && project.owner_user_id == user.user_id
                 {
                     Ok(LoadProjectResult::Project(project))
                 } else {

@@ -38,7 +38,7 @@ pub struct Claims {
 }
 
 // JWT token extractor - automatically validates JWT from Authorization header
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AuthUser {
     pub user_id: String,
     pub email: String,

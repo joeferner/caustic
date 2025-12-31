@@ -186,7 +186,10 @@ impl ProjectRepository {
         .await
         .context("Failed to insert or update project file")?;
 
-        let path = self.data_path.join(project_id).join(filename);
+        let project_path = self.data_path.join(project_id);
+        fs::create_dir_all(&project_path)
+            .with_context(|| format!("saving file {project_path:?} (could not create path)"))?;
+        let path = project_path.join(filename);
         fs::write(&path, data).with_context(|| format!("saving file {path:?}"))?;
         Ok(())
     }
