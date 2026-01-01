@@ -160,7 +160,7 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
     return (
         <Modal opened={opened} onClose={onClose} title="Open Project" zIndex={2000}>
             <Stack className={classes.group} align="start">
-                {error ? <ErrorMessage {...error} width="100%" /> : null}
+                {error && <ErrorMessage {...error} width="100%" />}
                 <div className={classes.item}>
                     <div>
                         <TextInput
@@ -202,7 +202,7 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                 </div>
 
                 <Group justify="flex-end" className={classes.footer}>
-                    {loading ? <Loader color="blue" size="xs" type="bars" /> : null}
+                    {loading && <Loader color="blue" size="xs" type="bars" />}
                     <UnstyledButton onClick={onCancelClick}>Cancel</UnstyledButton>
                     <Button onClick={onCreateProjectClick} disabled={!canSubmit}>
                         Create Project

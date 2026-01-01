@@ -40,12 +40,12 @@ export function LoginDialog({ opened, onClose }: { opened: boolean; onClose: () 
                     onCredentialResponse={onCredentialResponse}
                     buttonConfig={{ width: WIDTH, theme: 'outline' }}
                 />
-                {user ? (
+                {user && (
                     <>
                         <Divider my="xs" label="OR" labelPosition="center" style={{ width: `${WIDTH}px` }} />
                         <Button onClick={onLogOutClick}>Log Out</Button>
                     </>
-                ) : null}
+                )}
             </div>
         </Modal>
     );

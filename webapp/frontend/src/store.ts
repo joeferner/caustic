@@ -23,11 +23,9 @@ export interface StoreProject extends Project {
 export const DEFAULT_RENDER_BLOCK_SIZE = 50;
 export const EXAMPLE_CAR_ID = 'cad84577-c808-41a9-8d77-25a4626fe65f';
 
-// Singleton worker pool and draw event listeners
 const renderWorkerPool = new RenderWorkerPool();
 const drawEventListeners = new Set<RenderCallbackFn>();
 
-// Base atoms
 export const jwtTokenAtom = atomWithStorage<string | undefined>('jwtToken', undefined, undefined, { getOnInit: true });
 export const lastLoadedProjectIdAtom = atomWithStorage<string | undefined>(
     'lastLoadedProjectId',
@@ -38,7 +36,6 @@ export const lastLoadedProjectIdAtom = atomWithStorage<string | undefined>(
 export const userAtom = atom<User | undefined>(undefined);
 export const settingsAtom = atom<Settings | undefined>(undefined);
 export const projectsAtom = atom<UserDataProject[] | undefined>(undefined);
-export const projectAtom = atom<StoreProject | undefined>(undefined);
 export const filesAtom = atom<WorkingFile[]>([]);
 export const cameraInfoAtom = atom<CameraInfo | undefined>(undefined);
 export const renderOptionsAtom = atom<Required<RenderOptions>>({
@@ -46,7 +43,21 @@ export const renderOptionsAtom = atom<Required<RenderOptions>>({
     threadCount: typeof navigator !== 'undefined' ? (navigator.hardwareConcurrency ?? 4) : 4,
 });
 
-// Write-only atom for updateFile
+const _projectAtom = atom<StoreProject | undefined>(undefined);
+export const projectAtom = atom(
+    (get) => get(_projectAtom),
+    async (get, set, newProject: StoreProject | undefined) => {
+        const lastProject = get(_projectAtom);
+        if (lastProject?.id !== newProject?.id && newProject?.id) {
+            const files = await loadProjectFiles(newProject);
+            document.title = `Caustic: ${newProject.name}`;
+            set(filesAtom, files);
+            set(lastLoadedProjectIdAtom, newProject.id);
+        }
+        set(_projectAtom, newProject);
+    }
+);
+
 export const updateFileAtom = atom(null, (get, set, update: { filename: string; content: string }) => {
     const files = get(filesAtom);
     const newFiles = files.map((f) => {
@@ -61,7 +72,6 @@ export const updateFileAtom = atom(null, (get, set, update: { filename: string; 
     set(filesAtom, newFiles);
 });
 
-// Read-only atom for getFile (returns a function)
 export const getFileAtom = atom((get) => {
     const files = get(filesAtom);
     return (filename: string): WorkingFile | undefined => {
@@ -167,27 +177,18 @@ export const loadProjectAtom = atom(null, async (get, set, { projectId }: { proj
     }
     console.log(`getting project (projectId: ${projectId})`);
     const project = await rayTracerApi.project.getProject(projectId);
-    const files = await loadProjectFiles(project);
-    set(projectAtom, { ...project, readOnly: userProject.readonly });
-    set(filesAtom, files);
-    set(lastLoadedProjectIdAtom, project.id);
+    await set(projectAtom, { ...project, readOnly: userProject.readonly });
 });
 
 export const createProjectAtom = atom(null, async (_get, set, { name }: { name: string }) => {
     console.log('creating new project', name);
     const project = await rayTracerApi.project.createProject({ name });
-    const files = await loadProjectFiles(project);
-    set(projectAtom, { ...project, readOnly: false });
-    set(filesAtom, files);
-    set(lastLoadedProjectIdAtom, project.id);
+    await set(projectAtom, { ...project, readOnly: false });
 });
 
 export const copyProjectAtom = atom(null, async (_get, set, { projectId }: { projectId: string }) => {
     const newProject = await rayTracerApi.project.copyProject({ projectId });
-    const files = await loadProjectFiles(newProject);
-    set(projectAtom, { ...newProject, readOnly: false });
-    set(filesAtom, files);
-    set(lastLoadedProjectIdAtom, newProject.id);
+    await set(projectAtom, { ...newProject, readOnly: false });
 });
 
 export const deleteProjectAtom = atom(null, async (get, set, { projectId }: { projectId: string }) => {
