@@ -1,22 +1,23 @@
 import classes from './Header.module.scss';
 import { store } from '../store';
-import { useCallback, useState, type JSX } from 'react';
+import { type JSX } from 'react';
 import { UnstyledButton } from '@mantine/core';
 import type { User } from '../api';
 import { LoginDialog } from './LoginDialog';
+import { useSignal } from '@preact/signals-react';
 
 const PICTURE_SIZE = 35;
 
 export function Header(): JSX.Element {
-    const [loginDialogOpened, setLoginDialogOpened] = useState(false);
+    const loginDialogOpened = useSignal(false);
 
-    const onLoginClick = useCallback(() => {
-        setLoginDialogOpened(true);
-    }, [setLoginDialogOpened]);
+    const handleLoginClick = (): void => {
+        loginDialogOpened.value = true;
+    };
 
-    const onLoginDialogClose = useCallback(() => {
-        setLoginDialogOpened(false);
-    }, [setLoginDialogOpened]);
+    const handleLoginDialogClose = (): void => {
+        loginDialogOpened.value = false;
+    };
 
     return (
         <div className={classes.header}>
@@ -26,11 +27,11 @@ export function Header(): JSX.Element {
             <div className={classes.projectName}>{store.project.value && <div>{store.project.value.name}</div>}</div>
             <div className={classes.userInfo}>
                 {store.user.value ? (
-                    <UserInfo onClick={onLoginClick} user={store.user.value} />
+                    <UserInfo onClick={handleLoginClick} user={store.user.value} />
                 ) : (
-                    <UnstyledButton onClick={onLoginClick}>Login</UnstyledButton>
+                    <UnstyledButton onClick={handleLoginClick}>Login</UnstyledButton>
                 )}
-                <LoginDialog opened={loginDialogOpened} onClose={onLoginDialogClose} />
+                <LoginDialog opened={loginDialogOpened.value} onClose={handleLoginDialogClose} />
             </div>
         </div>
     );

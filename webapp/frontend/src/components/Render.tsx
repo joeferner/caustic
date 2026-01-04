@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, type JSX } from 'react';
+import React, { useRef, useState, type JSX } from 'react';
 import { store } from '../store';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import classes from './Render.module.scss';
@@ -7,15 +7,15 @@ import { ZoomIn as ZoomInIcon, ZoomOut as ZoomOutIcon, X as ResetZoomIcon } from
 import type { RenderResult } from '../types';
 import * as _ from 'radash';
 import { RenderProgress } from './RenderProgress';
-import { signal, useSignalEffect } from '@preact/signals-react';
+import { useSignal, useSignalEffect } from '@preact/signals-react';
 
 export function Render(): JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const canvasMiniRef = useRef<HTMLCanvasElement | null>(null);
     const [showMinimap, setShowMinimap] = useState(false);
-    const progress = signal(1.0);
+    const progress = useSignal(1.0);
     const [working, setWorking] = useState(false);
-    const startTime = signal<Date | undefined>(undefined);
+    const startTime = useSignal<Date | undefined>(undefined);
 
     // update empty background if block size changes
     useSignalEffect(() => {
@@ -49,7 +49,7 @@ export function Render(): JSX.Element {
         return unsubscribe;
     });
 
-    const handleOnZoom = useCallback(() => {
+    const handleOnZoom = (): void => {
         const canvas = canvasRef.current;
         if (!canvas) {
             return;
@@ -70,7 +70,7 @@ export function Render(): JSX.Element {
             wrapperElRect.right - elRect.right < 0 ||
             wrapperElRect.bottom - elRect.bottom < 0;
         setShowMinimap(offScreen);
-    }, []);
+    };
 
     return (
         <div className={classes.wrapper}>
@@ -104,32 +104,32 @@ export function Render(): JSX.Element {
 }
 
 function Controls(options: ReactZoomPanPinchHandlers): JSX.Element {
+    const handleZoomInClick = (): void => {
+        options.zoomIn();
+    };
+
+    const handleZoomOutClick = (): void => {
+        options.zoomOut();
+    };
+
+    const handleResetZoomClick = (): void => {
+        options.resetTransform();
+    };
+
     return (
         <div className={classes.controls}>
             <Tooltip label="Zoom In">
-                <Button
-                    onClick={() => {
-                        options.zoomIn();
-                    }}
-                >
+                <Button onClick={handleZoomInClick}>
                     <ZoomInIcon />
                 </Button>
             </Tooltip>
             <Tooltip label="Zoom Out">
-                <Button
-                    onClick={() => {
-                        options.zoomOut();
-                    }}
-                >
+                <Button onClick={handleZoomOutClick}>
                     <ZoomOutIcon />
                 </Button>
             </Tooltip>
             <Tooltip label="Reset Zoom">
-                <Button
-                    onClick={() => {
-                        options.resetTransform();
-                    }}
-                >
+                <Button onClick={handleResetZoomClick}>
                     <ResetZoomIcon />
                 </Button>
             </Tooltip>

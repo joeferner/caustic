@@ -116,7 +116,7 @@ export class Store {
         console.log('creating new project', name);
         const project = await rayTracerApi.project.createProject({ name });
         await this.updateProject({ ...project, readOnly: false });
-        // TODO add project to projects list
+        this.projects.value = [...(this.projects.value ?? []), { ...project, readonly: false }];
     }
 
     public async deleteProject({ projectId }: { projectId: string }): Promise<void> {
@@ -134,6 +134,7 @@ export class Store {
     public async copyProject({ projectId }: { projectId: string }): Promise<void> {
         const newProject = await rayTracerApi.project.copyProject({ projectId });
         await this.updateProject({ ...newProject, readOnly: false });
+        this.projects.value = [...(this.projects.value ?? []), { ...newProject, readonly: false }];
     }
 
     public async loadProject({ projectId }: { projectId: string }): Promise<void> {

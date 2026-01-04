@@ -11,140 +11,105 @@ import {
     Text,
     TextInput,
     Tooltip,
-    UnstyledButton,
 } from '@mantine/core';
-import { useCallback, useEffect, useState, type JSX, type MouseEvent } from 'react';
+import { type JSX, type MouseEvent } from 'react';
 import classes from './OpenProjectDialog.module.scss';
 import { store } from '../store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
 import { Copy as CopyIcon, Trash as DeleteIcon } from 'react-bootstrap-icons';
 import type { UserDataProject } from '../api';
+import { useSignal, useSignalEffect } from '@preact/signals-react';
+import { Show } from '@preact/signals-react/utils';
 
 export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClose: () => void }): JSX.Element {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<ErrorMessageProps | undefined>(undefined);
-    const [newProjectName, setNewProjectName] = useState('');
-    const [canSubmit, setCanSubmit] = useState(false);
+    const loading = useSignal(false);
+    const error = useSignal<ErrorMessageProps | undefined>(undefined);
+    const newProjectName = useSignal('');
+    const canSubmit = useSignal(false);
 
-    useEffect(() => {
-        const loadProjects = async (): Promise<void> => {
-            try {
-                setError(undefined);
-                setLoading(true);
-                await store.loadProjects();
-            } catch (err) {
-                const message = err instanceof Error ? err.message : 'Unknown error';
-                setError({
-                    title: 'Error Loading Projects',
-                    message,
-                });
-            } finally {
-                setLoading(false);
-            }
-        };
+    useSignalEffect(() => {
+        canSubmit.value = newProjectName.value.trim().length > 0 && !loading.value;
+    });
 
-        if (opened) {
-            setNewProjectName('');
-            void loadProjects();
-        }
-    }, [opened, setNewProjectName, setError]);
-
-    useEffect(() => {
-        setCanSubmit(newProjectName.trim().length > 0 && !loading);
-    }, [newProjectName, loading]);
-
-    const loadProject = useCallback(
-        (projectId: string): void => {
-            void (async (): Promise<void> => {
-                try {
-                    setLoading(true);
-                    setError(undefined);
-                    await store.loadProject({ projectId });
-                    onClose();
-                } catch (err) {
-                    const message = err instanceof Error ? err.message : 'Unknown error';
-                    setError({
-                        title: 'Error Loading Project',
-                        message,
-                    });
-                } finally {
-                    setLoading(false);
-                }
-            })();
-        },
-        [onClose, setError, setLoading]
-    );
-
-    const copyProject = useCallback(
-        (projectId: string): void => {
-            void (async (): Promise<void> => {
-                try {
-                    setLoading(true);
-                    setError(undefined);
-                    await store.copyProject({ projectId });
-                    onClose();
-                } catch (err) {
-                    const message = err instanceof Error ? err.message : 'Unknown error';
-                    setError({
-                        title: 'Error Coping Project',
-                        message,
-                    });
-                } finally {
-                    setLoading(false);
-                }
-            })();
-        },
-        [onClose, setError, setLoading]
-    );
-
-    const deleteProject = useCallback(
-        (projectId: string): void => {
-            void (async (): Promise<void> => {
-                try {
-                    setLoading(true);
-                    setError(undefined);
-                    await store.deleteProject({ projectId });
-                } catch (err) {
-                    const message = err instanceof Error ? err.message : 'Unknown error';
-                    setError({
-                        title: 'Error Deleting Project',
-                        message,
-                    });
-                } finally {
-                    setLoading(false);
-                }
-            })();
-        },
-        [setError, setLoading]
-    );
-
-    const onCancelClick = useCallback((): void => {
-        onClose();
-    }, [onClose]);
-
-    const onCreateProjectClick = useCallback((): void => {
+    const loadProject = (projectId: string): void => {
         void (async (): Promise<void> => {
             try {
-                setLoading(true);
-                setError(undefined);
-                await store.createProject({ name: newProjectName });
+                loading.value = true;
+                error.value = undefined;
+                await store.loadProject({ projectId });
                 onClose();
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
-                setError({
-                    title: 'Error Creating Project',
+                error.value = {
+                    title: 'Error Loading Project',
                     message,
-                });
+                };
             } finally {
-                setLoading(false);
+                loading.value = false;
             }
         })();
-    }, [newProjectName, onClose, setError, setLoading]);
+    };
+
+    const copyProject = (projectId: string): void => {
+        void (async (): Promise<void> => {
+            try {
+                loading.value = true;
+                error.value = undefined;
+                await store.copyProject({ projectId });
+                onClose();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Unknown error';
+                error.value = {
+                    title: 'Error Coping Project',
+                    message,
+                };
+            } finally {
+                loading.value = false;
+            }
+        })();
+    };
+
+    const deleteProject = (projectId: string): void => {
+        void (async (): Promise<void> => {
+            try {
+                loading.value = true;
+                error.value = undefined;
+                await store.deleteProject({ projectId });
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Unknown error';
+                error.value = {
+                    title: 'Error Deleting Project',
+                    message,
+                };
+            } finally {
+                loading.value = false;
+            }
+        })();
+    };
+
+    const onCreateProjectClick = (): void => {
+        void (async (): Promise<void> => {
+            try {
+                loading.value = true;
+                error.value = undefined;
+                await store.createProject({ name: newProjectName.value });
+                onClose();
+            } catch (err) {
+                const message = err instanceof Error ? err.message : 'Unknown error';
+                error.value = {
+                    title: 'Error Creating Project',
+                    message,
+                };
+            } finally {
+                loading.value = false;
+            }
+        })();
+    };
 
     return (
         <Modal opened={opened} onClose={onClose} title="Open Project" zIndex={2000}>
             <Stack className={classes.group} align="start">
-                {error && <ErrorMessage {...error} width="100%" />}
+                <Show when={error}>{(error) => <ErrorMessage {...error} width="100%" />}</Show>
                 <div className={classes.item}>
                     <div>
                         <TextInput
@@ -152,16 +117,25 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                             inputSize="100"
                             label="New Project Name"
                             description={store.user.value ? null : 'To create a new project you must be logged in'}
-                            value={newProjectName}
+                            value={newProjectName.value}
                             onChange={(event) => {
-                                setNewProjectName(event.target.value);
+                                newProjectName.value = event.target.value;
                             }}
                         />
                     </div>
                 </div>
+                <Group justify="flex-end" className={classes.footer}>
+                    <Show when={loading}>
+                        <Loader color="blue" size="xs" type="bars" />
+                    </Show>
+                    <Button onClick={onCreateProjectClick} disabled={!canSubmit.value}>
+                        Create Project
+                    </Button>
+                </Group>
+
                 <Divider
                     my="xs"
-                    label="Previous Projects"
+                    label="Existing Projects"
                     labelPosition="center"
                     style={{ width: `100%`, margin: 0 }}
                 />
@@ -184,14 +158,6 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                         ))}
                     </Stack>
                 </div>
-
-                <Group justify="flex-end" className={classes.footer}>
-                    {loading && <Loader color="blue" size="xs" type="bars" />}
-                    <UnstyledButton onClick={onCancelClick}>Cancel</UnstyledButton>
-                    <Button onClick={onCreateProjectClick} disabled={!canSubmit}>
-                        Create Project
-                    </Button>
-                </Group>
             </Stack>
         </Modal>
     );
@@ -208,34 +174,28 @@ function ProjectButton({
     onCopyProject: () => void;
     onDeleteProject: () => void;
 }): JSX.Element {
-    const onCopyProjectClick = useCallback(
-        (event: MouseEvent) => {
-            event.stopPropagation();
-            onCopyProject();
-        },
-        [onCopyProject]
-    );
+    const onCopyProjectClick = (event: MouseEvent): void => {
+        event.stopPropagation();
+        onCopyProject();
+    };
 
-    const onDeleteProjectClick = useCallback(
-        (event: MouseEvent) => {
-            event.stopPropagation();
-            modals.openConfirmModal({
-                title: 'Delete Project',
-                children: (
-                    <Text size="sm">
-                        Are you sure you want to delete project "{project.name}"? This action cannot be undone.
-                    </Text>
-                ),
-                labels: { confirm: 'Delete', cancel: 'Cancel' },
-                confirmProps: { color: 'red' },
-                onConfirm: () => {
-                    onDeleteProject();
-                },
-                zIndex: 5000,
-            });
-        },
-        [onDeleteProject, project]
-    );
+    const onDeleteProjectClick = (event: MouseEvent): void => {
+        event.stopPropagation();
+        modals.openConfirmModal({
+            title: 'Delete Project',
+            children: (
+                <Text size="sm">
+                    Are you sure you want to delete project "{project.name}"? This action cannot be undone.
+                </Text>
+            ),
+            labels: { confirm: 'Delete', cancel: 'Cancel' },
+            confirmProps: { color: 'red' },
+            onConfirm: () => {
+                onDeleteProject();
+            },
+            zIndex: 5000,
+        });
+    };
 
     return (
         <Paper key={project.id} onClick={onClick}>
