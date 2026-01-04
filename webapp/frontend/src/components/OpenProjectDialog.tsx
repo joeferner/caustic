@@ -14,13 +14,12 @@ import {
 } from '@mantine/core';
 import { type JSX, type MouseEvent } from 'react';
 import classes from './OpenProjectDialog.module.scss';
-import { store } from '../stores/store';
+import { projectsStore, projectStore, userStore } from '../stores/store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
 import { Copy as CopyIcon, Trash as DeleteIcon } from 'react-bootstrap-icons';
 import type { UserDataProject } from '../api';
 import { Signal, useComputed, useSignal, useSignalEffect } from '@preact/signals-react';
 import { For, Show } from '@preact/signals-react/utils';
-import { userStore } from '../stores/UserStore';
 
 export interface OpenProjectDialogProps {
     opened: Signal<boolean>;
@@ -33,7 +32,7 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
     const newProjectName = useSignal('');
     const canSubmit = useSignal(false);
     const projects = useComputed(() => {
-        return [...store.projects.value].sort((a, b) => {
+        return [...projectsStore.projects.value].sort((a, b) => {
             if (a.lastModified !== b.lastModified) {
                 return -a.lastModified.localeCompare(b.lastModified);
             }
@@ -50,7 +49,7 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
             try {
                 loading.value = true;
                 error.value = undefined;
-                await store.loadProject({ projectId: project.id });
+                await projectStore.loadProject({ projectId: project.id });
                 onClose();
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
@@ -69,7 +68,7 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
             try {
                 loading.value = true;
                 error.value = undefined;
-                await store.copyProject({ projectId: project.id });
+                await projectsStore.copyProject({ projectId: project.id });
                 onClose();
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
@@ -88,7 +87,7 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
             try {
                 loading.value = true;
                 error.value = undefined;
-                await store.deleteProject({ projectId: project.id });
+                await projectsStore.deleteProject({ projectId: project.id });
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
                 error.value = {
@@ -106,7 +105,7 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
             try {
                 loading.value = true;
                 error.value = undefined;
-                await store.createProject({ name: newProjectName.value });
+                await projectsStore.createProject({ name: newProjectName.value });
                 onClose();
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';

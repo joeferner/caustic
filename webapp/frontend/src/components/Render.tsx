@@ -1,5 +1,4 @@
 import React, { type JSX } from 'react';
-import { store } from '../stores/store';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import classes from './Render.module.scss';
 import { Button, Tooltip } from '@mantine/core';
@@ -9,6 +8,7 @@ import * as _ from 'radash';
 import { RenderProgress } from './RenderProgress';
 import { useSignal, useSignalEffect } from '@preact/signals-react';
 import { useSignalRef } from '@preact/signals-react/utils';
+import { projectStore } from '../stores/store';
 
 export function Render(): JSX.Element {
     const canvasRef = useSignalRef<HTMLCanvasElement | null>(null);
@@ -20,17 +20,17 @@ export function Render(): JSX.Element {
 
     // update empty background if block size changes
     useSignalEffect(() => {
-        renderEmpty(canvasRef, store.renderOptions.value.blockSize);
-        renderEmpty(canvasMiniRef, store.renderOptions.value.blockSize);
+        renderEmpty(canvasRef, projectStore.renderOptions.value.blockSize);
+        renderEmpty(canvasMiniRef, projectStore.renderOptions.value.blockSize);
     });
 
     // subscribe to draw events to render
     useSignalEffect(() => {
-        const blockSize = store.renderOptions.value.blockSize;
+        const blockSize = projectStore.renderOptions.value.blockSize;
         const _canvasRef = canvasRef;
         const _canvasMiniRef = canvasMiniRef;
 
-        const unsubscribe = store.subscribeToDrawEvents((event) => {
+        const unsubscribe = projectStore.subscribeToDrawEvents((event) => {
             if (event.type === 'init') {
                 progress.value = 0.0;
                 startTime.value = event.startTime;
@@ -82,8 +82,8 @@ export function Render(): JSX.Element {
                             <MiniMap width={150} height={150}>
                                 <canvas
                                     ref={canvasMiniRef}
-                                    width={store.cameraInfo.value?.width ?? 500}
-                                    height={store.cameraInfo.value?.height ?? 500}
+                                    width={projectStore.cameraInfo.value?.width ?? 500}
+                                    height={projectStore.cameraInfo.value?.height ?? 500}
                                 />
                             </MiniMap>
                         </div>
@@ -92,8 +92,8 @@ export function Render(): JSX.Element {
                             <canvas
                                 className={classes.canvas}
                                 ref={canvasRef}
-                                width={store.cameraInfo.value?.width ?? 500}
-                                height={store.cameraInfo.value?.height ?? 500}
+                                width={projectStore.cameraInfo.value?.width ?? 500}
+                                height={projectStore.cameraInfo.value?.height ?? 500}
                             />
                         </TransformComponent>
                     </React.Fragment>

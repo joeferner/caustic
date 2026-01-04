@@ -1,11 +1,10 @@
 import classes from './Header.module.scss';
-import { store } from '../stores/store';
+import { projectStore, userStore } from '../stores/store';
 import { type JSX } from 'react';
 import { UnstyledButton } from '@mantine/core';
 import type { User } from '../api';
 import { LoginDialog } from './LoginDialog';
 import { useSignal } from '@preact/signals-react';
-import { userStore } from '../stores/UserStore';
 
 const PICTURE_SIZE = 35;
 
@@ -25,7 +24,9 @@ export function Header(): JSX.Element {
             <div className={classes.title}>
                 <img src="/navbar-logo.png" height={40} width={110} />
             </div>
-            <div className={classes.projectName}>{store.project.value && <div>{store.project.value.name}</div>}</div>
+            <div className={classes.projectName}>
+                {projectStore.project.value && <div>{projectStore.project.value.name}</div>}
+            </div>
             <div className={classes.userInfo}>
                 {userStore.user.value ? (
                     <UserInfo onClick={handleLoginClick} user={userStore.user.value} />

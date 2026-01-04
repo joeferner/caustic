@@ -3,7 +3,7 @@ import { useEffect, type JSX, type ReactNode } from 'react';
 import { Play as RenderIcon, Folder as OpenIcon } from 'react-bootstrap-icons';
 import classes from './Navbar.module.scss';
 import { OpenProjectDialog } from './OpenProjectDialog';
-import { store } from '../stores/store';
+import { projectStore } from '../stores/store';
 import { useSignal } from '@preact/signals-react';
 
 const ICON_SIZE = 25;
@@ -15,7 +15,7 @@ export function Navbar(): JSX.Element {
         const handleKeyPress = (event: KeyboardEvent): void => {
             if (event.key === 'F5' && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.metaKey) {
                 event.preventDefault();
-                void store.render();
+                void projectStore.render();
             }
         };
 
@@ -26,7 +26,7 @@ export function Navbar(): JSX.Element {
     }, []);
 
     const handleRenderClick = (): void => {
-        void store.render();
+        void projectStore.render();
     };
 
     return (

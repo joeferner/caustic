@@ -1,10 +1,9 @@
 import { type JSX } from 'react';
-import { store } from '../stores/store';
+import { userStore } from '../stores/store';
 import { GoogleLogin, type GoogleCredentialResponse } from './GoogleLogin';
 import { Button, Divider, Modal } from '@mantine/core';
 import classes from './LoginDialog.module.scss';
 import { Signal } from '@preact/signals-react';
-import { userStore } from '../stores/UserStore';
 
 export interface LoginDialogProps {
     opened: Signal<boolean>;

@@ -7,8 +7,7 @@ import { useEffect, type JSX } from 'react';
 import { Header } from './components/Header';
 import { ModalsProvider } from '@mantine/modals';
 import { MantineProvider } from '@mantine/core';
-import { store } from './stores/store';
-import { userStore } from './stores/UserStore';
+import { projectsStore, projectStore, userStore } from './stores/store';
 
 export function App(): JSX.Element {
     return (
@@ -25,7 +24,8 @@ function InnerApp(): JSX.Element {
         void (async (): Promise<void> => {
             // loadUserMe must come first
             await userStore.loadUserMe();
-            await store.initialize();
+            await projectsStore.loadProjects();
+            await projectStore.loadLastProject();
         })();
     }, []);
 
