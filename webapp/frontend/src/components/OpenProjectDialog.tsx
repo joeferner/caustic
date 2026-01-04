@@ -18,7 +18,7 @@ import { store } from '../store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
 import { Copy as CopyIcon, Trash as DeleteIcon } from 'react-bootstrap-icons';
 import type { UserDataProject } from '../api';
-import { Signal, useSignal, useSignalEffect } from '@preact/signals-react';
+import { Signal, useComputed, useSignal, useSignalEffect } from '@preact/signals-react';
 import { For, Show } from '@preact/signals-react/utils';
 
 export interface OpenProjectDialogProps {
@@ -31,17 +31,25 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
     const error = useSignal<ErrorMessageProps | undefined>(undefined);
     const newProjectName = useSignal('');
     const canSubmit = useSignal(false);
+    const projects = useComputed(() => {
+        return [...store.projects.value].sort((a, b) => {
+            if (a.lastModified !== b.lastModified) {
+                return -a.lastModified.localeCompare(b.lastModified);
+            }
+            return a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase());
+        });
+    });
 
     useSignalEffect(() => {
         canSubmit.value = newProjectName.value.trim().length > 0 && !loading.value;
     });
 
-    const loadProject = (projectId: string): void => {
+    const loadProject = (project: UserDataProject): void => {
         void (async (): Promise<void> => {
             try {
                 loading.value = true;
                 error.value = undefined;
-                await store.loadProject({ projectId });
+                await store.loadProject({ projectId: project.id });
                 onClose();
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
@@ -55,12 +63,12 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
         })();
     };
 
-    const copyProject = (projectId: string): void => {
+    const copyProject = (project: UserDataProject): void => {
         void (async (): Promise<void> => {
             try {
                 loading.value = true;
                 error.value = undefined;
-                await store.copyProject({ projectId });
+                await store.copyProject({ projectId: project.id });
                 onClose();
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
@@ -74,12 +82,12 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
         })();
     };
 
-    const deleteProject = (projectId: string): void => {
+    const deleteProject = (project: UserDataProject): void => {
         void (async (): Promise<void> => {
             try {
                 loading.value = true;
                 error.value = undefined;
-                await store.deleteProject({ projectId });
+                await store.deleteProject({ projectId: project.id });
             } catch (err) {
                 const message = err instanceof Error ? err.message : 'Unknown error';
                 error.value = {
@@ -146,20 +154,14 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
                 />
                 <div className={classes.item}>
                     <Stack className={classes.existingProjects}>
-                        <For each={store.projects}>
+                        <For each={projects}>
                             {(project) => (
                                 <ProjectButton
                                     key={project.id}
                                     project={project}
-                                    onClick={() => {
-                                        loadProject(project.id);
-                                    }}
-                                    onCopyProject={() => {
-                                        copyProject(project.id);
-                                    }}
-                                    onDeleteProject={() => {
-                                        deleteProject(project.id);
-                                    }}
+                                    onClick={loadProject}
+                                    onCopyProject={copyProject}
+                                    onDeleteProject={deleteProject}
                                 />
                             )}
                         </For>
@@ -170,20 +172,21 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
     );
 }
 
-function ProjectButton({
-    project,
-    onClick,
-    onCopyProject,
-    onDeleteProject,
-}: {
+interface ProjectButtonProps {
     project: UserDataProject;
-    onClick: () => void;
-    onCopyProject: () => void;
-    onDeleteProject: () => void;
-}): JSX.Element {
+    onClick: (project: UserDataProject) => void;
+    onCopyProject: (project: UserDataProject) => void;
+    onDeleteProject: (project: UserDataProject) => void;
+}
+
+function ProjectButton({ project, onClick, onCopyProject, onDeleteProject }: ProjectButtonProps): JSX.Element {
+    const onClickProject = (): void => {
+        onClick(project);
+    };
+
     const onCopyProjectClick = (event: MouseEvent): void => {
         event.stopPropagation();
-        onCopyProject();
+        onCopyProject(project);
     };
 
     const onDeleteProjectClick = (event: MouseEvent): void => {
@@ -198,14 +201,14 @@ function ProjectButton({
             labels: { confirm: 'Delete', cancel: 'Cancel' },
             confirmProps: { color: 'red' },
             onConfirm: () => {
-                onDeleteProject();
+                onDeleteProject(project);
             },
             zIndex: 5000,
         });
     };
 
     return (
-        <Paper key={project.id} onClick={onClick}>
+        <Paper key={project.id} onClick={onClickProject}>
             <div className={classes.projectName}>{project.name}</div>
             <div className={classes.projectActions}>
                 <Tooltip label="Clone Project" zIndex={5000}>
