@@ -1,51 +1,51 @@
 import { Progress } from '@mantine/core';
-import { useEffect, useState, type JSX } from 'react';
+import { type JSX } from 'react';
 import classes from './RenderProgress.module.scss';
 import { formatDuration } from '../utils/time';
+import { Signal, useSignal, useSignalEffect } from '@preact/signals-react';
 
-export interface RenderProgressOptions {
-    progress: number;
-    working: boolean;
-    startTime?: Date;
+export interface RenderProgressProps {
+    progress: Signal<number>;
+    working: Signal<boolean>;
+    startTime: Signal<Date | undefined>;
 }
 
-export function RenderProgress(options: RenderProgressOptions): JSX.Element | null {
-    const { progress, startTime, working } = options;
-    const [endTime, setEndTime] = useState<Date | undefined>(undefined);
+export function RenderProgress({ progress, startTime, working }: RenderProgressProps): JSX.Element | null {
+    const endTime = useSignal<Date | undefined>(undefined);
 
-    useEffect(() => {
-        if (!working) {
+    useSignalEffect(() => {
+        if (!working.value) {
             return;
         }
 
         setTimeout(() => {
-            setEndTime(new Date());
+            endTime.value = new Date();
         });
         const interval = setInterval(() => {
-            setEndTime(new Date());
+            endTime.value = new Date();
         }, 1000);
 
         return (): void => {
             clearInterval(interval);
-            setEndTime(new Date());
+            endTime.value = new Date();
         };
-    }, [working]);
+    });
 
-    if (!startTime) {
+    if (!startTime.value) {
         return null;
     }
 
-    const progressPercentStr = (progress * 100.0).toFixed(0);
+    const progressPercentStr = (progress.value * 100.0).toFixed(0);
 
     let durationStr = '';
     let etaStr = '';
-    if (endTime) {
-        const duration = endTime.getTime() - startTime.getTime();
+    if (endTime.value) {
+        const duration = endTime.value.getTime() - startTime.value.getTime();
         durationStr = formatDuration(duration);
 
-        if (working && progress > 0.0) {
-            const estimatedTotalTime = duration / progress;
-            const eta = estimatedTotalTime - duration;
+        if (working.value && progress.value > 0.0) {
+            const estimatedTotalTime = duration / progress.value;
+            const eta = Math.max(0, estimatedTotalTime - duration);
             etaStr = `(eta ${formatDuration(eta)})`;
         }
     }
@@ -54,7 +54,7 @@ export function RenderProgress(options: RenderProgressOptions): JSX.Element | nu
 
     return (
         <Progress.Root radius="xs" size={30} className={classes.progressRoot}>
-            <Progress.Section value={progress * 100.0} />
+            <Progress.Section value={progress.value * 100.0} />
             <Progress.Section value={0.0001} className={classes.label}>
                 <Progress.Label>{progressLabel}</Progress.Label>
             </Progress.Section>

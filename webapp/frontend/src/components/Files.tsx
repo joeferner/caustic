@@ -5,6 +5,7 @@ import { store } from '../store';
 import type { JSX } from 'react';
 import { registerOpenscadLanguage } from '../monaco-openscad';
 import type { WorkingFile } from '../types';
+import { For } from '@preact/signals-react/utils';
 
 export function Files(): JSX.Element | null {
     if (store.files.value.length === 0) {
@@ -14,8 +15,8 @@ export function Files(): JSX.Element | null {
     return (
         <Tabs value={store.files.value[0].filename} className={classes.tabs}>
             <Tabs.List>
-                {store.files.value.map((file) => {
-                    return (
+                <For each={store.files}>
+                    {(file) => (
                         <Tabs.Tab key={file.filename} value={file.filename}>
                             <div className={classes.tabFilename}>
                                 {file.filename}
@@ -24,17 +25,17 @@ export function Files(): JSX.Element | null {
                                 </div>
                             </div>
                         </Tabs.Tab>
-                    );
-                })}
+                    )}
+                </For>
             </Tabs.List>
 
-            {store.files.value.map((file) => {
-                return (
+            <For each={store.files}>
+                {(file) => (
                     <Tabs.Panel key={file.filename} value={file.filename} className={classes.tabPanel}>
                         <FileEditor file={file} />
                     </Tabs.Panel>
-                );
-            })}
+                )}
+            </For>
         </Tabs>
     );
 }

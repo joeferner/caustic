@@ -3,8 +3,14 @@ import { store } from '../store';
 import { GoogleLogin, type GoogleCredentialResponse } from './GoogleLogin';
 import { Button, Divider, Modal } from '@mantine/core';
 import classes from './LoginDialog.module.scss';
+import { Signal } from '@preact/signals-react';
 
-export function LoginDialog({ opened, onClose }: { opened: boolean; onClose: () => void }): JSX.Element | null {
+export interface LoginDialogProps {
+    opened: Signal<boolean>;
+    onClose: () => void;
+}
+
+export function LoginDialog({ opened, onClose }: LoginDialogProps): JSX.Element | null {
     const WIDTH = 300;
 
     const onCredentialResponse = (response: GoogleCredentialResponse): void => {
@@ -25,7 +31,7 @@ export function LoginDialog({ opened, onClose }: { opened: boolean; onClose: () 
     }
 
     return (
-        <Modal opened={opened} onClose={onClose} title="Login" zIndex={2000}>
+        <Modal opened={opened.value} onClose={onClose} title="Login" zIndex={2000}>
             <div className={classes.loginDialogOptions}>
                 <GoogleLogin
                     clientId={store.settings.value.googleClientId}

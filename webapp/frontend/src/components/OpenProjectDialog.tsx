@@ -18,10 +18,15 @@ import { store } from '../store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
 import { Copy as CopyIcon, Trash as DeleteIcon } from 'react-bootstrap-icons';
 import type { UserDataProject } from '../api';
-import { useSignal, useSignalEffect } from '@preact/signals-react';
-import { Show } from '@preact/signals-react/utils';
+import { Signal, useSignal, useSignalEffect } from '@preact/signals-react';
+import { For, Show } from '@preact/signals-react/utils';
 
-export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClose: () => void }): JSX.Element {
+export interface OpenProjectDialogProps {
+    opened: Signal<boolean>;
+    onClose: () => void;
+}
+
+export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): JSX.Element {
     const loading = useSignal(false);
     const error = useSignal<ErrorMessageProps | undefined>(undefined);
     const newProjectName = useSignal('');
@@ -107,7 +112,7 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
     };
 
     return (
-        <Modal opened={opened} onClose={onClose} title="Open Project" zIndex={2000}>
+        <Modal opened={opened.value} onClose={onClose} title="Open Project" zIndex={2000}>
             <Stack className={classes.group} align="start">
                 <Show when={error}>{(error) => <ErrorMessage {...error} width="100%" />}</Show>
                 <div className={classes.item}>
@@ -141,21 +146,23 @@ export function OpenProjectDialog({ opened, onClose }: { opened: boolean; onClos
                 />
                 <div className={classes.item}>
                     <Stack className={classes.existingProjects}>
-                        {store.projects.value?.map((project) => (
-                            <ProjectButton
-                                key={project.id}
-                                project={project}
-                                onClick={() => {
-                                    loadProject(project.id);
-                                }}
-                                onCopyProject={() => {
-                                    copyProject(project.id);
-                                }}
-                                onDeleteProject={() => {
-                                    deleteProject(project.id);
-                                }}
-                            />
-                        ))}
+                        <For each={store.projects}>
+                            {(project) => (
+                                <ProjectButton
+                                    key={project.id}
+                                    project={project}
+                                    onClick={() => {
+                                        loadProject(project.id);
+                                    }}
+                                    onCopyProject={() => {
+                                        copyProject(project.id);
+                                    }}
+                                    onDeleteProject={() => {
+                                        deleteProject(project.id);
+                                    }}
+                                />
+                            )}
+                        </For>
                     </Stack>
                 </div>
             </Stack>

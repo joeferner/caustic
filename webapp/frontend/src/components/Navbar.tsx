@@ -1,14 +1,15 @@
 import { Tooltip, UnstyledButton } from '@mantine/core';
-import { useEffect, useState, type JSX, type ReactNode } from 'react';
+import { useEffect, type JSX, type ReactNode } from 'react';
 import { Play as RenderIcon, Folder as OpenIcon } from 'react-bootstrap-icons';
 import classes from './Navbar.module.scss';
 import { OpenProjectDialog } from './OpenProjectDialog';
 import { store } from '../store';
+import { useSignal } from '@preact/signals-react';
 
 const ICON_SIZE = 25;
 
 export function Navbar(): JSX.Element {
-    const [openProjectDialogOpened, setOpenProjectDialogOpened] = useState(false);
+    const openProjectDialogOpened = useSignal(false);
 
     useEffect(() => {
         const handleKeyPress = (event: KeyboardEvent): void => {
@@ -33,14 +34,14 @@ export function Navbar(): JSX.Element {
             <OpenProjectDialog
                 opened={openProjectDialogOpened}
                 onClose={() => {
-                    setOpenProjectDialogOpened(false);
+                    openProjectDialogOpened.value = false;
                 }}
             />
             <NavbarLink
                 label="Open Project"
                 icon={<OpenIcon width={ICON_SIZE} height={ICON_SIZE} />}
                 onClick={() => {
-                    setOpenProjectDialogOpened(true);
+                    openProjectDialogOpened.value = true;
                 }}
             />
             <NavbarLink

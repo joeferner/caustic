@@ -31,7 +31,7 @@ export class Store {
 
     public readonly user = signal<User | undefined>();
     public readonly settings = signal<Settings | undefined>(undefined);
-    public readonly projects = signal<UserDataProject[] | undefined>(undefined);
+    public readonly projects = signal<UserDataProject[]>([]);
     public readonly files = signal<WorkingFile[]>([]);
     public readonly cameraInfo = signal<CameraInfo | undefined>(undefined);
     public readonly renderOptions = signal<Required<RenderOptions>>({
@@ -46,7 +46,7 @@ export class Store {
         await this.loadUserMe();
         await this.loadProjects();
         const lastLoadedProjectId = this.lastLoadedProjectId;
-        const userProject = this.projects.value?.find((p) => p.id === lastLoadedProjectId);
+        const userProject = this.projects.value.find((p) => p.id === lastLoadedProjectId);
         await this.loadProject({ projectId: userProject?.id ?? EXAMPLE_CAR_ID });
     }
 
@@ -116,15 +116,15 @@ export class Store {
         console.log('creating new project', name);
         const project = await rayTracerApi.project.createProject({ name });
         await this.updateProject({ ...project, readOnly: false });
-        this.projects.value = [...(this.projects.value ?? []), { ...project, readonly: false }];
+        this.projects.value = [...this.projects.value, { ...project, readonly: false }];
     }
 
     public async deleteProject({ projectId }: { projectId: string }): Promise<void> {
         await rayTracerApi.project.deleteProject({ projectId });
-        this.projects.value = this.projects.value?.filter((p) => p.id !== projectId);
+        this.projects.value = this.projects.value.filter((p) => p.id !== projectId);
 
         if (projectId == this.project.value?.id) {
-            const newestProject = this.projects.value?.[0];
+            const newestProject = this.projects.value[0];
             if (newestProject) {
                 await this.loadProject({ projectId: newestProject.id });
             }
@@ -134,14 +134,11 @@ export class Store {
     public async copyProject({ projectId }: { projectId: string }): Promise<void> {
         const newProject = await rayTracerApi.project.copyProject({ projectId });
         await this.updateProject({ ...newProject, readOnly: false });
-        this.projects.value = [...(this.projects.value ?? []), { ...newProject, readonly: false }];
+        this.projects.value = [...this.projects.value, { ...newProject, readonly: false }];
     }
 
     public async loadProject({ projectId }: { projectId: string }): Promise<void> {
-        if (!this.projects.value) {
-            throw new Error('cannot load project until user projects are loaded');
-        }
-        const userProject = this.projects.value?.find((project) => project.id === projectId);
+        const userProject = this.projects.value.find((project) => project.id === projectId);
         if (!userProject) {
             throw new Error(`project ${projectId} not found in user projects`);
         }

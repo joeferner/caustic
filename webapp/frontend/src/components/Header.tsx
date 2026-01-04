@@ -31,7 +31,7 @@ export function Header(): JSX.Element {
                 ) : (
                     <UnstyledButton onClick={handleLoginClick}>Login</UnstyledButton>
                 )}
-                <LoginDialog opened={loginDialogOpened.value} onClose={handleLoginDialogClose} />
+                <LoginDialog opened={loginDialogOpened} onClose={handleLoginDialogClose} />
             </div>
         </div>
     );

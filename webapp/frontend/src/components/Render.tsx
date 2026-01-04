@@ -1,4 +1,4 @@
-import React, { useRef, useState, type JSX } from 'react';
+import React, { type JSX } from 'react';
 import { store } from '../store';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import classes from './Render.module.scss';
@@ -8,13 +8,14 @@ import type { RenderResult } from '../types';
 import * as _ from 'radash';
 import { RenderProgress } from './RenderProgress';
 import { useSignal, useSignalEffect } from '@preact/signals-react';
+import { useSignalRef } from '@preact/signals-react/utils';
 
 export function Render(): JSX.Element {
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    const canvasMiniRef = useRef<HTMLCanvasElement | null>(null);
-    const [showMinimap, setShowMinimap] = useState(false);
+    const canvasRef = useSignalRef<HTMLCanvasElement | null>(null);
+    const canvasMiniRef = useSignalRef<HTMLCanvasElement | null>(null);
+    const showMinimap = useSignal(false);
     const progress = useSignal(1.0);
-    const [working, setWorking] = useState(false);
+    const working = useSignal(false);
     const startTime = useSignal<Date | undefined>(undefined);
 
     // update empty background if block size changes
@@ -33,13 +34,13 @@ export function Render(): JSX.Element {
             if (event.type === 'init') {
                 progress.value = 0.0;
                 startTime.value = event.startTime;
-                setWorking(true);
+                working.value = true;
                 renderEmpty(_canvasRef, blockSize);
                 renderEmpty(_canvasMiniRef, blockSize);
             } else if (event.type === 'renderResult') {
                 progress.value = event.progress;
                 if (event.progress >= 1.0) {
-                    setWorking(false);
+                    working.value = false;
                 }
                 renderDrawEvent(_canvasRef, event);
                 renderDrawEvent(_canvasMiniRef, event);
@@ -69,7 +70,7 @@ export function Render(): JSX.Element {
             elRect.x - wrapperElRect.x < 0 ||
             wrapperElRect.right - elRect.right < 0 ||
             wrapperElRect.bottom - elRect.bottom < 0;
-        setShowMinimap(offScreen);
+        showMinimap.value = offScreen;
     };
 
     return (
@@ -77,7 +78,7 @@ export function Render(): JSX.Element {
             <TransformWrapper onZoom={handleOnZoom}>
                 {(utils) => (
                     <React.Fragment>
-                        <div className={classes.miniMap} style={{ display: showMinimap ? 'block' : 'none' }}>
+                        <div className={classes.miniMap} style={{ display: showMinimap.value ? 'block' : 'none' }}>
                             <MiniMap width={150} height={150}>
                                 <canvas
                                     ref={canvasMiniRef}
@@ -98,7 +99,7 @@ export function Render(): JSX.Element {
                     </React.Fragment>
                 )}
             </TransformWrapper>
-            <RenderProgress progress={progress.value} startTime={startTime.value} working={working} />
+            <RenderProgress progress={progress} startTime={startTime} working={working} />
         </div>
     );
 }
@@ -140,13 +141,12 @@ function Controls(options: ReactZoomPanPinchHandlers): JSX.Element {
 function getCanvasCtx(canvasRef: React.RefObject<HTMLCanvasElement | null>): CanvasRenderingContext2D | undefined {
     const canvas = canvasRef.current;
     if (!canvas) {
-        console.error('canvas not set');
-        return;
+        return undefined;
     }
     const ctx = canvas.getContext('2d');
     if (!ctx) {
         console.error('could not get canvas context');
-        return;
+        return undefined;
     }
     return ctx;
 }
