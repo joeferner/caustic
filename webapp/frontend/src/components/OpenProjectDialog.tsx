@@ -14,12 +14,13 @@ import {
 } from '@mantine/core';
 import { type JSX, type MouseEvent } from 'react';
 import classes from './OpenProjectDialog.module.scss';
-import { store } from '../store';
+import { store } from '../stores/store';
 import { ErrorMessage, type ErrorMessageProps } from './ErrorMessage';
 import { Copy as CopyIcon, Trash as DeleteIcon } from 'react-bootstrap-icons';
 import type { UserDataProject } from '../api';
 import { Signal, useComputed, useSignal, useSignalEffect } from '@preact/signals-react';
 import { For, Show } from '@preact/signals-react/utils';
+import { userStore } from '../stores/UserStore';
 
 export interface OpenProjectDialogProps {
     opened: Signal<boolean>;
@@ -129,7 +130,7 @@ export function OpenProjectDialog({ opened, onClose }: OpenProjectDialogProps): 
                             placeholder="New Project Name"
                             inputSize="100"
                             label="New Project Name"
-                            description={store.user.value ? null : 'To create a new project you must be logged in'}
+                            description={userStore.user.value ? null : 'To create a new project you must be logged in'}
                             value={newProjectName.value}
                             onChange={(event) => {
                                 newProjectName.value = event.target.value;

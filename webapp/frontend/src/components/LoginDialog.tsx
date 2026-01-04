@@ -1,9 +1,10 @@
 import { type JSX } from 'react';
-import { store } from '../store';
+import { store } from '../stores/store';
 import { GoogleLogin, type GoogleCredentialResponse } from './GoogleLogin';
 import { Button, Divider, Modal } from '@mantine/core';
 import classes from './LoginDialog.module.scss';
 import { Signal } from '@preact/signals-react';
+import { userStore } from '../stores/UserStore';
 
 export interface LoginDialogProps {
     opened: Signal<boolean>;
@@ -15,18 +16,18 @@ export function LoginDialog({ opened, onClose }: LoginDialogProps): JSX.Element 
 
     const onCredentialResponse = (response: GoogleCredentialResponse): void => {
         const run = async (): Promise<void> => {
-            await store.handleGoogleCredentialResponse({ response });
+            await userStore.handleGoogleCredentialResponse({ response });
             onClose();
         };
         void run();
     };
 
     const onLogOutClick = (): void => {
-        store.logOut();
+        userStore.logOut();
         onClose();
     };
 
-    if (!store.settings.value) {
+    if (!userStore.settings.value) {
         return null;
     }
 
@@ -34,11 +35,11 @@ export function LoginDialog({ opened, onClose }: LoginDialogProps): JSX.Element 
         <Modal opened={opened.value} onClose={onClose} title="Login" zIndex={2000}>
             <div className={classes.loginDialogOptions}>
                 <GoogleLogin
-                    clientId={store.settings.value.googleClientId}
+                    clientId={userStore.settings.value.googleClientId}
                     onCredentialResponse={onCredentialResponse}
                     buttonConfig={{ width: WIDTH, theme: 'outline' }}
                 />
-                {store.user.value && (
+                {userStore.user.value && (
                     <>
                         <Divider my="xs" label="OR" labelPosition="center" style={{ width: `${WIDTH}px` }} />
                         <Button onClick={onLogOutClick}>Log Out</Button>

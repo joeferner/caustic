@@ -1,4 +1,4 @@
-import type { RenderOptions as StateRenderOptions } from './store';
+import type { RenderOptions as StateRenderOptions } from './stores/store';
 import type {
     RenderRequestInit,
     RenderRequestWork,

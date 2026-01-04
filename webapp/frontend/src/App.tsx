@@ -7,7 +7,8 @@ import { useEffect, type JSX } from 'react';
 import { Header } from './components/Header';
 import { ModalsProvider } from '@mantine/modals';
 import { MantineProvider } from '@mantine/core';
-import { store } from './store';
+import { store } from './stores/store';
+import { userStore } from './stores/UserStore';
 
 export function App(): JSX.Element {
     return (
@@ -21,7 +22,11 @@ export function App(): JSX.Element {
 
 function InnerApp(): JSX.Element {
     useEffect(() => {
-        void store.initialize();
+        void (async (): Promise<void> => {
+            // loadUserMe must come first
+            await userStore.loadUserMe();
+            await store.initialize();
+        })();
     }, []);
 
     return (

@@ -1,5 +1,5 @@
 import React, { type JSX } from 'react';
-import { store } from '../store';
+import { store } from '../stores/store';
 import { MiniMap, TransformComponent, TransformWrapper, type ReactZoomPanPinchHandlers } from 'react-zoom-pan-pinch';
 import classes from './Render.module.scss';
 import { Button, Tooltip } from '@mantine/core';

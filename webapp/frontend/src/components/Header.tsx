@@ -1,10 +1,11 @@
 import classes from './Header.module.scss';
-import { store } from '../store';
+import { store } from '../stores/store';
 import { type JSX } from 'react';
 import { UnstyledButton } from '@mantine/core';
 import type { User } from '../api';
 import { LoginDialog } from './LoginDialog';
 import { useSignal } from '@preact/signals-react';
+import { userStore } from '../stores/UserStore';
 
 const PICTURE_SIZE = 35;
 
@@ -26,8 +27,8 @@ export function Header(): JSX.Element {
             </div>
             <div className={classes.projectName}>{store.project.value && <div>{store.project.value.name}</div>}</div>
             <div className={classes.userInfo}>
-                {store.user.value ? (
-                    <UserInfo onClick={handleLoginClick} user={store.user.value} />
+                {userStore.user.value ? (
+                    <UserInfo onClick={handleLoginClick} user={userStore.user.value} />
                 ) : (
                     <UnstyledButton onClick={handleLoginClick}>Login</UnstyledButton>
                 )}

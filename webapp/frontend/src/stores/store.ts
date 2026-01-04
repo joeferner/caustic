@@ -1,8 +1,7 @@
-import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from './wasm';
-import { RenderWorkerPool, type RenderCallbackFn } from './RenderWorkerPool';
-import type { WorkingFile } from './types';
-import { RayTracerApi, type Project, type Settings, type User, type UserDataProject } from './api';
-import type { GoogleCredentialResponse } from './components/GoogleLogin';
+import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from '../wasm';
+import { RenderWorkerPool, type RenderCallbackFn } from '../RenderWorkerPool';
+import type { WorkingFile } from '../types';
+import { RayTracerApi, type Project, type UserDataProject } from '../api';
 import * as R from 'radash';
 import { computed, signal } from '@preact/signals-react';
 
@@ -21,7 +20,6 @@ export interface StoreProject extends Project {
 
 export const DEFAULT_RENDER_BLOCK_SIZE = 50;
 export const EXAMPLE_CAR_ID = 'cad84577-c808-41a9-8d77-25a4626fe65f';
-const LOCAL_STORAGE_JWT_TOKEN_KEY = 'jwtToken';
 const LOCAL_STORAGE_LAST_LOADED_PROJECT_ID_KEY = 'lastLoadedProjectId';
 
 const renderWorkerPool = new RenderWorkerPool();
@@ -29,8 +27,6 @@ const renderWorkerPool = new RenderWorkerPool();
 export class Store {
     private readonly drawEventListeners = new Set<RenderCallbackFn>();
 
-    public readonly user = signal<User | undefined>();
-    public readonly settings = signal<Settings | undefined>(undefined);
     public readonly projects = signal<UserDataProject[]>([]);
     public readonly files = signal<WorkingFile[]>([]);
     public readonly cameraInfo = signal<CameraInfo | undefined>(undefined);
@@ -43,23 +39,10 @@ export class Store {
 
     public async initialize(): Promise<void> {
         console.log('load initial project');
-        await this.loadUserMe();
         await this.loadProjects();
         const lastLoadedProjectId = this.lastLoadedProjectId;
         const userProject = this.projects.value.find((p) => p.id === lastLoadedProjectId);
         await this.loadProject({ projectId: userProject?.id ?? EXAMPLE_CAR_ID });
-    }
-
-    private set jwtToken(value: string | undefined) {
-        if (value) {
-            window.localStorage.setItem(LOCAL_STORAGE_JWT_TOKEN_KEY, value);
-        } else {
-            window.localStorage.removeItem(LOCAL_STORAGE_JWT_TOKEN_KEY);
-        }
-    }
-
-    private get jwtToken(): string | undefined {
-        return window.localStorage.getItem(LOCAL_STORAGE_JWT_TOKEN_KEY) ?? undefined;
     }
 
     private set lastLoadedProjectId(value: string | undefined) {
@@ -84,17 +67,6 @@ export class Store {
             }
             return f;
         });
-    }
-
-    private async loadUserMe(): Promise<void> {
-        const jwtToken = this.jwtToken;
-        if (jwtToken) {
-            rayTracerApi.request.config.TOKEN = jwtToken;
-        }
-
-        const resp = await rayTracerApi.user.getUserMe();
-        this.settings.value = resp.settings;
-        this.user.value = resp.user ?? undefined;
     }
 
     public async loadProjects(): Promise<void> {
@@ -171,28 +143,6 @@ export class Store {
                 }
             },
         });
-    }
-
-    public logOut(): void {
-        this.user.value = undefined;
-        this.jwtToken = undefined;
-    }
-
-    public async handleGoogleCredentialResponse({ response }: { response: GoogleCredentialResponse }): Promise<void> {
-        try {
-            const data = await rayTracerApi.user.googleTokenVerify({
-                token: response.credential,
-            });
-
-            rayTracerApi.request.config.TOKEN = data.token;
-
-            const resp = await rayTracerApi.user.getUserMe();
-            this.settings.value = resp.settings;
-            this.user.value = resp.user ?? undefined;
-            this.jwtToken = data.token;
-        } catch (err) {
-            console.error('onGoogleCredentialResponse', err instanceof Error ? err : new Error('Unknown error'));
-        }
     }
 
     private async loadProjectFiles(project: Project): Promise<WorkingFile[]> {
