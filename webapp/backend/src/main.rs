@@ -10,6 +10,7 @@ use axum::middleware::{self, Next};
 use axum::response::Response;
 use clap::Parser;
 use env_logger::Env;
+use utoipa::openapi::{InfoBuilder, LicenseBuilder, OpenApi, Paths};
 
 use std::sync::Arc;
 
@@ -23,7 +24,6 @@ use routes::user_routes::{
     __path_get_user_me, __path_google_token_verify, get_user_me, google_token_verify,
 };
 use tower_http::{cors, cors::CorsLayer};
-use utoipa::OpenApi;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -31,15 +31,6 @@ use crate::state::AppState;
 
 pub const PROJECT_TAG: &str = "project";
 pub const USER_TAG: &str = "user";
-
-#[derive(OpenApi)]
-#[openapi(
-    tags(
-        (name = PROJECT_TAG, description = "Project management endpoints"),
-        (name = USER_TAG, description = "User management endpoints"),
-    )
-)]
-struct ApiDoc;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -88,7 +79,22 @@ async fn main() -> Result<()> {
 }
 
 fn build_api_router() -> OpenApiRouter<Arc<AppState>> {
-    OpenApiRouter::with_openapi(ApiDoc::openapi())
+    let openapi = OpenApi::new(
+        InfoBuilder::new()
+            .title("Caustic")
+            .version("1.0.0")
+            .description(Some("Caustic Ray Tracer API"))
+            .license(Some(
+                LicenseBuilder::new()
+                    .name("MIT")
+                    .url(Some("http://mit.licence"))
+                    .build(),
+            ))
+            .build(),
+        Paths::new(),
+    );
+
+    OpenApiRouter::with_openapi(openapi)
         .routes(routes!(get_user_me))
         .routes(routes!(google_token_verify))
         .routes(routes!(get_project))
