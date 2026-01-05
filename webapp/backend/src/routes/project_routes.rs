@@ -288,6 +288,7 @@ pub async fn create_project(
     let file = ProjectFile {
         filename: "main.scad".to_string(),
         content_type: CONTENT_TYPE_OPENSCAD.to_string(),
+        sort: 1,
     };
     let contents = "".to_string().into_bytes();
     state
@@ -440,6 +441,7 @@ pub async fn copy_project(
         new_project.files.push(ProjectFile {
             filename: file.filename.to_owned(),
             content_type: file.content_type.to_owned(),
+            sort: file.sort,
         });
     }
 

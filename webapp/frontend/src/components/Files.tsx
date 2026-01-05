@@ -1,11 +1,12 @@
 import { Tabs } from '@mantine/core';
-import { Editor } from '@monaco-editor/react';
 import classes from './Files.module.scss';
 import { projectStore } from '../stores/store';
 import type { JSX } from 'react';
-import { registerOpenscadLanguage } from '../monaco-openscad';
 import type { WorkingFile } from '../types';
 import { For } from '@preact/signals-react/utils';
+import { ImageViewer } from './ImageViewer';
+import { FileEditor } from './FileEditor';
+import { signal } from '@preact/signals-react';
 
 export function Files(): JSX.Element | null {
     const handleTabChange = (newValue: string | null): void => {
@@ -17,7 +18,11 @@ export function Files(): JSX.Element | null {
     }
 
     return (
-        <Tabs value={projectStore.selectedTab.value ?? projectStore.files.value[0].filename} onChange={handleTabChange} className={classes.tabs}>
+        <Tabs
+            value={projectStore.selectedTab.value ?? projectStore.files.value[0].filename}
+            onChange={handleTabChange}
+            className={classes.tabs}
+        >
             <Tabs.List>
                 <For each={projectStore.files}>
                     {(file) => (
@@ -25,7 +30,7 @@ export function Files(): JSX.Element | null {
                             <div className={classes.tabFilename}>
                                 {file.filename}
                                 <div className={classes.unsavedIndicator}>
-                                    {file.contents != file.originalContents ? '*' : ' '}
+                                    {file.type === 'text' && file.contents != file.originalContents ? '*' : ' '}
                                 </div>
                             </div>
                         </Tabs.Tab>
@@ -45,41 +50,18 @@ export function Files(): JSX.Element | null {
 }
 
 interface FileProps {
-    file: WorkingFile
+    file: WorkingFile;
 }
 
 function File({ file }: FileProps): JSX.Element {
-    if (file.contentType.startsWith('image/')) {
-        return (<div>Image</div>);
-    } else if (file.contentType.startsWith('text/') || file.contentType === 'application/x-openscad') {
-        return (<FileEditor file={file} />);
-    } else {
-        return (<div>Unsupported: {file.contentType}</div>)
+    if (file.type === 'binary' && file.contentType.startsWith('image/')) {
+        const fileSignal = signal(file);
+        return <ImageViewer file={fileSignal} />;
     }
-}
 
-function FileEditor({ file }: FileProps): JSX.Element {
-    const handleCodeChange = (code: string | undefined): void => {
-        projectStore.updateFile({ filename: file.filename, content: code ?? '' });
-    };
-
-    if (file.contentType.startsWith('image/')) {
-        return (<div>Image</div>);
-    } else if (file.contentType.startsWith('text/') || file.contentType === 'application/x-openscad') {
-        return (
-            <Editor
-                height="100%"
-                language="openscad"
-                beforeMount={(monaco) => {
-                    registerOpenscadLanguage(monaco);
-                }}
-                theme="vs-dark"
-                value={file.contents}
-                onChange={handleCodeChange}
-                options={{ minimap: { enabled: false } }}
-            />
-        );
-    } else {
-        return (<div>Unsupported: {file.contentType}</div>)
+    if (file.type === 'text') {
+        return <FileEditor file={file} />;
     }
+
+    return <div>Unsupported: {file.contentType}</div>;
 }

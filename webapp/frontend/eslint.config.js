@@ -53,6 +53,7 @@ export default defineConfig([
         },
         rules: {
             '@typescript-eslint/ban-tslint-comment': 'off',
+            '@typescript-eslint/ban-ts-comment': 'off',
         },
     },
 ]);

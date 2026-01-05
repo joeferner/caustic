@@ -4,11 +4,11 @@ import * as _ from 'radash';
 import { useSignal, useSignalEffect } from '@preact/signals-react';
 import { useSignalRef } from '@preact/signals-react/utils';
 import { projectStore } from '../stores/store';
-import { ImageViewer, type ImageViewerHandle } from './ImageViewer';
+import { CanvasViewer, type CanvasViewerHandle } from './CanvasViewer';
 import { renderEmpty } from '../utils/canvas';
 
 export function Render(): JSX.Element {
-    const imageViewerRef = useSignalRef<ImageViewerHandle | null>(null);
+    const canvasViewerRef = useSignalRef<CanvasViewerHandle | null>(null);
     const progress = useSignal(1.0);
     const working = useSignal(false);
     const startTime = useSignal<Date | undefined>(undefined);
@@ -29,14 +29,14 @@ export function Render(): JSX.Element {
     // subscribe to draw events to render
     useSignalEffect(() => {
         const blockSize = projectStore.renderOptions.value.blockSize;
-        const _imageViewerRef = imageViewerRef;
+        const _canvasViewerRef = canvasViewerRef;
 
         const unsubscribe = projectStore.subscribeToDrawEvents((event) => {
             if (event.type === 'init') {
                 progress.value = 0.0;
                 startTime.value = event.startTime;
                 working.value = true;
-                _imageViewerRef.current?.render((ctx) => {
+                _canvasViewerRef.current?.render((ctx) => {
                     renderEmpty(ctx, blockSize);
                 });
             } else if (event.type === 'renderResult') {
@@ -44,7 +44,7 @@ export function Render(): JSX.Element {
                 if (event.progress >= 1.0) {
                     working.value = false;
                 }
-                _imageViewerRef.current?.render((ctx) => {
+                _canvasViewerRef.current?.render((ctx) => {
                     renderDrawEvent(ctx, event);
                 });
             }
@@ -53,15 +53,17 @@ export function Render(): JSX.Element {
         return unsubscribe;
     });
 
-    return (<ImageViewer
-        ref={imageViewerRef}
-        progress={{
-            progress,
-            startTime,
-            working
-        }}
-        width={projectStore.cameraInfo.value?.width ?? 500}
-        height={projectStore.cameraInfo.value?.height ?? 500}
-        blockSize={projectStore.renderOptions.value.blockSize} />);
+    return (
+        <CanvasViewer
+            ref={canvasViewerRef}
+            progress={{
+                progress,
+                startTime,
+                working,
+            }}
+            width={projectStore.cameraInfo.value?.width ?? 500}
+            height={projectStore.cameraInfo.value?.height ?? 500}
+            blockSize={projectStore.renderOptions.value.blockSize}
+        />
+    );
 }
-

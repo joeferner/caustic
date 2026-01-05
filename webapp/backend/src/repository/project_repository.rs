@@ -28,6 +28,7 @@ pub struct Project {
 pub struct ProjectFile {
     pub filename: String,
     pub content_type: String,
+    pub sort: u32,
 }
 
 #[derive(Debug, FromRow)]
@@ -38,6 +39,7 @@ struct ProjectProjectFileRow {
     pub project_last_modified: String,
     pub project_file_filename: Option<String>,
     pub project_file_content_type: Option<String>,
+    pub project_file_sort: Option<u32>,
 }
 
 pub struct ReadProjectFileData {
@@ -69,7 +71,8 @@ impl ProjectRepository {
                 p.name AS project_name,
                 p.last_modified AS project_last_modified,
                 pf.filename AS project_file_filename,
-                pf.content_type AS project_file_content_type
+                pf.content_type AS project_file_content_type,
+                pf.sort AS project_file_sort
             FROM caustic_project p
             LEFT JOIN caustic_project_file pf ON p.project_id = pf.project_id
             WHERE p.owner_user_id = ?
@@ -79,7 +82,7 @@ impl ProjectRepository {
         .bind(owner_user_id)
         .fetch_all(&self.db_pool)
         .await
-        .context("Failed to read project with project files")?;
+        .context("Failed to read project with project files (by owner user id)")?;
 
         project_project_file_rows_to_projects(rows)
     }
@@ -93,7 +96,8 @@ impl ProjectRepository {
                 p.name AS project_name,
                 p.last_modified AS project_last_modified,
                 pf.filename AS project_file_filename,
-                pf.content_type AS project_file_content_type
+                pf.content_type AS project_file_content_type,
+                pf.sort AS project_file_sort
             FROM caustic_project p
             LEFT JOIN caustic_project_file pf ON p.project_id = pf.project_id
             WHERE p.project_id = ?
@@ -103,7 +107,7 @@ impl ProjectRepository {
         .bind(project_id)
         .fetch_all(&self.db_pool)
         .await
-        .context("Failed to read project with project files")?;
+        .context("Failed to read project with project files (by project id)")?;
 
         let mut projects = project_project_file_rows_to_projects(rows)?;
         if projects.is_empty() {
@@ -229,12 +233,19 @@ fn project_project_file_rows_to_projects(rows: Vec<ProjectProjectFileRow>) -> Re
             files: vec![],
         });
 
-        if let (Some(project_file_filename), Some(project_file_content_type)) =
-            (row.project_file_filename, row.project_file_content_type)
-        {
+        if let (
+            Some(project_file_filename),
+            Some(project_file_content_type),
+            Some(project_file_sort),
+        ) = (
+            row.project_file_filename,
+            row.project_file_content_type,
+            row.project_file_sort,
+        ) {
             project.files.push(ProjectFile {
                 filename: project_file_filename,
                 content_type: project_file_content_type,
+                sort: project_file_sort,
             });
         }
     }

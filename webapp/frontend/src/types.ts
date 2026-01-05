@@ -37,7 +37,15 @@ export interface RenderResponseData extends RenderResult {
 
 export type RenderResponse = RenderResponseInit | RenderResponseData;
 
-export interface WorkingFile extends ProjectFile {
+export interface TextWorkingFile extends ProjectFile {
+    type: 'text';
     originalContents: string;
     contents: string;
 }
+
+export interface BinaryWorkingFile extends ProjectFile {
+    type: 'binary';
+    contents: Blob;
+}
+
+export type WorkingFile = TextWorkingFile | BinaryWorkingFile;

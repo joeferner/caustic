@@ -12,10 +12,17 @@ else
     "${SCRIPT_DIR}/../../../target/debug/caustic-webapp" --write-swagger /tmp/openapi.json
 fi
 
-npx openapi-typescript-codegen \
-  --input /tmp/openapi.json \
-  --output ./src/api \
-  --client fetch \
-  --name RayTracerApi
+rm -rf ./src/api
+npx openapi-generator-cli generate \
+  -i /tmp/openapi.json \
+  -o ./src/api \
+  -g typescript-fetch
+
+SED_COMMAND='1s;^;// @ts-nocheck\n;'
+if [ "$(uname)" != "Darwin" ]; then
+  sed -i "$SED_COMMAND" ./src/api/**/*.ts
+else
+  sed -i '' "$SED_COMMAND" ./src/api/**/*.ts
+fi
 
 echo "complete!"

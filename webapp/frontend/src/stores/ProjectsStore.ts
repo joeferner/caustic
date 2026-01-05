@@ -26,13 +26,13 @@ export class ProjectsStore {
 
     public async createProject({ name }: { name: string }): Promise<void> {
         console.log('creating new project', name);
-        const project = await rayTracerApi.project.createProject({ name });
+        const project = await rayTracerApi.project.createProject({ createProjectRequest: { name } });
         await projectStore.setProject({ ...project, readOnly: false });
         this.projects.value = [...this.projects.value, { ...project, readonly: false }];
     }
 
     public async deleteProject({ projectId }: { projectId: string }): Promise<void> {
-        await rayTracerApi.project.deleteProject({ projectId });
+        await rayTracerApi.project.deleteProject({ deleteProjectRequest: { projectId } });
         this.projects.value = this.projects.value.filter((p) => p.id !== projectId);
 
         if (projectId == projectStore.project.value?.id) {
@@ -44,7 +44,7 @@ export class ProjectsStore {
     }
 
     public async copyProject({ projectId }: { projectId: string }): Promise<void> {
-        const newProject = await rayTracerApi.project.copyProject({ projectId });
+        const newProject = await rayTracerApi.project.copyProject({ copyProjectRequest: { projectId } });
         await projectStore.setProject({ ...newProject, readOnly: false });
         this.projects.value = [...this.projects.value, { ...newProject, readonly: false }];
     }

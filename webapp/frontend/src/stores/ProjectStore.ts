@@ -1,10 +1,10 @@
 import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from '../wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from '../RenderWorkerPool';
-import type { WorkingFile } from '../types';
+import type { BinaryWorkingFile, TextWorkingFile, WorkingFile } from '../types';
 import { type Project } from '../api';
-import * as R from 'radash';
 import { computed, signal } from '@preact/signals-react';
 import {
+    CONTENT_TYPE_OPENSCAD,
     DEFAULT_RENDER_BLOCK_SIZE,
     EXAMPLE_CAR_ID,
     projectsStore,
@@ -39,13 +39,18 @@ export class ProjectStore {
 
     public updateFile(update: { filename: string; content: string }): void {
         this.files.value = this.files.value.map((f) => {
-            if (f.filename === update.filename) {
-                return {
-                    ...f,
-                    contents: update.content,
-                };
+            if (f.filename !== update.filename) {
+                return f;
             }
-            return f;
+
+            if (f.type !== 'text') {
+                throw new Error(`cannot update files of type: ${f.type}`);
+            }
+
+            return {
+                ...f,
+                contents: update.content,
+            };
         });
     }
 
@@ -66,16 +71,16 @@ export class ProjectStore {
             throw new Error(`project ${projectId} not found in user projects`);
         }
         console.log(`getting project (projectId: ${projectId})`);
-        const project = await rayTracerApi.project.getProject(projectId);
+        const project = await rayTracerApi.project.getProject({ projectId });
         await this.setProject({ ...project, readOnly: userProject.readonly });
     }
 
     public async render(): Promise<void> {
-        if (this.files.value.length === 0) {
+        // TODO handle multiple openscad files
+        const input = this.files.value.find((f) => f.type === 'text')?.contents;
+        if (!input) {
             return;
         }
-
-        const input = this.files.value[0].contents;
 
         await initWasm();
         loadOpenscad(input);
@@ -97,25 +102,33 @@ export class ProjectStore {
     }
 
     private async loadProjectFiles(project: Project): Promise<WorkingFile[]> {
-        return await Promise.all(
+        const files = await Promise.all(
             project.files.map(async (f) => {
                 console.log(`getting project file (projectId: ${project.id}, filename: ${f.filename})`);
 
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                const contents = await rayTracerApi.project.getProjectFile(project.id, f.filename);
-                console.log(contents);
-                if (R.isString(contents)) {
+                const response = (
+                    await rayTracerApi.project.getProjectFileRaw({ projectId: project.id, filename: f.filename })
+                ).raw;
+                const contentType = response.headers.get('content-type')?.toLocaleLowerCase();
+                if (contentType?.startsWith('text/') || contentType === CONTENT_TYPE_OPENSCAD) {
+                    const contents = await response.text();
                     return {
                         ...f,
+                        type: 'text',
                         originalContents: contents,
                         contents,
-                    } satisfies WorkingFile;
+                    } satisfies TextWorkingFile;
                 } else {
-                    console.log('unhandled file contents', contents);
-                    throw new Error('todo');
+                    const contents = await response.blob();
+                    return {
+                        ...f,
+                        type: 'binary',
+                        contents,
+                    } satisfies BinaryWorkingFile;
                 }
             })
         );
+        return files.sort((a, b) => a.sort - b.sort);
     }
 
     public subscribeToDrawEvents(listener: RenderCallbackFn): UnsubscribeFn {

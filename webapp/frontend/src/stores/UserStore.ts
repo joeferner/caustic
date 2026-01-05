@@ -24,7 +24,7 @@ export class UserStore {
     public async loadUserMe(): Promise<void> {
         const jwtToken = this.jwtToken;
         if (jwtToken) {
-            rayTracerApi.request.config.TOKEN = jwtToken;
+            rayTracerApi.token = jwtToken;
         }
 
         const resp = await rayTracerApi.user.getUserMe();
@@ -40,10 +40,12 @@ export class UserStore {
     public async handleGoogleCredentialResponse({ response }: { response: GoogleCredentialResponse }): Promise<void> {
         try {
             const data = await rayTracerApi.user.googleTokenVerify({
-                token: response.credential,
+                googleVerifyRequest: {
+                    token: response.credential,
+                },
             });
 
-            rayTracerApi.request.config.TOKEN = data.token;
+            rayTracerApi.token = data.token;
 
             const resp = await rayTracerApi.user.getUserMe();
             this.settings.value = resp.settings;
