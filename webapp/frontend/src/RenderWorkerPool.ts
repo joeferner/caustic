@@ -1,5 +1,6 @@
 import type { RenderOptions as StateRenderOptions } from './stores/store';
 import type {
+    InitImageData,
     RenderRequestInit,
     RenderRequestWork,
     RenderResponse,
@@ -14,6 +15,7 @@ export interface RenderEventInit {
     blockSize: number;
     blockCount: number;
     startTime: Date;
+    imageData: Record<string, InitImageData>;
 }
 
 export interface RenderEventRenderResult extends RenderResult {
@@ -92,7 +94,12 @@ export class RenderWorkerPool {
         console.error(`[${workerId}] worker error`, err);
     }
 
-    public render(threadCount: number, input: string, options: RenderOptions): void {
+    public render(
+        threadCount: number,
+        input: string,
+        imageData: Record<string, InitImageData>,
+        options: RenderOptions
+    ): void {
         this.callback = options.callback;
         this.ensureWorkerCount(threadCount);
         this.populateWorkQueue(options);
@@ -104,9 +111,10 @@ export class RenderWorkerPool {
             blockSize: options.blockSize,
             blockCount: this.blockCount,
             startTime: new Date(),
+            imageData,
         });
 
-        this.initializeAndBeginRender(threadCount, input);
+        this.initializeAndBeginRender(threadCount, input, imageData);
     }
 
     private populateWorkQueue(options: RenderOptions): void {
@@ -128,12 +136,17 @@ export class RenderWorkerPool {
         console.log(`work queue initialized with ${work.length} blocks`);
     }
 
-    private initializeAndBeginRender(threadCount: number, input: string): void {
+    private initializeAndBeginRender(
+        threadCount: number,
+        input: string,
+        imageData: Record<string, InitImageData>
+    ): void {
         for (let i = 0; i < threadCount; i++) {
             const message: RenderRequestInit = {
                 type: 'init',
                 workerId: i,
                 input,
+                imageData,
             };
             this.workers[i].postMessage(message);
         }

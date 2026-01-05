@@ -2,12 +2,16 @@ use std::{fmt::Display, sync::Arc};
 
 use caustic_core::{Color, Vector3, texture::Texture};
 
+use crate::WithPosition;
+
 #[derive(Debug)]
 pub struct ValueConversionError {}
 
 pub type Result<T> = std::result::Result<T, ValueConversionError>;
 
-#[derive(Debug, Clone)]
+pub type ValueWithPosition = WithPosition<Value>;
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64),
     String(String),
@@ -54,6 +58,13 @@ impl Value {
     pub fn to_boolean(&self) -> Result<bool> {
         match self {
             Value::Boolean(b) => Ok(*b),
+            _ => todo!(),
+        }
+    }
+
+    pub fn to_unescaped_string(&self) -> Result<String> {
+        match self {
+            Value::String(s) => Ok(s.to_owned()),
             _ => todo!(),
         }
     }

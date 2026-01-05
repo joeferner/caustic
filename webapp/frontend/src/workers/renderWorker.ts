@@ -1,4 +1,5 @@
 import type {
+    InitImageData,
     RenderRequest,
     RenderRequestInit,
     RenderRequestWork,
@@ -6,8 +7,10 @@ import type {
     RenderResponseInit,
 } from '../types';
 import { initWasm, loadOpenscad, renderBlock } from '../wasm';
+import { ImageData } from '../wasm/caustic_wasm';
 
 let workerId = -1;
+let imageData: Record<string, InitImageData> = {};
 
 self.onmessage = (e: MessageEvent<RenderRequest>): void => {
     const { type } = e.data;
@@ -21,8 +24,18 @@ self.onmessage = (e: MessageEvent<RenderRequest>): void => {
     }
 };
 
+self.load_image = (name: string): ImageData => {
+    const data = imageData?.[name];
+    if (!data) {
+        return new ImageData(100, 100, new Uint8Array([]));
+    } else {
+        return new ImageData(data.width, data.height, data.pixels);
+    }
+};
+
 async function init(data: RenderRequestInit): Promise<void> {
     workerId = data.workerId;
+    imageData = data.imageData;
 
     console.log(`[${workerId}] initializing worker`);
     await initWasm();

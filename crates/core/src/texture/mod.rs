@@ -17,3 +17,10 @@ pub use solid_color::SolidColor;
 pub trait Texture: Debug + Send + Sync {
     fn value(&self, u: f64, v: f64, pt: Vector3) -> Color;
 }
+
+impl PartialEq for dyn Texture {
+    fn eq(&self, _other: &Self) -> bool {
+        // TODO implement me
+        false
+    }
+}

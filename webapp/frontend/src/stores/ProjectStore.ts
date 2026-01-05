@@ -1,6 +1,6 @@
 import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from '../wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from '../RenderWorkerPool';
-import type { BinaryWorkingFile, TextWorkingFile, WorkingFile } from '../types';
+import type { BinaryWorkingFile, InitImageData, TextWorkingFile, WorkingFile } from '../types';
 import { type Project } from '../api';
 import { computed, signal } from '@preact/signals-react';
 import {
@@ -13,6 +13,7 @@ import {
     type StoreProject,
     type UnsubscribeFn,
 } from './store';
+import { ImageData } from '../wasm/caustic_wasm';
 
 const renderWorkerPool = new RenderWorkerPool();
 
@@ -82,15 +83,27 @@ export class ProjectStore {
             return;
         }
 
+        const imageData: Record<string, InitImageData> = {};
+        const imageNames: string[] = [];
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access
+        (window as any).load_image = (name: string): ImageData => {
+            imageNames.push(name);
+            return new ImageData(1, 1, new Uint8Array([0, 0, 0]));
+        };
+
         await initWasm();
         loadOpenscad(input);
+
+        // TODO load image data
+        console.log(imageNames);
 
         const cameraInfo = getCameraInfo();
         const { threadCount } = this.renderOptions.value;
         console.log(`Begin render ${cameraInfo.width}x${cameraInfo.height}`);
         this.cameraInfo.value = cameraInfo;
 
-        renderWorkerPool.render(threadCount, input, {
+        renderWorkerPool.render(threadCount, input, imageData, {
             ...cameraInfo,
             ...this.renderOptions.value,
             callback: (event) => {

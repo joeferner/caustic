@@ -11,12 +11,12 @@ camera(
   samples_per_pixel=10,
   max_depth=50,
   vertical_fov=20,
-  look_from=[0, 0, 12],
+  look_from=[0, 12, 0],
   look_at=[0, 0, 0],
   defocus_angle=0,
   background=[0.7, 0.8, 1.0]
 );
 
 // globe
-lambertian(t=texture(filename="earth-map.jpg"))
+lambertian(t=image(filename="earth-map.jpg"))
   sphere(r=2.0);

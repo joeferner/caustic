@@ -12,11 +12,12 @@
 
 ## Caustic Extensions
 
-- :white_check_mark: camera
-- :white_check_mark: lambertian
-- :white_check_mark: dielectric
-- :white_check_mark: metal
-- :white_check_mark: checker
+- :white_check_mark: `camera(aspect_ratio, image_width, samples_per_pixel, max_depth, vertical_fov, look_from, look_at, defocus_angle, background)`
+- :white_check_mark: `lambertian(t)`
+- :white_check_mark: `dielectric(n)`
+- :white_check_mark: `metal(c, fuzz)`
+- :white_check_mark: `checker(scale, even, odd)`
+- :white_check_mark: `image(filename)`
 
 ## Syntax
 
@@ -73,27 +74,27 @@
 
 ## 2D Primitives
 
-- :x: [`circle`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#circle)(radius | d=diameter)
-- :x: [`square`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#square)(size, center)
-- :x: [`square`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#square)([width,height], center)
-- :x: [`polygon`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#polygon)([points])
-- :x: [`polygon`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#polygon)([points], [paths])
-- :x: [`text`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Text)(t, size, font, halign, valign, spacing, direction, language, script)
-- :x: [`import`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Importing_Geometry#import)("….ext", convexity) - formats: DXF|SVG
-- :x: [`projection`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#3D_to_2D_Projection)(cut)
+- :x: [`circle`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#circle)`(radius | d=diameter)`
+- :x: [`square`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#square)`(size, center)`
+- :x: [`square`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#square)`([width,height], center)`
+- :x: [`polygon`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#polygon)`([points])`
+- :x: [`polygon`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#polygon)`([points], [paths])`
+- :x: [`text`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Text)`(t, size, font, halign, valign, spacing, direction, language, script)`
+- :x: [`import`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Importing_Geometry#import)`("….ext", convexity)` - formats: `DXF|SVG`
+- :x: [`projection`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#3D_to_2D_Projection)`(cut)`
 
 ## 3D Primitives
 
-- :white_check_mark: [`sphere`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#sphere)(radius | d=diameter)
-- :x: [`cube`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cube)(size, center)
-- :white_check_mark: [`cube`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cube)([width,depth,height], center)
-- :white_check_mark: [`cylinder`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cylinder)(h, r|d, center)
-- :x: [`cylinder`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cylinder)(h, r1|d1, r2|d2, center)
-- :x: [`polyhedron`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#polyhedron)(points, faces, convexity)
-- :x: [`import`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Importing_Geometry#import)("….ext", convexity) - formats: STL|OFF|AMF|3MF
-- :x: [`linear_extrude`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#linear_extrude)(height, center, convexity, twist, slices)
-- :x: [`rotate_extrude`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#rotate_extrude)(angle, convexity)
-- :x: [`surface`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Other_Language_Features#surface)(file = "….ext", center, convexity) - formats: DAT|PNG
+- :white_check_mark: [`sphere`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#sphere)`(radius | d=diameter)`
+- :x: [`cube`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cube)`(size, center)`
+- :white_check_mark: [`cube`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cube)`([width,depth,height], center)`
+- :white_check_mark: [`cylinder`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cylinder)`(h, r|d, center)`
+- :x: [`cylinder`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#cylinder)`(h, r1|d1, r2|d2, center)`
+- :x: [`polyhedron`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Primitive_Solids#polyhedron)`(points, faces, convexity)`
+- :x: [`import`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Importing_Geometry#import)`("….ext", convexity)` - formats: `STL|OFF|AMF|3MF`
+- :x: [`linear_extrude`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#linear_extrude)`(height, center, convexity, twist, slices)`
+- :x: [`rotate_extrude`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Using_the_2D_Subsystem#rotate_extrude)`(angle, convexity)`
+- :x: [`surface`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Other_Language_Features#surface)`(file = "….ext", center, convexity)` - formats: `DAT|PNG`
 
 ## Transformations
 

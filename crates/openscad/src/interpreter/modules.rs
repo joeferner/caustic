@@ -78,11 +78,11 @@ impl Interpreter {
         let arguments = self.convert_args(&["size", "center"], arguments)?;
 
         if let Some(arg) = arguments.get("size") {
-            size = arg.to_vector3()?;
+            size = arg.item.to_vector3()?;
         }
 
         if let Some(arg) = arguments.get("center") {
-            center = arg.to_boolean()?;
+            center = arg.item.to_boolean()?;
         }
 
         let mut a = Vector3::new(0.0, 0.0, 0.0);
@@ -109,9 +109,9 @@ impl Interpreter {
         let arguments = self.convert_args(&["r", "d"], arguments)?;
 
         if let Some(arg) = arguments.get("r") {
-            radius = arg.to_number()?;
+            radius = arg.item.to_number()?;
         } else if let Some(arg) = arguments.get("d") {
-            radius = arg.to_number()? / 2.0;
+            radius = arg.item.to_number()? / 2.0;
         }
 
         Ok(Arc::new(Sphere::new(
@@ -141,39 +141,39 @@ impl Interpreter {
         )?;
 
         if let Some(arg) = arguments.get("h") {
-            height = arg.to_number()?;
+            height = arg.item.to_number()?;
         }
 
         if let Some(arg) = arguments.get("r1") {
-            radius1 = arg.to_number()?;
+            radius1 = arg.item.to_number()?;
         }
 
         if let Some(arg) = arguments.get("r2") {
-            radius2 = arg.to_number()?;
+            radius2 = arg.item.to_number()?;
         }
 
         if let Some(arg) = arguments.get("r") {
-            let r = arg.to_number()?;
+            let r = arg.item.to_number()?;
             radius1 = r;
             radius2 = r;
         }
 
         if let Some(arg) = arguments.get("d1") {
-            radius1 = arg.to_number()? / 2.0;
+            radius1 = arg.item.to_number()? / 2.0;
         }
 
         if let Some(arg) = arguments.get("d2") {
-            radius2 = arg.to_number()? / 2.0;
+            radius2 = arg.item.to_number()? / 2.0;
         }
 
         if let Some(arg) = arguments.get("d") {
-            let r = arg.to_number()? / 2.0;
+            let r = arg.item.to_number()? / 2.0;
             radius1 = r;
             radius2 = r;
         }
 
         if let Some(arg) = arguments.get("center") {
-            center = arg.to_boolean()?;
+            center = arg.item.to_boolean()?;
         }
 
         let mut center_vec = Vector3::new(0.0, 0.0, 0.0);
@@ -205,7 +205,7 @@ impl Interpreter {
         let arguments = self.convert_args(&["v"], arguments)?;
 
         if let Some(arg) = arguments.get("v") {
-            offset = arg.to_vector3()?;
+            offset = arg.item.to_vector3()?;
         }
 
         let translate = Translate::new(child, offset);
@@ -225,7 +225,7 @@ impl Interpreter {
         let arguments = self.convert_args(&["a", "v"], arguments)?;
 
         if let Some(arg) = arguments.get("a") {
-            match arg {
+            match &arg.item {
                 Value::Number(_deg_a) => todo!(),
                 Value::Vector { items } => {
                     let a = Value::values_to_vector3(items)?;
@@ -265,7 +265,7 @@ impl Interpreter {
         let arguments = self.convert_args(&["v"], arguments)?;
 
         if let Some(arg) = arguments.get("v") {
-            let v = arg.to_vector3()?;
+            let v = arg.item.to_vector3()?;
             return Ok(Arc::new(Scale::new(child, v.x, v.y, v.z)));
         }
 
@@ -305,37 +305,37 @@ impl Interpreter {
         let mut seen_image_width = false;
 
         if let Some(arg) = arguments.get("aspect_ratio") {
-            camera_builder.aspect_ratio = arg.to_number()?;
+            camera_builder.aspect_ratio = arg.item.to_number()?;
             seen_aspect_ratio = true;
         }
 
         if let Some(arg) = arguments.get("image_width") {
-            camera_builder.image_width = arg.to_number()? as u32;
+            camera_builder.image_width = arg.item.to_number()? as u32;
             seen_image_width = true;
         }
 
         if let Some(arg) = arguments.get("samples_per_pixel") {
-            camera_builder.samples_per_pixel = arg.to_number()? as u32;
+            camera_builder.samples_per_pixel = arg.item.to_number()? as u32;
         }
 
         if let Some(arg) = arguments.get("max_depth") {
-            camera_builder.max_depth = arg.to_number()? as u32;
+            camera_builder.max_depth = arg.item.to_number()? as u32;
         }
 
         if let Some(arg) = arguments.get("vertical_fov") {
-            camera_builder.vertical_fov = arg.to_number()?;
+            camera_builder.vertical_fov = arg.item.to_number()?;
         }
 
         if let Some(arg) = arguments.get("defocus_angle") {
-            camera_builder.defocus_angle = arg.to_number()?;
+            camera_builder.defocus_angle = arg.item.to_number()?;
         }
 
         if let Some(arg) = arguments.get("focus_distance") {
-            camera_builder.focus_distance = arg.to_number()?;
+            camera_builder.focus_distance = arg.item.to_number()?;
         }
 
         if let Some(arg) = arguments.get("image_height") {
-            let height = arg.to_number()?;
+            let height = arg.item.to_number()?;
             if seen_image_width {
                 camera_builder.aspect_ratio = camera_builder.image_width as f64 / height;
             } else if seen_aspect_ratio {
@@ -347,19 +347,19 @@ impl Interpreter {
         }
 
         if let Some(arg) = arguments.get("look_from") {
-            camera_builder.look_from = arg.to_vector3()?;
+            camera_builder.look_from = arg.item.to_vector3()?;
         }
 
         if let Some(arg) = arguments.get("look_at") {
-            camera_builder.look_at = arg.to_vector3()?;
+            camera_builder.look_at = arg.item.to_vector3()?;
         }
 
         if let Some(arg) = arguments.get("up") {
-            camera_builder.up = arg.to_vector3()?;
+            camera_builder.up = arg.item.to_vector3()?;
         }
 
         if let Some(arg) = arguments.get("background") {
-            camera_builder.background = arg.to_color()?;
+            camera_builder.background = arg.item.to_color()?;
         }
 
         self.camera = Some(Arc::new(camera_builder.build()));

@@ -13,6 +13,13 @@ export interface RenderRequestInit {
     type: 'init';
     workerId: number;
     input: string;
+    imageData: Record<string, InitImageData>;
+}
+
+export interface InitImageData {
+    width: number;
+    height: number;
+    pixels: Uint8Array;
 }
 
 export interface RenderRequestWork {

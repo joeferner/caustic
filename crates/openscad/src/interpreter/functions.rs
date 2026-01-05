@@ -2,11 +2,12 @@ use std::{mem::swap, sync::Arc};
 
 use caustic_core::{
     Color,
-    texture::{CheckerTexture, SolidColor, Texture},
+    image::load_image,
+    texture::{CheckerTexture, ImageTexture, SolidColor, Texture},
 };
 
 use crate::{
-    interpreter::{Interpreter, Result},
+    interpreter::{Interpreter, InterpreterError, Result},
     parser::CallArgumentWithPosition,
     value::Value,
 };
@@ -25,6 +26,8 @@ impl Interpreter {
             self.evaluate_sqrt(arguments)
         } else if name == "rands" {
             self.evaluate_rands(arguments)
+        } else if name == "image" {
+            self.evaluate_image(arguments)
         } else {
             self.evaluate_non_built_in(name, arguments)
         }
@@ -49,7 +52,7 @@ impl Interpreter {
         let arguments = self.convert_args(&["arg"], arguments)?;
 
         let arg = if let Some(arg) = arguments.get("arg") {
-            arg.to_number()?
+            arg.item.to_number()?
         } else {
             todo!("missing arg");
         };
@@ -70,13 +73,13 @@ impl Interpreter {
         let arguments = self.convert_args(&["arg1", "arg2"], arguments)?;
 
         let arg1 = if let Some(arg1) = arguments.get("arg1") {
-            arg1.to_number()?
+            arg1.item.to_number()?
         } else {
             todo!("missing arg1");
         };
 
         let arg2 = if let Some(arg2) = arguments.get("arg2") {
-            arg2.to_number()?
+            arg2.item.to_number()?
         } else {
             todo!("missing arg2");
         };
@@ -94,20 +97,38 @@ impl Interpreter {
         let mut odd: Arc<dyn Texture> = Arc::new(SolidColor::new(Color::new(1.0, 1.0, 1.0)));
 
         if let Some(arg) = arguments.get("scale") {
-            scale = arg.to_number()?;
+            scale = arg.item.to_number()?;
         }
 
         if let Some(arg) = arguments.get("even") {
-            even = Arc::new(SolidColor::new(arg.to_color()?));
+            even = Arc::new(SolidColor::new(arg.item.to_color()?));
         }
 
         if let Some(arg) = arguments.get("odd") {
-            odd = Arc::new(SolidColor::new(arg.to_color()?));
+            odd = Arc::new(SolidColor::new(arg.item.to_color()?));
         }
 
         Ok(Value::Texture(Arc::new(CheckerTexture::new(
             scale, even, odd,
         ))))
+    }
+
+    fn evaluate_image(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        let arguments = self.convert_args(&["filename"], arguments)?;
+
+        let image = if let Some(arg) = arguments.get("filename") {
+            let start = arg.start;
+            let end = arg.end;
+            load_image(&arg.item.to_unescaped_string()?).map_err(|err| InterpreterError {
+                start,
+                end,
+                message: format!("could not load image: {err:?}"),
+            })?
+        } else {
+            todo!("filename required");
+        };
+
+        Ok(Value::Texture(Arc::new(ImageTexture::new(image))))
     }
 
     fn evaluate_rands(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
@@ -117,25 +138,25 @@ impl Interpreter {
         )?;
 
         let mut min_value = if let Some(arg) = arguments.get("min_value") {
-            arg.to_number()?
+            arg.item.to_number()?
         } else {
             todo!("min_value required");
         };
 
         let mut max_value = if let Some(arg) = arguments.get("max_value") {
-            arg.to_number()?
+            arg.item.to_number()?
         } else {
             todo!("max_value required");
         };
 
         let value_count = if let Some(arg) = arguments.get("value_count") {
-            arg.to_u64()?
+            arg.item.to_u64()?
         } else {
             todo!("value_count required");
         };
 
         let seed_value = if let Some(arg) = arguments.get("seed_value") {
-            Some(arg.to_number()?)
+            Some(arg.item.to_number()?)
         } else {
             None
         };
@@ -178,7 +199,7 @@ impl Interpreter {
             let _scope = self.create_scope();
 
             for (name, value) in arguments {
-                self.set_variable(&name, value);
+                self.set_variable(&name, value.item);
             }
 
             self.expr_to_value(&expr)

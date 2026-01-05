@@ -11,6 +11,8 @@ pub mod quads;
 pub mod random_spheres;
 pub mod three_spheres;
 
+use std::path::Path;
+
 use caustic_core::{RenderContext, SceneData};
 use caustic_openscad::openscad_file_to_scene_data;
 
@@ -52,7 +54,8 @@ pub fn get_scene(ctx: &RenderContext, scene: Scene) -> Result<SceneData, String>
         Scene::CornellBoxSmoke => Ok(create_cornell_box_smoke_scene(ctx)),
         Scene::Final => Ok(create_final_scene(ctx)),
         Scene::OpenScad(filename) => {
-            let results = openscad_file_to_scene_data(&filename).map_err(|err| format!("{err:?}"));
+            let filename = Path::new(&filename);
+            let results = openscad_file_to_scene_data(filename).map_err(|err| format!("{err:?}"));
             match results {
                 Ok(results) => {
                     if !results.output.is_empty() {

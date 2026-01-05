@@ -18,7 +18,7 @@ use crate::{
         CallArgument, CallArgumentWithPosition, DeclArgument, DeclArgumentWithPosition,
         ExprWithPosition, Statement, StatementWithPosition,
     },
-    value::{Value, ValueConversionError},
+    value::{Value, ValueConversionError, ValueWithPosition},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -151,12 +151,14 @@ impl Interpreter {
     }
 
     fn interpret(mut self, statements: Vec<StatementWithPosition>) -> InterpreterResults {
+        let mut errors: Vec<InterpreterError> = vec![];
+
         for statement in statements {
             match self.process_statement(&statement) {
                 Ok(mut nodes) => {
                     self.world.append(&mut nodes);
                 }
-                Err(err) => todo!("error {err:?}"),
+                Err(err) => errors.push(err),
             }
         }
 
@@ -189,7 +191,7 @@ impl Interpreter {
         InterpreterResults {
             scene_data,
             output: self.output,
-            errors: vec![], // TODO
+            errors,
         }
     }
 
@@ -247,7 +249,7 @@ impl Interpreter {
         }
 
         if let Some(arg) = arguments.get("c") {
-            let color = arg.to_color()?;
+            let color = arg.item.to_color()?;
             return Ok(Arc::new(Lambertian::new_from_color(color)));
         }
 
@@ -261,10 +263,10 @@ impl Interpreter {
         let arguments = self.convert_args(&["c", "t"], arguments)?;
 
         if let Some(arg) = arguments.get("c") {
-            let color = arg.to_color()?;
+            let color = arg.item.to_color()?;
             Ok(Arc::new(Lambertian::new_from_color(color)))
         } else if let Some(arg) = arguments.get("t") {
-            match arg {
+            match &arg.item {
                 Value::Texture(texture) => Ok(Arc::new(Lambertian::new(texture.clone()))),
                 _ => todo!("unhandled {arg:?}"),
             }
@@ -280,7 +282,7 @@ impl Interpreter {
         let arguments = self.convert_args(&["n"], arguments)?;
 
         if let Some(arg) = arguments.get("n") {
-            let refraction_index = arg.to_number()?;
+            let refraction_index = arg.item.to_number()?;
             Ok(Arc::new(Dielectric::new(refraction_index)))
         } else {
             todo!("missing arg");
@@ -297,11 +299,11 @@ impl Interpreter {
         let mut fuzz = 0.2;
 
         if let Some(arg) = arguments.get("c") {
-            color = arg.to_color()?;
+            color = arg.item.to_color()?;
         }
 
         if let Some(arg) = arguments.get("fuzz") {
-            fuzz = arg.to_number()?;
+            fuzz = arg.item.to_number()?;
         }
 
         Ok(Arc::new(Metal::new(color, fuzz)))
@@ -409,11 +411,13 @@ impl Interpreter {
         &mut self,
         arg_names: &[&str],
         arguments: &[CallArgumentWithPosition],
-    ) -> Result<HashMap<String, Value>> {
-        let mut results: HashMap<String, Value> = HashMap::new();
+    ) -> Result<HashMap<String, ValueWithPosition>> {
+        let mut results: HashMap<String, ValueWithPosition> = HashMap::new();
 
         let mut found_named_arg = false;
         for (pos, arg) in arguments.iter().enumerate() {
+            let start = arg.start;
+            let end = arg.end;
             match &arg.item {
                 CallArgument::Expr { expr } => {
                     if found_named_arg {
@@ -421,7 +425,10 @@ impl Interpreter {
                     }
                     if let Some(arg_name) = arg_names.get(pos) {
                         let value = self.expr_to_value(expr)?;
-                        results.insert(arg_name.to_string(), value);
+                        results.insert(
+                            arg_name.to_string(),
+                            ValueWithPosition::new(value, start, end),
+                        );
                     } else {
                         todo!(
                             "arg past end of list {pos} {arg_names:?} {}",
@@ -433,7 +440,10 @@ impl Interpreter {
                     found_named_arg = true;
                     if arg_names.contains(&identifier.as_str()) {
                         let value = self.expr_to_value(expr)?;
-                        results.insert(identifier.to_string(), value);
+                        results.insert(
+                            identifier.to_string(),
+                            ValueWithPosition::new(value, start, end),
+                        );
                     } else {
                         todo!("unknown arg name: {identifier}");
                     }
