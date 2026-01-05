@@ -24,7 +24,8 @@ self.onmessage = (e: MessageEvent<RenderRequest>): void => {
     }
 };
 
-self.load_image = (name: string): ImageData => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access
+(self as any).load_image = (name: string): ImageData => {
     const data = imageData?.[name];
     if (!data) {
         return new ImageData(100, 100, new Uint8Array([]));
