@@ -427,7 +427,7 @@ impl Interpreter {
                         let value = self.expr_to_value(expr)?;
                         results.insert(
                             arg_name.to_string(),
-                            ValueWithPosition::new(value, start, end),
+                            ValueWithPosition::new(value, start, end, arg.source.clone()),
                         );
                     } else {
                         todo!(
@@ -442,7 +442,7 @@ impl Interpreter {
                         let value = self.expr_to_value(expr)?;
                         results.insert(
                             identifier.to_string(),
-                            ValueWithPosition::new(value, start, end),
+                            ValueWithPosition::new(value, start, end, arg.source.clone()),
                         );
                     } else {
                         todo!("unknown arg name: {identifier}");

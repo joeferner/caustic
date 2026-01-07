@@ -1,9 +1,10 @@
-use std::vec;
+use std::{sync::Arc, vec};
 
 use thiserror::Error;
 
 use crate::{
     WithPosition,
+    resource_resolver::CodeResource,
     tokenizer::{Token, TokenWithPosition},
 };
 
@@ -239,6 +240,17 @@ impl Parser {
         self.tokens.get(self.pos + n)
     }
 
+    fn get_current(&self) -> Result<(usize, Arc<dyn CodeResource>)> {
+        match self.current() {
+            Some(current) => Ok((current.start, current.source.clone())),
+            None => Err(ParserError {
+                start: 0,
+                end: 0,
+                message: "no current token".to_owned(),
+            }),
+        }
+    }
+
     fn current_token_start(&self) -> usize {
         self.current().map(|t| t.start).unwrap_or(0)
     }
@@ -325,7 +337,7 @@ impl Parser {
     ///   <assignment>
     ///   <module_instantiation>
     fn parse_statement(&mut self) -> Result<StatementWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         // ';'
         if self.current_matches(Token::Semicolon) {
@@ -334,6 +346,7 @@ impl Parser {
                 Statement::Empty,
                 start,
                 self.current_token_start(),
+                source,
             ));
         }
 
@@ -350,6 +363,7 @@ impl Parser {
                 Statement::Include { filename },
                 start,
                 self.current_token_start(),
+                source,
             ));
         }
 
@@ -398,7 +412,7 @@ impl Parser {
     /// <single_module_instantiation> ::=
     ///   <module_id> '(' <call_arguments> ')'
     fn parse_single_module_instantiation(&mut self) -> Result<StatementWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         // <module_id> '(' <call_arguments> ')'
         let module_id = self.parse_module_id()?;
@@ -413,6 +427,7 @@ impl Parser {
             },
             start,
             self.current_token_start(),
+            source,
         ))
     }
 
@@ -447,7 +462,7 @@ impl Parser {
     ///   "for"
     ///   <identifier>
     fn parse_module_id(&mut self) -> Result<ModuleIdWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         if let Some(current) = self.current() {
             let module_id = match &current.item {
@@ -488,6 +503,7 @@ impl Parser {
                 module_id,
                 start,
                 self.current_token_start(),
+                source,
             ));
         }
 
@@ -524,7 +540,7 @@ impl Parser {
     ///   <identifier> '=' <expr>
     ///   <expr>
     fn parse_argument_call(&mut self) -> Result<CallArgumentWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         // <identifier> '=' <expr>
         if let Some(identifier) = self.current_matches_identifier()
@@ -539,6 +555,7 @@ impl Parser {
                 CallArgument::NamedArgument { identifier, expr },
                 start,
                 self.current_token_start(),
+                source,
             ));
         }
 
@@ -548,6 +565,7 @@ impl Parser {
             CallArgument::Expr { expr },
             start,
             self.current_token_start(),
+            source,
         ))
     }
 
@@ -574,7 +592,7 @@ impl Parser {
     /// <expr> "||" <expr>
     /// <unary expression>
     fn parse_binary_expr(&mut self, min_precedence: u8) -> Result<ExprWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         let mut lhs = self.parse_unary_expr()?;
 
@@ -594,6 +612,7 @@ impl Parser {
                 },
                 start,
                 self.current_token_start(),
+                source.clone(),
             );
         }
 
@@ -621,7 +640,7 @@ impl Parser {
     /// '(' <expr> ')'
     /// <identifier> <call_arguments>
     fn parse_unary_expr(&mut self) -> Result<ExprWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         // TODO '+' <expr>
         // TODO '!' <expr>
@@ -687,12 +706,14 @@ impl Parser {
                         },
                         start,
                         self.current_token_start(),
+                        source.clone(),
                     )
                 } else {
                     ExprWithPosition::new(
                         Expr::Vector { items: expressions },
                         start,
                         self.current_token_start(),
+                        source.clone(),
                     )
                 }
             }
@@ -700,13 +721,23 @@ impl Parser {
             Token::True => {
                 // "true"
                 self.advance();
-                ExprWithPosition::new(Expr::True, start, self.current_token_start())
+                ExprWithPosition::new(
+                    Expr::True,
+                    start,
+                    self.current_token_start(),
+                    source.clone(),
+                )
             }
 
             Token::False => {
                 // "false"
                 self.advance();
-                ExprWithPosition::new(Expr::False, start, self.current_token_start())
+                ExprWithPosition::new(
+                    Expr::False,
+                    start,
+                    self.current_token_start(),
+                    source.clone(),
+                )
             }
 
             Token::Identifier(identifier) => {
@@ -720,6 +751,7 @@ impl Parser {
                         Expr::FunctionCall { name, arguments },
                         start,
                         self.current_token_start(),
+                        source.clone(),
                     )
                 } else {
                     // <identifier>
@@ -729,6 +761,7 @@ impl Parser {
                         Expr::Identifier { name },
                         start,
                         self.current_token_start(),
+                        source.clone(),
                     )
                 }
             }
@@ -737,14 +770,24 @@ impl Parser {
                 // <number>
                 let number = *number;
                 self.advance();
-                ExprWithPosition::new(Expr::Number(number), start, self.current_token_start())
+                ExprWithPosition::new(
+                    Expr::Number(number),
+                    start,
+                    self.current_token_start(),
+                    source.clone(),
+                )
             }
 
             Token::String(str) => {
                 // <string>
                 let str = str.clone();
                 self.advance();
-                ExprWithPosition::new(Expr::String(str), start, self.current_token_start())
+                ExprWithPosition::new(
+                    Expr::String(str),
+                    start,
+                    self.current_token_start(),
+                    source.clone(),
+                )
             }
 
             Token::Minus => {
@@ -758,6 +801,7 @@ impl Parser {
                     },
                     start,
                     self.current_token_start(),
+                    source.clone(),
                 )
             }
 
@@ -792,6 +836,7 @@ impl Parser {
                 },
                 start,
                 self.current_token_start(),
+                source.clone(),
             );
         }
 
@@ -820,7 +865,7 @@ impl Parser {
     /// <assignment> ::=
     ///   <identifier> '=' <expr> ';'
     fn parse_assignment(&mut self) -> Result<StatementWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         // <identifier>
         let identifier = if let Some(identifier) = self.current_matches_identifier() {
@@ -843,6 +888,7 @@ impl Parser {
             Statement::Assignment { identifier, expr },
             start,
             self.current_token_start(),
+            source,
         ))
     }
 
@@ -871,7 +917,7 @@ impl Parser {
 
     /// <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
     fn parse_function_decl(&mut self) -> Result<StatementWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         let function_name = self.expect_identifier()?;
 
@@ -891,6 +937,7 @@ impl Parser {
             },
             start,
             self.current_token_start(),
+            source,
         ))
     }
 
@@ -902,7 +949,7 @@ impl Parser {
 
         let mut arguments: Vec<DeclArgumentWithPosition> = vec![];
 
-        while let Some(argument) = self.parse_decl_argument() {
+        while let Some(argument) = self.parse_decl_argument()? {
             arguments.push(argument);
 
             if self.current_matches(Token::RightParen) {
@@ -922,24 +969,25 @@ impl Parser {
 
     /// <identifier>
     /// <identifier> '=' <expr>
-    fn parse_decl_argument(&mut self) -> Option<DeclArgumentWithPosition> {
-        let start = self.current_token_start();
+    fn parse_decl_argument(&mut self) -> Result<Option<DeclArgumentWithPosition>> {
+        let (start, source) = self.get_current()?;
 
         let identifier = if let Some(identifier) = self.current_matches_identifier() {
             self.advance();
             identifier
         } else {
-            return None;
+            return Ok(None);
         };
 
         if self.current_matches(Token::Equals) {
             todo!("decl arg with default");
         } else {
-            Some(DeclArgumentWithPosition::new(
+            Ok(Some(DeclArgumentWithPosition::new(
                 DeclArgument::Identifier { identifier },
                 start,
                 self.current_token_start(),
-            ))
+                source,
+            )))
         }
     }
 
@@ -949,7 +997,7 @@ impl Parser {
     /// <if_statement> ::=
     ///   "if" '(' <expr> ')' <child_statement>
     fn parse_ifelse_statement(&mut self) -> Result<StatementWithPosition> {
-        let start = self.current_token_start();
+        let (start, source) = self.get_current()?;
 
         self.expect(Token::If)?;
         self.expect(Token::LeftParen)?;
@@ -976,6 +1024,7 @@ impl Parser {
             stmt,
             start,
             self.current_token_start(),
+            source,
         ))
     }
 }
@@ -987,51 +1036,56 @@ pub fn openscad_parse(tokens: Vec<TokenWithPosition>) -> ParseResult {
 
 #[cfg(test)]
 mod tests {
-    use crate::tokenizer::openscad_tokenize;
+    use crate::{resource_resolver::StringCodeResource, tokenizer::openscad_tokenize};
 
     use super::*;
 
-    fn parse(value: &str) -> ParseResult {
-        openscad_parse(openscad_tokenize(value).unwrap())
+    fn parse(source: Arc<dyn CodeResource>) -> ParseResult {
+        openscad_parse(openscad_tokenize(source).unwrap())
     }
 
     #[test]
     fn test_empty_statement() {
-        let result = parse(";");
+        let source = Arc::new(StringCodeResource::new(";"));
+        let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(
             result.statements,
-            vec![StatementWithPosition::new(Statement::Empty, 0, 1)]
+            vec![StatementWithPosition::new(Statement::Empty, 0, 1, source)]
         );
     }
 
     #[test]
     fn test_cube() {
-        let result = parse("cube(10);");
+        let source = Arc::new(StringCodeResource::new("cube(10);"));
+        let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(
             result.statements,
             vec![StatementWithPosition::new(
                 Statement::ModuleInstantiation {
-                    module_id: ModuleIdWithPosition::new(ModuleId::Cube, 0, 4),
+                    module_id: ModuleIdWithPosition::new(ModuleId::Cube, 0, 4, source.clone()),
                     call_arguments: vec![CallArgumentWithPosition::new(
                         CallArgument::Expr {
-                            expr: ExprWithPosition::new(Expr::Number(10.0), 5, 7)
+                            expr: ExprWithPosition::new(Expr::Number(10.0), 5, 7, source.clone())
                         },
                         5,
-                        7
+                        7,
+                        source.clone()
                     )],
                     child_statements: vec![]
                 },
                 0,
-                9
+                9,
+                source.clone()
             )]
         );
     }
 
     #[test]
     fn test_cube_vector() {
-        let result = parse("cube([20,30,50]);");
+        let source = Arc::new(StringCodeResource::new("cube([20,30,50]);"));
+        let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
 
@@ -1075,104 +1129,120 @@ mod tests {
 
     #[test]
     fn test_cube_vector_and_named_parameter() {
-        let result = parse("cube([20,30,50],center=true);");
+        let source = Arc::new(StringCodeResource::new("cube([20,30,50],center=true);"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_translate_cube_vector_and_named_parameter() {
-        let result = parse("translate([0,0,5]) cube([20,30,50],center=true);");
+        let source = Arc::new(StringCodeResource::new(
+            "translate([0,0,5]) cube([20,30,50],center=true);",
+        ));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_binary_expression() {
-        let result = parse("cube(20 - 0.1);");
+        let source = Arc::new(StringCodeResource::new("cube(20 - 0.1);"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_binary_expression_divide() {
-        let result = parse("color([0,125,255]/255);");
+        let source = Arc::new(StringCodeResource::new("color([0,125,255]/255);"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_unary_expression() {
-        let result = parse("cube(-20);");
+        let source = Arc::new(StringCodeResource::new("cube(-20);"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_negate_parens() {
-        let result = parse("echo(-(20 + 3));");
+        let source = Arc::new(StringCodeResource::new("echo(-(20 + 3));"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_set_fa() {
-        let result = parse("$fa = 1;");
+        let source = Arc::new(StringCodeResource::new("$fa = 1;"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_include() {
-        let result = parse("include <ray_trace.scad>");
+        let source = Arc::new(StringCodeResource::new("include <ray_trace.scad>"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_function_call() {
-        let result = parse(
+        let source = Arc::new(StringCodeResource::new(
             "
             lambertian(checker(scale=0.32, even=[0.2, 0.3, 0.1], odd=[0.9, 0.9, 0.9]))
                 translate([0.0, -1.0, -100.5])
                     sphere(r=100);
-    ",
-        );
+            ",
+        ));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_for_loop() {
-        let result = parse("for(a=[0:10]) sphere(r=a);");
+        let source = Arc::new(StringCodeResource::new("for(a=[0:10]) sphere(r=a);"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_for_loop_increment() {
-        let result = parse("for(a=[0:2:10]) sphere(r=a);");
+        let source = Arc::new(StringCodeResource::new("for(a=[0:2:10]) sphere(r=a);"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_variable_assignment() {
-        let result = parse("a = 1;");
+        let source = Arc::new(StringCodeResource::new("a = 1;"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_rands() {
-        let result = parse("choose_mat = rands(0,1,1)[0];");
+        let source = Arc::new(StringCodeResource::new("choose_mat = rands(0,1,1)[0];"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_subtract_indexed() {
-        let result = parse("v = pt2[0][1] - pt1[0];");
+        let source = Arc::new(StringCodeResource::new("v = pt2[0][1] - pt1[0];"));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
@@ -1180,14 +1250,15 @@ mod tests {
     #[test]
     fn test_function_decl() {
         let s = "function distance(pt1, pt2) = sqrt(pow(pt2[0]-pt1[0], 2) + pow(pt2[1]-pt1[1], 2) + pow(pt2[2]-pt1[2], 2));";
-        let result = parse(s);
+        let source = Arc::new(StringCodeResource::new(s));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }
 
     #[test]
     fn test_if_else() {
-        let result = parse(
+        let source = Arc::new(StringCodeResource::new(
             r#"
             if (1 > 2) {
               echo("false");
@@ -1197,7 +1268,8 @@ mod tests {
               echo("fail");
             }
         "#,
-        );
+        ));
+        let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
     }

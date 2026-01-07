@@ -1,15 +1,19 @@
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use assert_eq_float::assert_eq_float;
 
     use crate::{
         interpreter::{InterpreterError, InterpreterResults, openscad_interpret},
         parser::openscad_parse,
+        resource_resolver::StringCodeResource,
         tokenizer::openscad_tokenize,
     };
 
     fn interpret(expr: &str) -> InterpreterResults {
-        let result = openscad_parse(openscad_tokenize(expr).unwrap());
+        let source = Arc::new(StringCodeResource::new(expr));
+        let result = openscad_parse(openscad_tokenize(source).unwrap());
         openscad_interpret(result.statements)
     }
 

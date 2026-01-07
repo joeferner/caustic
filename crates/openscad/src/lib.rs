@@ -1,82 +1,67 @@
 pub mod interpreter;
 pub mod parser;
+pub mod resource_resolver;
 pub mod tokenizer;
 pub mod value;
 
-use std::env;
-use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
+use std::sync::Arc;
 
 use thiserror::Error;
 
 use crate::interpreter::InterpreterError;
+use crate::resource_resolver::{CodeResource, ResourceResolver};
 use crate::{
     interpreter::{InterpreterResults, openscad_interpret},
     parser::openscad_parse,
     tokenizer::{TokenizerError, openscad_tokenize},
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct WithPosition<T: PartialEq> {
     pub item: T,
     pub start: usize,
     pub end: usize,
+    pub source: Arc<dyn CodeResource>,
 }
 
 impl<T: PartialEq> WithPosition<T> {
-    pub fn new(item: T, start: usize, end: usize) -> Self {
-        Self { item, start, end }
+    pub fn new(item: T, start: usize, end: usize, source: Arc<dyn CodeResource>) -> Self {
+        Self {
+            item,
+            start,
+            end,
+            source,
+        }
+    }
+
+    fn equals(&self, other: &WithPosition<T>) -> bool {
+        self.item.eq(&other.item)
+            && self.start == other.start
+            && self.end == other.end
+            && self.source.equals(other.source.as_ref())
+    }
+}
+
+impl<T: PartialEq> PartialEq for WithPosition<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.equals(other)
     }
 }
 
 #[derive(Error, Debug)]
 pub enum OpenscadError {
-    #[error("Invalid directory: {message}")]
-    InvalidDirectoryError { message: String },
-    #[error("File read error \"{filename}\": {message}")]
-    FileReadError { filename: PathBuf, message: String },
     #[error("Tokenizer error: {0:?}")]
     TokenizerError(#[from] TokenizerError),
     #[error("Tokenizer error: {errors:?}")]
     InterpreterErrors { errors: Vec<InterpreterError> },
 }
 
-pub fn openscad_file_to_scene_data(filename: &Path) -> Result<InterpreterResults, OpenscadError> {
-    let prev_current_dir =
-        env::current_dir().map_err(|err| OpenscadError::InvalidDirectoryError {
-            message: format!("could not get current directory: {err}"),
-        })?;
+pub fn run_openscad(
+    resource_resolver: &dyn ResourceResolver,
+) -> Result<InterpreterResults, OpenscadError> {
+    let main = resource_resolver.get_main();
 
-    let dir = if let Some(dir) = filename.parent() {
-        dir
-    } else {
-        return Err(OpenscadError::InvalidDirectoryError {
-            message: format!("{filename:?} does not have a parent"),
-        });
-    };
-
-    env::set_current_dir(dir).map_err(|err| OpenscadError::InvalidDirectoryError {
-        message: format!("could not set current directory to: {dir:?}: {err}"),
-    })?;
-
-    let result = match fs::read_to_string(filename) {
-        Ok(contents) => openscad_string_to_scene_data(&contents),
-        Err(err) => Err(OpenscadError::FileReadError {
-            filename: filename.to_owned(),
-            message: err.to_string(),
-        }),
-    };
-    env::set_current_dir(&prev_current_dir).map_err(|err| {
-        OpenscadError::InvalidDirectoryError {
-            message: format!("could not restore current directory to: {prev_current_dir:?}: {err}"),
-        }
-    })?;
-    result
-}
-
-pub fn openscad_string_to_scene_data(input: &str) -> Result<InterpreterResults, OpenscadError> {
-    let tokens = openscad_tokenize(input)?;
+    let tokens = openscad_tokenize(main)?;
     let parse_results = openscad_parse(tokens);
 
     if !parse_results.errors.is_empty() {

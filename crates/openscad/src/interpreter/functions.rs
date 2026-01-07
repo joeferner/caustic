@@ -2,7 +2,6 @@ use std::{mem::swap, sync::Arc};
 
 use caustic_core::{
     Color,
-    image::load_image,
     texture::{CheckerTexture, ImageTexture, SolidColor, Texture},
 };
 
@@ -119,11 +118,14 @@ impl Interpreter {
         let image = if let Some(arg) = arguments.get("filename") {
             let start = arg.start;
             let end = arg.end;
-            load_image(&arg.item.to_unescaped_string()?).map_err(|err| InterpreterError {
-                start,
-                end,
-                message: format!("could not load image: {err:?}"),
-            })?
+            let filename = arg.item.to_unescaped_string()?;
+            arg.source
+                .get_image(&filename)
+                .map_err(|err| InterpreterError {
+                    start,
+                    end,
+                    message: format!("failed to get image \"{filename}\": {err:?}"),
+                })?
         } else {
             todo!("filename required");
         };

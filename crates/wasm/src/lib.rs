@@ -1,8 +1,13 @@
 #![allow(clippy::vec_init_then_push)]
-use std::{cell::RefCell, sync::Arc};
+use std::{any::Any, cell::RefCell, fmt::Debug, sync::Arc};
 
-use caustic_core::{Color as CoreColor, RenderContext, SceneData, random_new};
-use caustic_openscad::openscad_string_to_scene_data;
+use caustic_core::{
+    Color as CoreColor, Image, RenderContext, SceneData, image::ImageError, random_new,
+};
+use caustic_openscad::{
+    resource_resolver::{CodeResource, ResourceResolver},
+    run_openscad,
+};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -11,10 +16,87 @@ thread_local! {
 static LOADED_SCENE_DATA: RefCell<Option<SceneData>> = const { RefCell::new(None) };
 }
 
+#[wasm_bindgen(typescript_custom_section)]
+const WASM_RESOURCE_RESOLVER_INTERFACE: &'static str = r#"
+export interface WasmResourceResolver {
+    get_main(): WasmCodeResource;
+}
+"#;
+
 #[wasm_bindgen]
-pub fn load_openscad(input: &str) -> Result<LoadResults, JsValue> {
+extern "C" {
+    pub type WasmResourceResolver;
+
+    #[wasm_bindgen(method)]
+    pub fn get_main(this: &WasmResourceResolver) -> WasmCodeResource;
+}
+
+struct WasmResourceResolverAdapter {
+    wasm_resource_resolver: WasmResourceResolver,
+}
+
+impl ResourceResolver for WasmResourceResolverAdapter {
+    fn get_main(&self) -> Arc<dyn CodeResource> {
+        Arc::new(WasmCodeResourceAdapter::new(
+            self.wasm_resource_resolver.get_main(),
+        ))
+    }
+}
+
+#[wasm_bindgen(typescript_custom_section)]
+const WASM_CODE_RESOURCE_INTERFACE: &'static str = r#"
+export interface WasmCodeResource {
+    get_code(): string;
+}
+"#;
+
+#[wasm_bindgen]
+extern "C" {
+    pub type WasmCodeResource;
+
+    #[wasm_bindgen(method)]
+    pub fn get_code(this: &WasmCodeResource) -> String;
+}
+
+struct WasmCodeResourceAdapter {
+    code: String,
+}
+
+impl WasmCodeResourceAdapter {
+    pub fn new(wasm_code_resource: WasmCodeResource) -> Self {
+        Self {
+            code: wasm_code_resource.get_code(),
+        }
+    }
+}
+
+impl CodeResource for WasmCodeResourceAdapter {
+    fn get_code(&self) -> &str {
+        &self.code
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn get_image(&self, filename: &str) -> Result<Arc<dyn Image>, ImageError> {
+        todo!("get_image {filename}")
+    }
+}
+
+impl Debug for WasmCodeResourceAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WasmCodeResourceAdapter").finish()
+    }
+}
+
+#[wasm_bindgen]
+pub fn load_openscad(wasm_resource_resolver: WasmResourceResolver) -> Result<LoadResults, JsValue> {
+    let resource_resolver = WasmResourceResolverAdapter {
+        wasm_resource_resolver,
+    };
     let results =
-        openscad_string_to_scene_data(input).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+        run_openscad(&resource_resolver).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
     LOADED_SCENE_DATA.with(|data| *data.borrow_mut() = Some(results.scene_data));
     Ok(LoadResults {
         output: results.output,

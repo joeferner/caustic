@@ -1,4 +1,4 @@
-import { getCameraInfo, initWasm, loadOpenscad, type CameraInfo } from '../wasm';
+import { CodeResource, getCameraInfo, initWasm, loadOpenscad, ResourceResolver, type CameraInfo } from '../wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from '../RenderWorkerPool';
 import type { BinaryWorkingFile, InitImageData, TextWorkingFile, WorkingFile } from '../types';
 import { type Project } from '../api';
@@ -13,7 +13,6 @@ import {
     type StoreProject,
     type UnsubscribeFn,
 } from './store';
-import { ImageData } from '../wasm/caustic_wasm';
 
 const renderWorkerPool = new RenderWorkerPool();
 
@@ -86,14 +85,8 @@ export class ProjectStore {
         const imageData: Record<string, InitImageData> = {};
         const imageNames: string[] = [];
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-member-access
-        (window as any).load_image = (name: string): ImageData => {
-            imageNames.push(name);
-            return new ImageData(1, 1, new Uint8Array([0, 0, 0]));
-        };
-
         await initWasm();
-        loadOpenscad(input);
+        loadOpenscad(new ResourceResolver(new CodeResource(input)));
 
         // TODO load image data
         console.log(imageNames);

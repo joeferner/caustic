@@ -14,7 +14,7 @@ pub mod three_spheres;
 use std::path::Path;
 
 use caustic_core::{RenderContext, SceneData};
-use caustic_openscad::openscad_file_to_scene_data;
+use caustic_openscad::{resource_resolver::FileResourceResolver, run_openscad};
 
 use crate::scene::{
     checkered_spheres::create_checkered_spheres_scene, cornell_box::create_cornell_box_scene,
@@ -54,8 +54,9 @@ pub fn get_scene(ctx: &RenderContext, scene: Scene) -> Result<SceneData, String>
         Scene::CornellBoxSmoke => Ok(create_cornell_box_smoke_scene(ctx)),
         Scene::Final => Ok(create_final_scene(ctx)),
         Scene::OpenScad(filename) => {
-            let filename = Path::new(&filename);
-            let results = openscad_file_to_scene_data(filename).map_err(|err| format!("{err:?}"));
+            let resource_resolver = FileResourceResolver::new(Path::new(&filename))
+                .map_err(|err| format!("{err:?}"))?;
+            let results = run_openscad(&resource_resolver).map_err(|err| format!("{err:?}"));
             match results {
                 Ok(results) => {
                     if !results.output.is_empty() {
