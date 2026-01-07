@@ -54,14 +54,14 @@ interface FileProps {
 }
 
 function File({ file }: FileProps): JSX.Element {
-    if (file.type === 'binary' && file.contentType.startsWith('image/')) {
+    const fileType = file.type;
+
+    if (fileType === 'image') {
         const fileSignal = signal(file);
         return <ImageViewer file={fileSignal} />;
-    }
-
-    if (file.type === 'text') {
+    } else if (fileType === 'text') {
         return <FileEditor file={file} />;
+    } else {
+        return <div>Unsupported: {fileType}</div>;
     }
-
-    return <div>Unsupported: {file.contentType}</div>;
 }

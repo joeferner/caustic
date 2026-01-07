@@ -7,12 +7,12 @@ mod tests {
     use crate::{
         interpreter::{InterpreterError, InterpreterResults, openscad_interpret},
         parser::openscad_parse,
-        resource_resolver::StringCodeResource,
+        source::StringSource,
         tokenizer::openscad_tokenize,
     };
 
     fn interpret(expr: &str) -> InterpreterResults {
-        let source = Arc::new(StringCodeResource::new(expr));
+        let source = Arc::new(StringSource::new(expr));
         let result = openscad_parse(openscad_tokenize(source).unwrap());
         openscad_interpret(result.statements)
     }

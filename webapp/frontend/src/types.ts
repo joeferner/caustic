@@ -12,14 +12,8 @@ export interface RenderResult {
 export interface RenderRequestInit {
     type: 'init';
     workerId: number;
-    input: string;
-    imageData: Record<string, InitImageData>;
-}
-
-export interface InitImageData {
-    width: number;
-    height: number;
-    pixels: Uint8Array;
+    main: TextWorkingFile;
+    files: WorkingFile[];
 }
 
 export interface RenderRequestWork {
@@ -50,9 +44,11 @@ export interface TextWorkingFile extends ProjectFile {
     contents: string;
 }
 
-export interface BinaryWorkingFile extends ProjectFile {
-    type: 'binary';
-    contents: Blob;
+export interface ImageWorkingFile extends ProjectFile {
+    type: 'image';
+    width: number;
+    height: number;
+    pixels: Uint8Array;
 }
 
-export type WorkingFile = TextWorkingFile | BinaryWorkingFile;
+export type WorkingFile = TextWorkingFile | ImageWorkingFile;

@@ -4,10 +4,7 @@ use std::{any::Any, cell::RefCell, fmt::Debug, sync::Arc};
 use caustic_core::{
     Color as CoreColor, Image, RenderContext, SceneData, image::ImageError, random_new,
 };
-use caustic_openscad::{
-    resource_resolver::{CodeResource, ResourceResolver},
-    run_openscad,
-};
+use caustic_openscad::{run_openscad, source::Source};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -17,60 +14,56 @@ static LOADED_SCENE_DATA: RefCell<Option<SceneData>> = const { RefCell::new(None
 }
 
 #[wasm_bindgen(typescript_custom_section)]
-const WASM_RESOURCE_RESOLVER_INTERFACE: &'static str = r#"
-export interface WasmResourceResolver {
-    get_main(): WasmCodeResource;
+const WASM_CODE_RESOURCE_INTERFACE: &'static str = r#"
+export interface WasmSource {
+    get_code(): string;
+    get_image(filename: string): WasmImage;
 }
 "#;
 
 #[wasm_bindgen]
 extern "C" {
-    pub type WasmResourceResolver;
+    pub type WasmSource;
 
     #[wasm_bindgen(method)]
-    pub fn get_main(this: &WasmResourceResolver) -> WasmCodeResource;
+    pub fn get_code(this: &WasmSource) -> String;
+
+    #[wasm_bindgen(method)]
+    pub fn get_image(this: &WasmSource, filename: &str) -> WasmImage;
 }
 
-struct WasmResourceResolverAdapter {
-    wasm_resource_resolver: WasmResourceResolver,
-}
+// Add this wrapper struct
+struct SendSyncWasmSource(WasmSource);
 
-impl ResourceResolver for WasmResourceResolverAdapter {
-    fn get_main(&self) -> Arc<dyn CodeResource> {
-        Arc::new(WasmCodeResourceAdapter::new(
-            self.wasm_resource_resolver.get_main(),
-        ))
+// SAFETY: In WASM, all JS interactions happen on the main thread.
+// The wasm-bindgen runtime ensures thread safety.
+unsafe impl Send for SendSyncWasmSource {}
+unsafe impl Sync for SendSyncWasmSource {}
+
+impl std::ops::Deref for SendSyncWasmSource {
+    type Target = WasmSource;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-#[wasm_bindgen(typescript_custom_section)]
-const WASM_CODE_RESOURCE_INTERFACE: &'static str = r#"
-export interface WasmCodeResource {
-    get_code(): string;
-}
-"#;
-
-#[wasm_bindgen]
-extern "C" {
-    pub type WasmCodeResource;
-
-    #[wasm_bindgen(method)]
-    pub fn get_code(this: &WasmCodeResource) -> String;
-}
-
-struct WasmCodeResourceAdapter {
+struct WasmSourceAdapter {
+    wasm_source: SendSyncWasmSource,
     code: String,
 }
 
-impl WasmCodeResourceAdapter {
-    pub fn new(wasm_code_resource: WasmCodeResource) -> Self {
+impl WasmSourceAdapter {
+    pub fn new(wasm_source: WasmSource) -> Self {
+        let code = wasm_source.get_code();
         Self {
-            code: wasm_code_resource.get_code(),
+            wasm_source: SendSyncWasmSource(wasm_source),
+            code,
         }
     }
 }
 
-impl CodeResource for WasmCodeResourceAdapter {
+impl Source for WasmSourceAdapter {
     fn get_code(&self) -> &str {
         &self.code
     }
@@ -80,23 +73,81 @@ impl CodeResource for WasmCodeResourceAdapter {
     }
 
     fn get_image(&self, filename: &str) -> Result<Arc<dyn Image>, ImageError> {
-        todo!("get_image {filename}")
+        let image = self.wasm_source.get_image(filename);
+        Ok(Arc::new(WasmImageAdapter::new(image)))
     }
 }
 
-impl Debug for WasmCodeResourceAdapter {
+impl Debug for WasmSourceAdapter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WasmCodeResourceAdapter").finish()
     }
 }
 
+#[wasm_bindgen(typescript_custom_section)]
+const WASM_IMAGE_INTERFACE: &'static str = r#"
+export interface WasmImage {
+    get_width(): number;
+    get_height(): number;
+    get_data(): Color[];
+}
+"#;
+
 #[wasm_bindgen]
-pub fn load_openscad(wasm_resource_resolver: WasmResourceResolver) -> Result<LoadResults, JsValue> {
-    let resource_resolver = WasmResourceResolverAdapter {
-        wasm_resource_resolver,
-    };
-    let results =
-        run_openscad(&resource_resolver).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+extern "C" {
+    pub type WasmImage;
+
+    #[wasm_bindgen(method)]
+    pub fn get_width(this: &WasmImage) -> u32;
+
+    #[wasm_bindgen(method)]
+    pub fn get_height(this: &WasmImage) -> u32;
+
+    #[wasm_bindgen(method)]
+    pub fn get_data(this: &WasmImage) -> Vec<Color>;
+}
+
+struct WasmImageAdapter {
+    width: u32,
+    height: u32,
+    data: Vec<CoreColor>,
+}
+
+impl WasmImageAdapter {
+    pub fn new(wasm_image: WasmImage) -> Self {
+        Self {
+            width: wasm_image.get_width(),
+            height: wasm_image.get_height(),
+            data: wasm_image.get_data().iter().map(Color::to).collect(),
+        }
+    }
+}
+
+impl Image for WasmImageAdapter {
+    fn width(&self) -> u32 {
+        self.width
+    }
+
+    fn height(&self) -> u32 {
+        self.height
+    }
+
+    fn get_pixel(&self, x: u32, y: u32) -> Option<CoreColor> {
+        let index = ((y * self.width) + x) as usize;
+        self.data.get(index).copied()
+    }
+}
+
+impl Debug for WasmImageAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WasmImageAdapter").finish()
+    }
+}
+
+#[wasm_bindgen]
+pub fn load_openscad(wasm_source: WasmSource) -> Result<LoadResults, JsValue> {
+    let source = Arc::new(WasmSourceAdapter::new(wasm_source));
+    let results = run_openscad(source).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
     LOADED_SCENE_DATA.with(|data| *data.borrow_mut() = Some(results.scene_data));
     Ok(LoadResults {
         output: results.output,
@@ -174,5 +225,13 @@ impl Color {
             g: (color.g * 255.0) as u8,
             b: (color.b * 255.0) as u8,
         }
+    }
+
+    pub fn to(&self) -> CoreColor {
+        CoreColor::new(
+            (self.r as f64) / 255.0,
+            (self.g as f64) / 255.0,
+            (self.b as f64) / 255.0,
+        )
     }
 }

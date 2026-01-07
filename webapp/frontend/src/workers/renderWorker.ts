@@ -5,7 +5,7 @@ import type {
     RenderResponseData,
     RenderResponseInit,
 } from '../types';
-import { initWasm, loadOpenscad, renderBlock } from '../wasm';
+import { initWasm, loadOpenscad, renderBlock, Source } from '../wasm';
 
 let workerId = -1;
 
@@ -26,7 +26,7 @@ async function init(data: RenderRequestInit): Promise<void> {
 
     console.log(`[${workerId}] initializing worker`);
     await initWasm();
-    loadOpenscad(data.input);
+    loadOpenscad(new Source(data.main, data.files));
 
     const resultsMessage: RenderResponseInit = { type: 'init', workerId };
     self.postMessage(resultsMessage);

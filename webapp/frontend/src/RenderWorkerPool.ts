@@ -1,12 +1,13 @@
 import type { RenderOptions as StateRenderOptions } from './stores/store';
 import type {
-    InitImageData,
     RenderRequestInit,
     RenderRequestWork,
     RenderResponse,
     RenderResponseData,
     RenderResponseInit,
     RenderResult,
+    TextWorkingFile,
+    WorkingFile,
 } from './types';
 import RenderWorker from './workers/renderWorker?worker';
 
@@ -15,7 +16,6 @@ export interface RenderEventInit {
     blockSize: number;
     blockCount: number;
     startTime: Date;
-    imageData: Record<string, InitImageData>;
 }
 
 export interface RenderEventRenderResult extends RenderResult {
@@ -94,12 +94,7 @@ export class RenderWorkerPool {
         console.error(`[${workerId}] worker error`, err);
     }
 
-    public render(
-        threadCount: number,
-        input: string,
-        imageData: Record<string, InitImageData>,
-        options: RenderOptions
-    ): void {
+    public render(threadCount: number, main: TextWorkingFile, files: WorkingFile[], options: RenderOptions): void {
         this.callback = options.callback;
         this.ensureWorkerCount(threadCount);
         this.populateWorkQueue(options);
@@ -111,10 +106,9 @@ export class RenderWorkerPool {
             blockSize: options.blockSize,
             blockCount: this.blockCount,
             startTime: new Date(),
-            imageData,
         });
 
-        this.initializeAndBeginRender(threadCount, input, imageData);
+        this.initializeAndBeginRender(threadCount, main, files);
     }
 
     private populateWorkQueue(options: RenderOptions): void {
@@ -136,17 +130,13 @@ export class RenderWorkerPool {
         console.log(`work queue initialized with ${work.length} blocks`);
     }
 
-    private initializeAndBeginRender(
-        threadCount: number,
-        input: string,
-        imageData: Record<string, InitImageData>
-    ): void {
+    private initializeAndBeginRender(threadCount: number, main: TextWorkingFile, files: WorkingFile[]): void {
         for (let i = 0; i < threadCount; i++) {
             const message: RenderRequestInit = {
                 type: 'init',
                 workerId: i,
-                input,
-                imageData,
+                main,
+                files,
             };
             this.workers[i].postMessage(message);
         }

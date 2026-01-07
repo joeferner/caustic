@@ -1,12 +1,13 @@
-import type { CameraInfo, Color, LoadResults, WasmCodeResource, WasmResourceResolver } from './wasm/caustic_wasm';
+import type { ImageWorkingFile, TextWorkingFile, WorkingFile } from './types.js';
+import type { CameraInfo, Color, LoadResults, WasmImage, WasmSource } from './wasm/caustic_wasm';
 import init, { load_openscad, get_camera_info, render } from './wasm/caustic_wasm.js';
 
 export type { CameraInfo, Color };
 
 export const initWasm = init;
 
-export function loadOpenscad(resourceResolver: ResourceResolver): LoadResults {
-    return load_openscad(resourceResolver);
+export function loadOpenscad(source: Source): LoadResults {
+    return load_openscad(source);
 }
 
 export function getCameraInfo(): CameraInfo {
@@ -17,18 +18,48 @@ export function renderBlock(xmin: number, xmax: number, ymin: number, ymax: numb
     return render(xmin, xmax, ymin, ymax);
 }
 
-export class ResourceResolver implements WasmResourceResolver {
-    public constructor(private readonly main: CodeResource) {}
+export class Source implements WasmSource {
+    public constructor(
+        private readonly main: TextWorkingFile,
+        private readonly files: WorkingFile[]
+    ) {}
 
-    public get_main(): WasmCodeResource {
-        return this.main;
+    public get_code(): string {
+        return this.main.contents;
+    }
+
+    public get_image(filename: string): WasmImage {
+        const file = this.files.find((f) => f.filename === filename);
+        if (!file) {
+            throw new Error('file not found');
+        }
+        if (file.type !== 'image') {
+            throw new Error('expected file of type image');
+        }
+        return new Image(file);
     }
 }
 
-export class CodeResource implements WasmCodeResource {
-    public constructor(private readonly code: string) {}
+export class Image implements WasmImage {
+    public constructor(private readonly file: ImageWorkingFile) {}
 
-    public get_code(): string {
-        return this.code;
+    public get_width(): number {
+        return this.file.width;
+    }
+
+    public get_height(): number {
+        return this.file.height;
+    }
+
+    public get_data(): Color[] {
+        const result: Color[] = [];
+        for (let i = 0; i < this.file.pixels.length; i += 3) {
+            result.push({
+                r: this.file.pixels[i],
+                g: this.file.pixels[i + 1],
+                b: this.file.pixels[i + 2],
+            });
+        }
+        return result;
     }
 }

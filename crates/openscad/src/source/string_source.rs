@@ -2,14 +2,14 @@ use std::{any::Any, sync::Arc};
 
 use caustic_core::{Image, image::ImageError};
 
-use crate::resource_resolver::CodeResource;
+use crate::source::Source;
 
 #[derive(Debug)]
-pub struct StringCodeResource {
+pub struct StringSource {
     code: String,
 }
 
-impl StringCodeResource {
+impl StringSource {
     pub fn new(code: &str) -> Self {
         Self {
             code: code.to_owned(),
@@ -17,7 +17,7 @@ impl StringCodeResource {
     }
 }
 
-impl CodeResource for StringCodeResource {
+impl Source for StringSource {
     fn get_code(&self) -> &str {
         &self.code
     }

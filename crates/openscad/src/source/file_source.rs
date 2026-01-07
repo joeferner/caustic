@@ -10,15 +10,15 @@ use caustic_core::{
     image::{ImageError, ImageImage},
 };
 
-use crate::resource_resolver::CodeResource;
+use crate::source::Source;
 
 #[derive(Debug)]
-pub struct FileCodeResource {
+pub struct FileSource {
     filename: PathBuf,
     code: String,
 }
 
-impl FileCodeResource {
+impl FileSource {
     pub fn new(filename: &Path) -> std::io::Result<Self> {
         let code = fs::read_to_string(filename)?;
         Ok(Self {
@@ -28,16 +28,16 @@ impl FileCodeResource {
     }
 }
 
-impl CodeResource for FileCodeResource {
+impl Source for FileSource {
     fn get_code(&self) -> &str {
         &self.code
     }
 
-    fn equals(&self, other: &dyn CodeResource) -> bool {
+    fn equals(&self, other: &dyn Source) -> bool {
         self.get_code() == other.get_code()
             && other
                 .as_any()
-                .downcast_ref::<FileCodeResource>()
+                .downcast_ref::<FileSource>()
                 .is_some_and(|other| self.filename == other.filename)
     }
 

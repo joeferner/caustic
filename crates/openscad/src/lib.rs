@@ -1,6 +1,6 @@
 pub mod interpreter;
 pub mod parser;
-pub mod resource_resolver;
+pub mod source;
 pub mod tokenizer;
 pub mod value;
 
@@ -9,7 +9,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::interpreter::InterpreterError;
-use crate::resource_resolver::{CodeResource, ResourceResolver};
+use crate::source::Source;
 use crate::{
     interpreter::{InterpreterResults, openscad_interpret},
     parser::openscad_parse,
@@ -21,11 +21,11 @@ pub struct WithPosition<T: PartialEq> {
     pub item: T,
     pub start: usize,
     pub end: usize,
-    pub source: Arc<dyn CodeResource>,
+    pub source: Arc<dyn Source>,
 }
 
 impl<T: PartialEq> WithPosition<T> {
-    pub fn new(item: T, start: usize, end: usize, source: Arc<dyn CodeResource>) -> Self {
+    pub fn new(item: T, start: usize, end: usize, source: Arc<dyn Source>) -> Self {
         Self {
             item,
             start,
@@ -56,12 +56,8 @@ pub enum OpenscadError {
     InterpreterErrors { errors: Vec<InterpreterError> },
 }
 
-pub fn run_openscad(
-    resource_resolver: &dyn ResourceResolver,
-) -> Result<InterpreterResults, OpenscadError> {
-    let main = resource_resolver.get_main();
-
-    let tokens = openscad_tokenize(main)?;
+pub fn run_openscad(source: Arc<dyn Source>) -> Result<InterpreterResults, OpenscadError> {
+    let tokens = openscad_tokenize(source)?;
     let parse_results = openscad_parse(tokens);
 
     if !parse_results.errors.is_empty() {

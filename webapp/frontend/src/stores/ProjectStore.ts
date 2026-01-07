@@ -1,6 +1,6 @@
-import { CodeResource, getCameraInfo, initWasm, loadOpenscad, ResourceResolver, type CameraInfo } from '../wasm';
+import { getCameraInfo, initWasm, loadOpenscad, Source, type CameraInfo } from '../wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from '../RenderWorkerPool';
-import type { BinaryWorkingFile, InitImageData, TextWorkingFile, WorkingFile } from '../types';
+import type { ImageWorkingFile, TextWorkingFile, WorkingFile } from '../types';
 import { type Project } from '../api';
 import { computed, signal } from '@preact/signals-react';
 import {
@@ -13,6 +13,7 @@ import {
     type StoreProject,
     type UnsubscribeFn,
 } from './store';
+import { getImageDataFromBlob } from '../utils/canvas';
 
 const renderWorkerPool = new RenderWorkerPool();
 
@@ -77,26 +78,20 @@ export class ProjectStore {
 
     public async render(): Promise<void> {
         // TODO handle multiple openscad files
-        const input = this.files.value.find((f) => f.type === 'text')?.contents;
-        if (!input) {
+        const main = this.files.value.find((f) => f.type === 'text');
+        if (!main) {
             return;
         }
 
-        const imageData: Record<string, InitImageData> = {};
-        const imageNames: string[] = [];
-
         await initWasm();
-        loadOpenscad(new ResourceResolver(new CodeResource(input)));
-
-        // TODO load image data
-        console.log(imageNames);
+        loadOpenscad(new Source(main, this.files.value));
 
         const cameraInfo = getCameraInfo();
         const { threadCount } = this.renderOptions.value;
         console.log(`Begin render ${cameraInfo.width}x${cameraInfo.height}`);
         this.cameraInfo.value = cameraInfo;
 
-        renderWorkerPool.render(threadCount, input, imageData, {
+        renderWorkerPool.render(threadCount, main, this.files.value, {
             ...cameraInfo,
             ...this.renderOptions.value,
             callback: (event) => {
@@ -126,11 +121,15 @@ export class ProjectStore {
                     } satisfies TextWorkingFile;
                 } else {
                     const contents = await response.blob();
+                    const imageData = await getImageDataFromBlob(contents);
+
                     return {
                         ...f,
-                        type: 'binary',
-                        contents,
-                    } satisfies BinaryWorkingFile;
+                        type: 'image',
+                        width: imageData.width,
+                        height: imageData.height,
+                        pixels: imageData.data,
+                    } satisfies ImageWorkingFile;
                 }
             })
         );

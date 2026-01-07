@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use thiserror::Error;
 
-use crate::{WithPosition, resource_resolver::CodeResource};
+use crate::{WithPosition, source::Source};
 
 #[derive(Error, Debug, PartialEq)]
 #[error("Tokenizer error: {message} [{start}:{end}]")]
@@ -93,11 +93,11 @@ pub type TokenWithPosition = WithPosition<Token>;
 struct Tokenizer {
     input: Vec<char>,
     pos: usize,
-    source: Arc<dyn CodeResource>,
+    source: Arc<dyn Source>,
 }
 
 impl Tokenizer {
-    pub fn new(source: Arc<dyn CodeResource>) -> Self {
+    pub fn new(source: Arc<dyn Source>) -> Self {
         Self {
             input: source.get_code().chars().collect(),
             pos: 0,
@@ -478,31 +478,31 @@ impl Tokenizer {
     }
 }
 
-pub fn openscad_tokenize(source: Arc<dyn CodeResource>) -> Result<Vec<TokenWithPosition>> {
+pub fn openscad_tokenize(source: Arc<dyn Source>) -> Result<Vec<TokenWithPosition>> {
     let tokenizer = Tokenizer::new(source);
     tokenizer.tokenize()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::resource_resolver::StringCodeResource;
+    use crate::source::StringSource;
 
     use super::*;
 
-    fn assert_tokens_with_pos(source: Arc<dyn CodeResource>, expected: &[TokenWithPosition]) {
+    fn assert_tokens_with_pos(source: Arc<dyn Source>, expected: &[TokenWithPosition]) {
         let found = openscad_tokenize(source).unwrap();
         assert_eq!(found, expected);
     }
 
     fn assert_tokens(input: &str, expected: &[Token]) {
-        let source = Arc::new(StringCodeResource::new(input));
+        let source = Arc::new(StringSource::new(input));
         let found = openscad_tokenize(source).unwrap();
         let found_without_pos: Vec<Token> = found.iter().map(|tok| tok.item.clone()).collect();
         assert_eq!(found_without_pos, expected);
     }
 
     fn assert_token_with_pos(input: &str, token: Token, start: usize, end: usize) {
-        let source = Arc::new(StringCodeResource::new(input));
+        let source = Arc::new(StringSource::new(input));
         assert_tokens_with_pos(
             source.clone(),
             &vec![
@@ -520,7 +520,7 @@ mod tests {
         assert_token_with_pos("42.34e11", Token::Number(42.34e11), 0, 8);
         assert_token_with_pos("42.34E-11", Token::Number(42.34e-11), 0, 9);
 
-        let source = Arc::new(StringCodeResource::new("42.34a"));
+        let source = Arc::new(StringSource::new("42.34a"));
         assert_tokens_with_pos(
             source.clone(),
             &vec![
@@ -536,7 +536,7 @@ mod tests {
         assert_token_with_pos("a", Token::Identifier("a".to_string()), 0, 1);
         assert_token_with_pos("cube_2", Token::Identifier("cube_2".to_string()), 0, 6);
 
-        let source = Arc::new(StringCodeResource::new("cube("));
+        let source = Arc::new(StringSource::new("cube("));
         assert_tokens_with_pos(
             source.clone(),
             &vec![
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn test_cube() {
-        let source = Arc::new(StringCodeResource::new("cube(10);"));
+        let source = Arc::new(StringSource::new("cube(10);"));
         assert_tokens_with_pos(
             source.clone(),
             &vec![

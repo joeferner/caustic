@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{
     WithPosition,
-    resource_resolver::CodeResource,
+    source::Source,
     tokenizer::{Token, TokenWithPosition},
 };
 
@@ -240,7 +240,7 @@ impl Parser {
         self.tokens.get(self.pos + n)
     }
 
-    fn get_current(&self) -> Result<(usize, Arc<dyn CodeResource>)> {
+    fn get_current(&self) -> Result<(usize, Arc<dyn Source>)> {
         match self.current() {
             Some(current) => Ok((current.start, current.source.clone())),
             None => Err(ParserError {
@@ -1036,17 +1036,17 @@ pub fn openscad_parse(tokens: Vec<TokenWithPosition>) -> ParseResult {
 
 #[cfg(test)]
 mod tests {
-    use crate::{resource_resolver::StringCodeResource, tokenizer::openscad_tokenize};
+    use crate::{source::StringSource, tokenizer::openscad_tokenize};
 
     use super::*;
 
-    fn parse(source: Arc<dyn CodeResource>) -> ParseResult {
+    fn parse(source: Arc<dyn Source>) -> ParseResult {
         openscad_parse(openscad_tokenize(source).unwrap())
     }
 
     #[test]
     fn test_empty_statement() {
-        let source = Arc::new(StringCodeResource::new(";"));
+        let source = Arc::new(StringSource::new(";"));
         let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(
@@ -1057,7 +1057,7 @@ mod tests {
 
     #[test]
     fn test_cube() {
-        let source = Arc::new(StringCodeResource::new("cube(10);"));
+        let source = Arc::new(StringSource::new("cube(10);"));
         let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(
@@ -1084,7 +1084,7 @@ mod tests {
 
     #[test]
     fn test_cube_vector() {
-        let source = Arc::new(StringCodeResource::new("cube([20,30,50]);"));
+        let source = Arc::new(StringSource::new("cube([20,30,50]);"));
         let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1129,7 +1129,7 @@ mod tests {
 
     #[test]
     fn test_cube_vector_and_named_parameter() {
-        let source = Arc::new(StringCodeResource::new("cube([20,30,50],center=true);"));
+        let source = Arc::new(StringSource::new("cube([20,30,50],center=true);"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1137,7 +1137,7 @@ mod tests {
 
     #[test]
     fn test_translate_cube_vector_and_named_parameter() {
-        let source = Arc::new(StringCodeResource::new(
+        let source = Arc::new(StringSource::new(
             "translate([0,0,5]) cube([20,30,50],center=true);",
         ));
         let result = parse(source);
@@ -1147,7 +1147,7 @@ mod tests {
 
     #[test]
     fn test_binary_expression() {
-        let source = Arc::new(StringCodeResource::new("cube(20 - 0.1);"));
+        let source = Arc::new(StringSource::new("cube(20 - 0.1);"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1155,7 +1155,7 @@ mod tests {
 
     #[test]
     fn test_binary_expression_divide() {
-        let source = Arc::new(StringCodeResource::new("color([0,125,255]/255);"));
+        let source = Arc::new(StringSource::new("color([0,125,255]/255);"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1163,7 +1163,7 @@ mod tests {
 
     #[test]
     fn test_unary_expression() {
-        let source = Arc::new(StringCodeResource::new("cube(-20);"));
+        let source = Arc::new(StringSource::new("cube(-20);"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1171,7 +1171,7 @@ mod tests {
 
     #[test]
     fn test_negate_parens() {
-        let source = Arc::new(StringCodeResource::new("echo(-(20 + 3));"));
+        let source = Arc::new(StringSource::new("echo(-(20 + 3));"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1179,7 +1179,7 @@ mod tests {
 
     #[test]
     fn test_set_fa() {
-        let source = Arc::new(StringCodeResource::new("$fa = 1;"));
+        let source = Arc::new(StringSource::new("$fa = 1;"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1187,7 +1187,7 @@ mod tests {
 
     #[test]
     fn test_include() {
-        let source = Arc::new(StringCodeResource::new("include <ray_trace.scad>"));
+        let source = Arc::new(StringSource::new("include <ray_trace.scad>"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1195,7 +1195,7 @@ mod tests {
 
     #[test]
     fn test_function_call() {
-        let source = Arc::new(StringCodeResource::new(
+        let source = Arc::new(StringSource::new(
             "
             lambertian(checker(scale=0.32, even=[0.2, 0.3, 0.1], odd=[0.9, 0.9, 0.9]))
                 translate([0.0, -1.0, -100.5])
@@ -1209,7 +1209,7 @@ mod tests {
 
     #[test]
     fn test_for_loop() {
-        let source = Arc::new(StringCodeResource::new("for(a=[0:10]) sphere(r=a);"));
+        let source = Arc::new(StringSource::new("for(a=[0:10]) sphere(r=a);"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1217,7 +1217,7 @@ mod tests {
 
     #[test]
     fn test_for_loop_increment() {
-        let source = Arc::new(StringCodeResource::new("for(a=[0:2:10]) sphere(r=a);"));
+        let source = Arc::new(StringSource::new("for(a=[0:2:10]) sphere(r=a);"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1225,7 +1225,7 @@ mod tests {
 
     #[test]
     fn test_variable_assignment() {
-        let source = Arc::new(StringCodeResource::new("a = 1;"));
+        let source = Arc::new(StringSource::new("a = 1;"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1233,7 +1233,7 @@ mod tests {
 
     #[test]
     fn test_rands() {
-        let source = Arc::new(StringCodeResource::new("choose_mat = rands(0,1,1)[0];"));
+        let source = Arc::new(StringSource::new("choose_mat = rands(0,1,1)[0];"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1241,7 +1241,7 @@ mod tests {
 
     #[test]
     fn test_subtract_indexed() {
-        let source = Arc::new(StringCodeResource::new("v = pt2[0][1] - pt1[0];"));
+        let source = Arc::new(StringSource::new("v = pt2[0][1] - pt1[0];"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1250,7 +1250,7 @@ mod tests {
     #[test]
     fn test_function_decl() {
         let s = "function distance(pt1, pt2) = sqrt(pow(pt2[0]-pt1[0], 2) + pow(pt2[1]-pt1[1], 2) + pow(pt2[2]-pt1[2], 2));";
-        let source = Arc::new(StringCodeResource::new(s));
+        let source = Arc::new(StringSource::new(s));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1258,7 +1258,7 @@ mod tests {
 
     #[test]
     fn test_if_else() {
-        let source = Arc::new(StringCodeResource::new(
+        let source = Arc::new(StringSource::new(
             r#"
             if (1 > 2) {
               echo("false");
