@@ -19,9 +19,17 @@ fi
 echo "Running wasm-pack build…"
 (
     cd "$PROJECT_DIR"
+    rm -rf "${WEBAPP_DIR}/frontend/src/wasm"
+    
+    rm -rf pkg
+    wasm-pack build --target web --debug
+    mkdir -p "${WEBAPP_DIR}/frontend/src/wasm/debug"
+    cp pkg/caustic_wasm* "${WEBAPP_DIR}/frontend/src/wasm/debug"
+
+    rm -rf pkg
     wasm-pack build --target web --release
-    mkdir -p "${WEBAPP_DIR}/frontend/src/wasm"
-    cp pkg/caustic_wasm* "${WEBAPP_DIR}/frontend/src/wasm"
+    mkdir -p "${WEBAPP_DIR}/frontend/src/wasm/release"
+    cp pkg/caustic_wasm* "${WEBAPP_DIR}/frontend/src/wasm/release"
 )
 
 echo "Build complete!"

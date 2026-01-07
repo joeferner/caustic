@@ -1,10 +1,12 @@
 import type { ImageWorkingFile, TextWorkingFile, WorkingFile } from './types.js';
-import type { CameraInfo, Color, LoadResults, WasmImage, WasmSource } from './wasm/caustic_wasm';
-import init, { load_openscad, get_camera_info, render } from './wasm/caustic_wasm.js';
+import type { CameraInfo, Color, InitOutput, LoadResults, WasmImage, WasmSource } from './wasm/release/caustic_wasm';
+import init, { load_openscad, get_camera_info, render } from './wasm/release/caustic_wasm.js';
 
 export type { CameraInfo, Color };
 
-export const initWasm = init;
+export function initWasm(): Promise<InitOutput> {
+    return init();
+}
 
 export function loadOpenscad(source: Source): LoadResults {
     return load_openscad(source);
@@ -22,7 +24,7 @@ export class Source implements WasmSource {
     public constructor(
         private readonly main: TextWorkingFile,
         private readonly files: WorkingFile[]
-    ) {}
+    ) { }
 
     public get_code(): string {
         return this.main.contents;
@@ -41,7 +43,7 @@ export class Source implements WasmSource {
 }
 
 export class Image implements WasmImage {
-    public constructor(private readonly file: ImageWorkingFile) {}
+    public constructor(private readonly file: ImageWorkingFile) { }
 
     public get_width(): number {
         return this.file.width;
