@@ -24,7 +24,7 @@ export class Source implements WasmSource {
     public constructor(
         private readonly main: TextWorkingFile,
         private readonly files: WorkingFile[]
-    ) { }
+    ) {}
 
     public get_code(): string {
         return this.main.contents;
@@ -43,7 +43,7 @@ export class Source implements WasmSource {
 }
 
 export class Image implements WasmImage {
-    public constructor(private readonly file: ImageWorkingFile) { }
+    public constructor(private readonly file: ImageWorkingFile) {}
 
     public get_width(): number {
         return this.file.width;

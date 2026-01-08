@@ -12,6 +12,9 @@ RUN \
 # install java
 RUN apt-get install -y openjdk-17-jre
 
+# install OpenSCAD
+RUN apt-get install -y openscad
+
 # install terraform
 RUN \
   apt-get install -y gnupg \

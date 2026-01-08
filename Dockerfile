@@ -90,7 +90,7 @@ RUN npm ci
 # Copy frontend source
 COPY webapp/frontend/ ./
 COPY --from=rust-builder /app/openapi.json /app/
-COPY --from=rust-builder /app/wasm/* /frontend/src/wasm/
+COPY --from=rust-builder /app/wasm/* /frontend/src/wasm/release/
 
 # Build the React app
 RUN npm run build

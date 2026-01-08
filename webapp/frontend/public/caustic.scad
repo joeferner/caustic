@@ -27,4 +27,4 @@ module metal(c, fuzz) {
 
 function checker(scale = 1, even = [0, 0, 0], odd = [1, 1, 1]) = even;
 
-function image(filename);
+function image(filename) = 1;

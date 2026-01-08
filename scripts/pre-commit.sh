@@ -38,6 +38,9 @@ banner "wasm-pack"
 cd "${SCRIPT_DIR}/../crates/wasm"
 ./scripts/build.sh
 
+banner "webapp/backend/scripts/pre-commit.sh"
+${SCRIPT_DIR}/../webapp/backend/scripts/pre-commit.sh
+
 cd "${SCRIPT_DIR}/../webapp/frontend"
 
 banner "nvm install"
