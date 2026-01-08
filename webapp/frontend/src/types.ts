@@ -48,7 +48,7 @@ export interface ImageWorkingFile extends ProjectFile {
     type: 'image';
     width: number;
     height: number;
-    pixels: Uint8Array;
+    pixels: ImageDataArray;
 }
 
 export type WorkingFile = TextWorkingFile | ImageWorkingFile;

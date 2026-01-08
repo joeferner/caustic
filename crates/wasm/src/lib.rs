@@ -5,6 +5,7 @@ use caustic_core::{
     Color as CoreColor, Image, RenderContext, SceneData, image::ImageError, random_new,
 };
 use caustic_openscad::{run_openscad, source::Source};
+use js_sys::Uint8ClampedArray;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 use wasm_bindgen::prelude::*;
@@ -89,7 +90,7 @@ const WASM_IMAGE_INTERFACE: &'static str = r#"
 export interface WasmImage {
     get_width(): number;
     get_height(): number;
-    get_data(): Color[];
+    get_data(): ImageDataArray;
 }
 "#;
 
@@ -104,7 +105,7 @@ extern "C" {
     pub fn get_height(this: &WasmImage) -> u32;
 
     #[wasm_bindgen(method)]
-    pub fn get_data(this: &WasmImage) -> Vec<Color>;
+    pub fn get_data(this: &WasmImage) -> Uint8ClampedArray;
 }
 
 struct WasmImageAdapter {
@@ -118,7 +119,19 @@ impl WasmImageAdapter {
         Self {
             width: wasm_image.get_width(),
             height: wasm_image.get_height(),
-            data: wasm_image.get_data().iter().map(Color::to).collect(),
+            data: wasm_image
+                .get_data()
+                .to_vec()
+                .chunks_exact(4)
+                .map(|chunk| {
+                    CoreColor {
+                        r: (chunk[0] as f64) / 255.0,
+                        g: (chunk[1] as f64) / 255.0,
+                        b: (chunk[2] as f64) / 255.0,
+                        // chunk[3] is alpha, which we ignore
+                    }
+                })
+                .collect(),
         }
     }
 }
@@ -225,13 +238,5 @@ impl Color {
             g: (color.g * 255.0) as u8,
             b: (color.b * 255.0) as u8,
         }
-    }
-
-    pub fn to(&self) -> CoreColor {
-        CoreColor::new(
-            (self.r as f64) / 255.0,
-            (self.g as f64) / 255.0,
-            (self.b as f64) / 255.0,
-        )
     }
 }

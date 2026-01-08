@@ -53,15 +53,7 @@ export class Image implements WasmImage {
         return this.file.height;
     }
 
-    public get_data(): Color[] {
-        const result: Color[] = [];
-        for (let i = 0; i < this.file.pixels.length; i += 3) {
-            result.push({
-                r: this.file.pixels[i],
-                g: this.file.pixels[i + 1],
-                b: this.file.pixels[i + 2],
-            });
-        }
-        return result;
+    public get_data(): ImageDataArray {
+        return this.file.pixels;
     }
 }
