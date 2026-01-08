@@ -400,7 +400,7 @@ impl Interpreter {
     }
 
     fn process_include(&self, filename: &str) -> Result<Vec<Arc<dyn Node>>> {
-        if filename.ends_with("ray_trace.scad") {
+        if filename.ends_with("caustic.scad") {
             return Ok(vec![]);
         }
 

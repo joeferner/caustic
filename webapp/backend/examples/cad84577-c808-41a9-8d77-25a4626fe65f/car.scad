@@ -1,7 +1,7 @@
 $fa = 1;
 $fs = 0.4;
 
-include <ray_trace.scad>
+include <caustic.scad>
 
 // camera
 camera(

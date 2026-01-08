@@ -1187,7 +1187,7 @@ mod tests {
 
     #[test]
     fn test_include() {
-        let source = Arc::new(StringSource::new("include <ray_trace.scad>"));
+        let source = Arc::new(StringSource::new("include <caustic.scad>"));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
