@@ -52,7 +52,12 @@
 - :white_check_mark: [`n > m`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Relational_Operators) - Greater Than
 - :white_check_mark: [`b && c`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Logical_Operators) - Logical And
 - :white_check_mark: [`b || c`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Logical_Operators) - Logical Or
-- :x: [`!b`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Logical_Operators) - Negation
+- :white_check_mark: [`!b`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Logical_Operators) - Negation
+- :x: [`b | c`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Binary_arithmetic) - Binary OR
+- :x: [`b & c`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Binary_arithmetic) - Binary AND
+- :x: [`b << c`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Binary_arithmetic) - Binary Left Shift
+- :x: [`b >> c`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Binary_arithmetic) - Binary Right Shift
+- :x: [`~b`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Operators#Binary_arithmetic) - Binary NOT
 
 ## Special Variables
 

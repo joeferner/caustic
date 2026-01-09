@@ -231,6 +231,21 @@ mod tests {
         assert_eq!(result.output, "false\n");
     }
 
+    #[test]
+    fn test_negation() {
+        let result = interpret("echo(!true);");
+        assert_eq!(result.output, "false\n");
+
+        let result = interpret("echo(!false);");
+        assert_eq!(result.output, "true\n");
+
+        let result = interpret("echo(!1);");
+        assert_eq!(result.output, "false\n");
+
+        let result = interpret("echo(!0);");
+        assert_eq!(result.output, "true\n");
+    }
+
     // -- negation ----------------------------
 
     #[test]

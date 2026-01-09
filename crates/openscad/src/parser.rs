@@ -208,6 +208,7 @@ impl BinaryOperator {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum UnaryOperator {
     Minus,
+    Negation,
 }
 
 pub type ExprWithPosition = WithPosition<Expr>;
@@ -790,6 +791,21 @@ impl Parser {
                 ExprWithPosition::new(
                     Expr::Unary {
                         operator: UnaryOperator::Minus,
+                        rhs: Box::new(rhs),
+                    },
+                    start,
+                    self.current_token_start(),
+                    source.clone(),
+                )
+            }
+
+            Token::ExclamationMark => {
+                // '!' <expr>
+                self.expect(Token::ExclamationMark)?;
+                let rhs = self.parse_expr()?;
+                ExprWithPosition::new(
+                    Expr::Unary {
+                        operator: UnaryOperator::Negation,
                         rhs: Box::new(rhs),
                     },
                     start,

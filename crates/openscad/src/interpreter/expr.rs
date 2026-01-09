@@ -458,12 +458,21 @@ impl Interpreter {
     ) -> Result<Value> {
         let right = self.expr_to_value(rhs)?;
 
-        if let Value::Number(right) = right {
-            match operator {
-                UnaryOperator::Minus => Ok(Value::Number(-right)),
-            }
-        } else {
-            todo!("{operator:?} {right:?}");
+        match operator {
+            UnaryOperator::Minus => match right {
+                Value::Number(right) => Ok(Value::Number(-right)),
+                Value::String(_) => todo!(),
+                Value::Vector { items: _items } => todo!(),
+                Value::Boolean(_) => todo!(),
+                Value::Texture(_texture) => todo!(),
+                Value::Range {
+                    start: _start,
+                    end: _end,
+                    increment: _increment,
+                } => todo!(),
+                Value::Undef => todo!(),
+            },
+            UnaryOperator::Negation => Ok(Value::Boolean(!right.is_truthy())),
         }
     }
 
