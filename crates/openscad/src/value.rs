@@ -25,6 +25,7 @@ pub enum Value {
         end: Box<Value>,
         increment: Option<Box<Value>>,
     },
+    Undef,
 }
 
 impl Value {
@@ -134,6 +135,7 @@ impl Value {
                 end,
                 increment,
             } => todo!("is_truthy {start:?} {end:?} {increment:?}"),
+            Value::Undef => false,
         }
     }
 }
@@ -166,6 +168,7 @@ impl Display for Value {
                 end,
                 increment,
             } => todo!("range: {start:?} {end:?} {increment:?}"),
+            Value::Undef => write!(f, "undef"),
         }
     }
 }

@@ -89,6 +89,7 @@ impl Interpreter {
                     end,
                     increment,
                 } => todo!("{left:?} {operator:?} range({start:?}, {end:?}, {increment:?})"),
+                Value::Undef => todo!("{left:?} undef"),
             },
             Value::Vector { items: lhs_items } => match rhs {
                 Value::Number(right) => self.eval_vector_number(operator, lhs_items, *right),
@@ -103,6 +104,7 @@ impl Interpreter {
                     end,
                     increment,
                 } => todo!("{lhs_items:?} {operator:?} range({start:?}, {end:?}, {increment:?})"),
+                Value::Undef => todo!("{lhs_items:?} undef"),
             },
             Value::Boolean(b) => todo!("{b}"),
             Value::String(str) => todo!("{str}"),
@@ -112,6 +114,7 @@ impl Interpreter {
                 end,
                 increment,
             } => todo!("range: {start:?}, {end:?}, {increment:?}"),
+            Value::Undef => todo!("undef"),
         })
     }
 
@@ -152,6 +155,7 @@ impl Interpreter {
                         end,
                         increment,
                     } => todo!("range: {start:?}, {end:?}, {increment:?}"),
+                    Value::Undef => todo!("undef"),
                 })
                 .collect(),
         }

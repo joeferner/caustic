@@ -475,6 +475,8 @@ impl Interpreter {
     fn evaluate_identifier(&self, name: &str) -> Result<Value> {
         if name == "PI" {
             Ok(Value::Number(f64::consts::PI))
+        } else if name == "undef" {
+            Ok(Value::Undef)
         } else if let Some(v) = self.get_variable(name) {
             Ok(v.clone())
         } else {
@@ -507,6 +509,7 @@ impl Interpreter {
                 end,
                 increment,
             } => todo!("evaluate_index {lhs:?} {start:?} {end:?} {increment:?}"),
+            Value::Undef => todo!("undef"),
         };
 
         Ok(value)

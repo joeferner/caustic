@@ -139,4 +139,11 @@ mod tests {
         let result = interpret(s);
         assert_eq!(result.output, "3.14159\n");
     }
+
+    #[test]
+    fn test_undef() {
+        let s = r#"echo(undef);"#;
+        let result = interpret(s);
+        assert_eq!(result.output, "undef\n");
+    }
 }
