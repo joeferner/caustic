@@ -49,6 +49,8 @@ pub enum Token {
     ForwardSlash,
     /// '?'
     QuestionMark,
+    /// '%'
+    Percent,
     /// '<'
     LessThan,
     /// '<='
@@ -353,6 +355,10 @@ impl Tokenizer {
             Some('?') => {
                 self.advance();
                 Token::QuestionMark
+            }
+            Some('%') => {
+                self.advance();
+                Token::Percent
             }
             Some('<') => {
                 self.advance();

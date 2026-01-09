@@ -102,6 +102,14 @@ mod tests {
         assert_eq!(result.output, "[20, 32, -48]\n");
     }
 
+    // -- modulus ----------------------------
+
+    #[test]
+    fn test_binary_expression_scalar_modulus() {
+        let result = interpret("echo(20 % 3);");
+        assert_eq!(result.output, "2\n");
+    }
+
     // -- negation ----------------------------
 
     #[test]

@@ -167,6 +167,7 @@ pub enum Expr {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum BinaryOperator {
+    Modulus,
     Add,
     Subtract,
     Multiply,
@@ -185,7 +186,7 @@ impl BinaryOperator {
             | BinaryOperator::GreaterThan
             | BinaryOperator::GreaterThanEqual => 1,
             BinaryOperator::Add | BinaryOperator::Subtract => 2,
-            BinaryOperator::Multiply | BinaryOperator::Divide => 3,
+            BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulus => 3,
         }
     }
 }
@@ -873,11 +874,11 @@ impl Parser {
     fn current_to_binary_operator(&self) -> Option<BinaryOperator> {
         if let Some(current) = self.current() {
             match current.item {
-                // TODO <expr> '%' <expr>
                 // TODO <expr> "==" <expr>
                 // TODO <expr> "!=" <expr>
                 // TODO <expr> "&&" <expr>
                 // TODO <expr> "||" <expr>
+                Token::Percent => Some(BinaryOperator::Modulus),
                 Token::Plus => Some(BinaryOperator::Add),
                 Token::Minus => Some(BinaryOperator::Subtract),
                 Token::Asterisk => Some(BinaryOperator::Multiply),
