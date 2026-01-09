@@ -8,7 +8,7 @@ use std::{cell::RefCell, collections::HashMap, sync::Arc};
 
 use caustic_core::{
     Camera, CameraBuilder, Color, Node, Random, SceneData, Vector3,
-    material::{Dielectric, Lambertian, Material, Metal},
+    material::{Dielectric, DiffuseLight, Lambertian, Material, Metal},
     object::BoundingVolumeHierarchy,
 };
 use rand_mt::Mt64;
@@ -309,6 +309,21 @@ impl Interpreter {
         }
 
         Ok(Arc::new(Metal::new(color, fuzz)))
+    }
+
+    fn create_diffuse_light(
+        &mut self,
+        arguments: &[CallArgumentWithPosition],
+    ) -> Result<Arc<dyn Material>> {
+        let arguments = self.convert_args(&["c"], arguments)?;
+
+        let mut color = Color::WHITE;
+
+        if let Some(arg) = arguments.get("c") {
+            color = arg.item.to_color()?;
+        }
+
+        Ok(Arc::new(DiffuseLight::new_from_color(color)))
     }
 
     fn process_for_loop(

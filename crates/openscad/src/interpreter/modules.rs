@@ -2,15 +2,12 @@ use std::sync::Arc;
 
 use caustic_core::{
     CameraBuilder, Node, Vector3,
-    object::{BoxPrimitive, ConeFrustum, Group, Rotate, Scale, Sphere, Translate},
+    object::{BoxPrimitive, ConeFrustum, Group, Quad, Rotate, Scale, Sphere, Translate},
 };
 
 use crate::{
     interpreter::{Interpreter, Result},
-    parser::{
-        CallArgument, CallArgumentWithPosition, ModuleId, ModuleIdWithPosition,
-        StatementWithPosition,
-    },
+    parser::{CallArgument, CallArgumentWithPosition, ModuleIdWithPosition, StatementWithPosition},
     value::Value,
 };
 
@@ -21,46 +18,49 @@ impl Interpreter {
         arguments: &[CallArgumentWithPosition],
         child_statements: &[StatementWithPosition],
     ) -> Result<Vec<Arc<dyn Node>>> {
-        if module_id.item == ModuleId::Color {
-            let color = self.create_color(arguments)?;
-            self.material_stack.push(color);
-        } else if module_id.item == ModuleId::Lambertian {
-            let color = self.create_lambertian(arguments)?;
-            self.material_stack.push(color);
-        } else if module_id.item == ModuleId::Dielectric {
-            let color = self.create_dielectric(arguments)?;
-            self.material_stack.push(color);
-        } else if module_id.item == ModuleId::Metal {
-            let color = self.create_metal(arguments)?;
-            self.material_stack.push(color);
-        } else if module_id.item == ModuleId::For {
+        if module_id.item == "color" {
+            let m = self.create_color(arguments)?;
+            self.material_stack.push(m);
+        } else if module_id.item == "lambertian" {
+            let m = self.create_lambertian(arguments)?;
+            self.material_stack.push(m);
+        } else if module_id.item == "dielectric" {
+            let m = self.create_dielectric(arguments)?;
+            self.material_stack.push(m);
+        } else if module_id.item == "metal" {
+            let m = self.create_metal(arguments)?;
+            self.material_stack.push(m);
+        } else if module_id.item == "diffuse_light" {
+            let m = self.create_diffuse_light(arguments)?;
+            self.material_stack.push(m);
+        } else if module_id.item == "for" {
             return self.process_for_loop(arguments, child_statements);
         }
 
         let child_nodes = self.process_child_statements(child_statements)?;
 
-        match &module_id.item {
-            ModuleId::Cube => self.create_cube(arguments, child_nodes).map(|n| vec![n]),
-            ModuleId::Sphere => self.create_sphere(arguments, child_nodes).map(|n| vec![n]),
-            ModuleId::Cylinder => self
+        match module_id.item.as_str() {
+            "cube" => self.create_cube(arguments, child_nodes).map(|n| vec![n]),
+            "sphere" => self.create_sphere(arguments, child_nodes).map(|n| vec![n]),
+            "cylinder" => self
                 .create_cylinder(arguments, child_nodes)
                 .map(|n| vec![n]),
-            ModuleId::Translate => self
+            "quad" => self.create_quad(arguments, child_nodes).map(|n| vec![n]),
+            "translate" => self
                 .create_translate(arguments, child_nodes)
                 .map(|n| vec![n]),
-            ModuleId::Rotate => self.create_rotate(arguments, child_nodes).map(|n| vec![n]),
-            ModuleId::Scale => self.create_scale(arguments, child_nodes).map(|n| vec![n]),
-            ModuleId::Camera => self.create_camera(arguments, child_nodes).map(|_| vec![]),
-            ModuleId::Color | ModuleId::Lambertian | ModuleId::Dielectric | ModuleId::Metal => {
+            "rotate" => self.create_rotate(arguments, child_nodes).map(|n| vec![n]),
+            "scale" => self.create_scale(arguments, child_nodes).map(|n| vec![n]),
+            "camera" => self.create_camera(arguments, child_nodes).map(|_| vec![]),
+            "color" | "lambertian" | "dielectric" | "metal" | "diffuse_light" => {
                 self.material_stack.pop();
                 Ok(child_nodes)
             }
-            ModuleId::For => panic!("already handled"),
-            ModuleId::Echo => self.evaluate_echo(arguments, child_nodes).map(|_| vec![]),
-            ModuleId::Identifier(identifier) => {
-                todo!("ModuleId::Identifier {identifier}")
+            "for" => panic!("already handled"),
+            "echo" => self.evaluate_echo(arguments, child_nodes).map(|_| vec![]),
+            other => {
+                todo!("identifier {other}")
             }
-            ModuleId::Quad => todo!(),
         }
     }
 
@@ -189,6 +189,38 @@ impl Interpreter {
             radius2,
             self.current_material(),
         )))
+    }
+
+    fn create_quad(
+        &mut self,
+        arguments: &[CallArgumentWithPosition],
+        child_nodes: Vec<Arc<dyn Node>>,
+    ) -> Result<Arc<dyn Node>> {
+        if !child_nodes.is_empty() {
+            todo!("should not have children");
+        }
+
+        let arguments = self.convert_args(&["q", "u", "v"], arguments)?;
+
+        let q = if let Some(arg) = arguments.get("q") {
+            arg.item.to_vector3()?
+        } else {
+            todo!("q is required");
+        };
+
+        let u = if let Some(arg) = arguments.get("u") {
+            arg.item.to_vector3()?
+        } else {
+            todo!("q is required");
+        };
+
+        let v = if let Some(arg) = arguments.get("v") {
+            arg.item.to_vector3()?
+        } else {
+            todo!("q is required");
+        };
+
+        Ok(Arc::new(Quad::new(q, u, v, self.current_material())))
     }
 
     fn create_translate(

@@ -59,27 +59,7 @@ pub enum Statement {
 
 pub type StatementWithPosition = WithPosition<Statement>;
 
-#[derive(Debug, PartialEq)]
-pub enum ModuleId {
-    For,
-    Echo,
-    Cube,
-    Sphere,
-    Cylinder,
-    Quad,
-    Translate,
-    Rotate,
-    Scale,
-    Color,
-    Camera,
-    Lambertian,
-    Dielectric,
-    Metal,
-    /// <identifier>
-    Identifier(String),
-}
-
-pub type ModuleIdWithPosition = WithPosition<ModuleId>;
+pub type ModuleIdWithPosition = WithPosition<String>;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum CallArgument {
@@ -467,38 +447,8 @@ impl Parser {
 
         if let Some(current) = self.current() {
             let module_id = match &current.item {
-                Token::For => ModuleId::For,
-                Token::Identifier(identifier) => {
-                    if identifier == "echo" {
-                        ModuleId::Echo
-                    } else if identifier == "cube" {
-                        ModuleId::Cube
-                    } else if identifier == "sphere" {
-                        ModuleId::Sphere
-                    } else if identifier == "cylinder" {
-                        ModuleId::Cylinder
-                    } else if identifier == "quad" {
-                        ModuleId::Quad
-                    } else if identifier == "translate" {
-                        ModuleId::Translate
-                    } else if identifier == "rotate" {
-                        ModuleId::Rotate
-                    } else if identifier == "scale" {
-                        ModuleId::Scale
-                    } else if identifier == "color" {
-                        ModuleId::Color
-                    } else if identifier == "camera" {
-                        ModuleId::Camera
-                    } else if identifier == "lambertian" {
-                        ModuleId::Lambertian
-                    } else if identifier == "dielectric" {
-                        ModuleId::Dielectric
-                    } else if identifier == "metal" {
-                        ModuleId::Metal
-                    } else {
-                        ModuleId::Identifier(identifier.to_owned())
-                    }
-                }
+                Token::For => "for".to_owned(),
+                Token::Identifier(identifier) => identifier.to_owned(),
                 _ => todo!("throw error {:?}", current.item),
             };
             self.advance();
@@ -1067,7 +1017,7 @@ mod tests {
             result.statements,
             vec![StatementWithPosition::new(
                 Statement::ModuleInstantiation {
-                    module_id: ModuleIdWithPosition::new(ModuleId::Cube, 0, 4, source.clone()),
+                    module_id: ModuleIdWithPosition::new("cube".to_string(), 0, 4, source.clone()),
                     call_arguments: vec![CallArgumentWithPosition::new(
                         CallArgument::Expr {
                             expr: ExprWithPosition::new(Expr::Number(10.0), 5, 7, source.clone())
@@ -1108,7 +1058,7 @@ mod tests {
             };
 
         // module_id
-        if ModuleId::Cube != module_id.item {
+        if "cube" != module_id.item {
             panic!("expected ModuleId::Cube");
         };
 

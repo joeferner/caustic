@@ -3,6 +3,7 @@ mod tests {
     use std::sync::Arc;
 
     use assert_eq_float::assert_eq_float;
+    use caustic_core::random_new;
 
     use crate::{
         interpreter::{InterpreterError, InterpreterResults, openscad_interpret},
@@ -14,7 +15,8 @@ mod tests {
     fn interpret(expr: &str) -> InterpreterResults {
         let source = Arc::new(StringSource::new(expr));
         let result = openscad_parse(openscad_tokenize(source).unwrap());
-        openscad_interpret(result.statements)
+        let random = random_new();
+        openscad_interpret(result.statements, random)
     }
 
     #[test]

@@ -165,7 +165,9 @@ impl Debug for WasmImageAdapter {
 #[wasm_bindgen]
 pub fn load_openscad(wasm_source: WasmSource) -> Result<LoadResults, JsValue> {
     let source = Arc::new(WasmSourceAdapter::new(wasm_source)?);
-    let results = run_openscad(source).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
+    let random = random_new();
+    let results =
+        run_openscad(source, random).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;
     LOADED_SCENE_DATA.with(|data| *data.borrow_mut() = Some(results.scene_data));
     Ok(LoadResults {
         output: results.output,
