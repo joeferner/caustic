@@ -85,6 +85,12 @@ mod tests {
         assert_eq!(result.output, "[1.25, 2, -3]\n");
     }
 
+    #[test]
+    fn test_binary_expression_divide_scaler_by_vector() {
+        let result = interpret("echo(4 / [5, 8, -12]);");
+        assert_eq!(result.output, "[0.8, 0.5, -0.333333]\n");
+    }
+
     // -- multiplication ----------------------------
 
     #[test]
@@ -198,6 +204,33 @@ mod tests {
         assert_eq!(result.output, "false\n");
     }
 
+    #[test]
+    fn test_binary_expression_and() {
+        let result = interpret("echo(true && true);");
+        assert_eq!(result.output, "true\n");
+
+        let result = interpret("echo(true && false);");
+        assert_eq!(result.output, "false\n");
+
+        let result = interpret("echo(1 && true);");
+        assert_eq!(result.output, "true\n");
+
+        let result = interpret("echo(true && 1);");
+        assert_eq!(result.output, "true\n");
+    }
+
+    #[test]
+    fn test_binary_expression_or() {
+        let result = interpret("echo(true || true);");
+        assert_eq!(result.output, "true\n");
+
+        let result = interpret("echo(true || false);");
+        assert_eq!(result.output, "true\n");
+
+        let result = interpret("echo(false || false);");
+        assert_eq!(result.output, "false\n");
+    }
+
     // -- negation ----------------------------
 
     #[test]
@@ -266,7 +299,7 @@ mod tests {
         ";
 
         let result = interpret(s);
-        assert_eq_float!(result.output.trim().parse().unwrap(), 10.24695);
+        assert_eq_float!(result.output.trim().parse().unwrap(), 10.246951);
     }
 
     // -- echo ----------------------------
@@ -312,7 +345,7 @@ mod tests {
     fn test_pi() {
         let s = r#"echo(PI);"#;
         let result = interpret(s);
-        assert_eq!(result.output, "3.14159\n");
+        assert_eq!(result.output, "3.141593\n");
     }
 
     #[test]

@@ -179,20 +179,24 @@ pub enum BinaryOperator {
     GreaterThanEqual,
     EqualEqual,
     NotEqual,
+    And,
+    Or,
 }
 
 impl BinaryOperator {
     pub fn precedence(&self) -> u8 {
         match self {
+            BinaryOperator::Or => 0,
+            BinaryOperator::And => 1,
             BinaryOperator::LessThan
             | BinaryOperator::LessThanEqual
             | BinaryOperator::GreaterThan
             | BinaryOperator::GreaterThanEqual
             | BinaryOperator::EqualEqual
-            | BinaryOperator::NotEqual => 1,
-            BinaryOperator::Add | BinaryOperator::Subtract => 2,
-            BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulus => 3,
-            BinaryOperator::Exponentiation => 4,
+            | BinaryOperator::NotEqual => 2,
+            BinaryOperator::Add | BinaryOperator::Subtract => 3,
+            BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulus => 4,
+            BinaryOperator::Exponentiation => 5,
         }
     }
 }
@@ -880,10 +884,6 @@ impl Parser {
     fn current_to_binary_operator(&self) -> Option<BinaryOperator> {
         if let Some(current) = self.current() {
             match current.item {
-                // TODO <expr> "==" <expr>
-                // TODO <expr> "!=" <expr>
-                // TODO <expr> "&&" <expr>
-                // TODO <expr> "||" <expr>
                 Token::Caret => Some(BinaryOperator::Exponentiation),
                 Token::Percent => Some(BinaryOperator::Modulus),
                 Token::Plus => Some(BinaryOperator::Add),
@@ -896,6 +896,8 @@ impl Parser {
                 Token::GreaterThanEqual => Some(BinaryOperator::GreaterThanEqual),
                 Token::EqualEqual => Some(BinaryOperator::EqualEqual),
                 Token::NotEqual => Some(BinaryOperator::NotEqual),
+                Token::AmpersandAmpersand => Some(BinaryOperator::And),
+                Token::PipePipe => Some(BinaryOperator::Or),
                 _ => None,
             }
         } else {

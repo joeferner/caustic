@@ -125,7 +125,7 @@ impl Value {
 
     pub fn is_truthy(&self) -> bool {
         match self {
-            Value::Number(number) => todo!("is_truthy {number}"),
+            Value::Number(number) => *number != 0.0,
             Value::String(str) => todo!("is_truthy {str}"),
             Value::Vector { items } => todo!("is_truthy {items:?}"),
             Value::Boolean(b) => *b,
@@ -144,7 +144,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Number(number) => {
-                let formatted = format!("{number:.5}");
+                let formatted = format!("{number:.6}");
                 let formatted = formatted.trim_end_matches('0').trim_end_matches('.');
                 write!(f, "{formatted}")
             }

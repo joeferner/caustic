@@ -77,95 +77,376 @@ impl Interpreter {
         lhs: &Value,
         rhs: &Value,
     ) -> Result<Value> {
-        Ok(match lhs {
-            Value::Number(left) => match rhs {
-                Value::Number(right) => self.eval_number_number(operator, *left, *right),
-                Value::Vector { items } => self.eval_vector_number(operator, items, *left),
-                Value::String(str) => todo!("{left:?} {operator:?} {str}"),
-                Value::Boolean(b) => todo!("{left:?} {operator:?} {b}"),
-                Value::Texture(texture) => todo!("{left:?} {operator:?} {texture:?}"),
-                Value::Range {
-                    start,
-                    end,
-                    increment,
-                } => todo!("{left:?} {operator:?} range({start:?}, {end:?}, {increment:?})"),
-                Value::Undef => todo!("{left:?} undef"),
-            },
-            Value::Vector { items: lhs_items } => match rhs {
-                Value::Number(right) => self.eval_vector_number(operator, lhs_items, *right),
-                Value::Vector { items: rhs_items } => {
-                    self.eval_vector_vector(operator, lhs_items, rhs_items)?
-                }
-                Value::Boolean(b) => todo!("{lhs_items:?} {operator:?} {b}"),
-                Value::String(str) => todo!("{lhs_items:?} {operator:?} {str}"),
-                Value::Texture(texture) => todo!("{lhs_items:?} {operator:?} {texture:?}"),
-                Value::Range {
-                    start,
-                    end,
-                    increment,
-                } => todo!("{lhs_items:?} {operator:?} range({start:?}, {end:?}, {increment:?})"),
-                Value::Undef => todo!("{lhs_items:?} undef"),
-            },
-            Value::Boolean(b) => todo!("{b}"),
-            Value::String(str) => todo!("{str}"),
-            Value::Texture(texture) => todo!("texture {texture:?}"),
-            Value::Range {
-                start,
-                end,
-                increment,
-            } => todo!("range: {start:?}, {end:?}, {increment:?}"),
-            Value::Undef => todo!("undef"),
-        })
-    }
-
-    fn eval_number_number(&self, operator: &BinaryOperator, left: f64, right: f64) -> Value {
         match operator {
-            BinaryOperator::Add => Value::Number(left + right),
-            BinaryOperator::Subtract => Value::Number(left - right),
-            BinaryOperator::Multiply => Value::Number(left * right),
-            BinaryOperator::Divide => Value::Number(left / right),
-            BinaryOperator::LessThan => Value::Boolean(left < right),
-            BinaryOperator::LessThanEqual => Value::Boolean(left <= right),
-            BinaryOperator::GreaterThan => Value::Boolean(left > right),
-            BinaryOperator::GreaterThanEqual => Value::Boolean(left >= right),
-            BinaryOperator::Modulus => Value::Number(left % right),
-            BinaryOperator::Exponentiation => Value::Number(left.powf(right)),
-            BinaryOperator::EqualEqual => Value::Boolean(left == right),
-            BinaryOperator::NotEqual => Value::Boolean(left != right),
+            BinaryOperator::Exponentiation => {
+                self.evaluate_binary_expression_exponentiation(lhs, rhs)
+            }
+            BinaryOperator::Modulus => self.evaluate_binary_expression_modulus(lhs, rhs),
+            BinaryOperator::Add => self.evaluate_binary_expression_add(lhs, rhs),
+            BinaryOperator::Subtract => self.evaluate_binary_expression_subtract(lhs, rhs),
+            BinaryOperator::Multiply => self.evaluate_binary_expression_multiply(lhs, rhs),
+            BinaryOperator::Divide => self.evaluate_binary_expression_divide(lhs, rhs),
+            BinaryOperator::LessThan => self.evaluate_binary_expression_less_than(lhs, rhs),
+            BinaryOperator::LessThanEqual => {
+                self.evaluate_binary_expression_less_than_equal(lhs, rhs)
+            }
+            BinaryOperator::GreaterThan => self.evaluate_binary_expression_greater_than(lhs, rhs),
+            BinaryOperator::GreaterThanEqual => {
+                self.evaluate_binary_expression_greater_than_equal(lhs, rhs)
+            }
+            BinaryOperator::EqualEqual => self.evaluate_binary_expression_equal_equal(lhs, rhs),
+            BinaryOperator::NotEqual => self.evaluate_binary_expression_not_equals(lhs, rhs),
+            BinaryOperator::And => Ok(Value::Boolean(lhs.is_truthy() && rhs.is_truthy())),
+            BinaryOperator::Or => Ok(Value::Boolean(lhs.is_truthy() || rhs.is_truthy())),
         }
     }
 
-    fn eval_vector_number(&self, operator: &BinaryOperator, lhs: &[Value], rhs: f64) -> Value {
-        Value::Vector {
-            items: lhs
-                .iter()
-                .map(|item| match item {
-                    Value::Number(v) => match operator {
-                        BinaryOperator::Subtract => Value::Number(v - rhs),
-                        BinaryOperator::Divide => Value::Number(v / rhs),
-                        BinaryOperator::Add => todo!(),
-                        BinaryOperator::Multiply => Value::Number(v * rhs),
-                        BinaryOperator::LessThan => todo!(),
-                        BinaryOperator::LessThanEqual => todo!(),
-                        BinaryOperator::GreaterThan => todo!(),
-                        BinaryOperator::GreaterThanEqual => todo!(),
-                        BinaryOperator::Modulus => todo!(),
-                        BinaryOperator::Exponentiation => todo!(),
-                        BinaryOperator::EqualEqual => todo!(),
-                        BinaryOperator::NotEqual => todo!(),
-                    },
-                    Value::Vector { items } => todo!("items {items:?}"),
-                    Value::Boolean(b) => todo!("{b}"),
-                    Value::String(str) => todo!("{str}"),
-                    Value::Texture(texture) => todo!("texture {texture:?}"),
-                    Value::Range {
-                        start,
-                        end,
-                        increment,
-                    } => todo!("range: {start:?}, {end:?}, {increment:?}"),
-                    Value::Undef => todo!("undef"),
-                })
-                .collect(),
+    fn evaluate_binary_expression_exponentiation(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => {
+                self.evaluate_binary_expression_exponentiation_number_value(*lhs, rhs)
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_exponentiation_number_value(
+        &self,
+        lhs: f64,
+        rhs: &Value,
+    ) -> Result<Value> {
+        match rhs {
+            Value::Number(rhs) => Ok(Value::Number(lhs.powf(*rhs))),
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_modulus(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => self.evaluate_binary_expression_modulus_number_value(*lhs, rhs),
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_modulus_number_value(
+        &self,
+        lhs: f64,
+        rhs: &Value,
+    ) -> Result<Value> {
+        match rhs {
+            Value::Number(rhs) => Ok(Value::Number(lhs % rhs)),
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_add(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => self.evaluate_binary_expression_add_number_value(*lhs, rhs),
+            Value::Vector { items: lhs } => {
+                self.evaluate_binary_expression_vector_value(&BinaryOperator::Add, lhs, rhs)
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_add_number_value(&self, lhs: f64, rhs: &Value) -> Result<Value> {
+        match rhs {
+            Value::Number(rhs) => Ok(Value::Number(lhs + rhs)),
+            Value::Vector { items: rhs } => {
+                let items: Result<Vec<Value>> = rhs
+                    .iter()
+                    .map(|rhs_v| self.evaluate_binary_expression_add_number_value(lhs, rhs_v))
+                    .collect();
+                Ok(Value::Vector { items: items? })
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_subtract(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => self.evaluate_binary_expression_subtract_number_value(*lhs, rhs),
+            Value::Vector { items: lhs } => {
+                self.evaluate_binary_expression_vector_value(&BinaryOperator::Subtract, lhs, rhs)
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_subtract_number_value(
+        &self,
+        lhs: f64,
+        rhs: &Value,
+    ) -> Result<Value> {
+        match rhs {
+            Value::Number(rhs) => Ok(Value::Number(lhs - rhs)),
+            Value::Vector { items: rhs } => {
+                let items: Result<Vec<Value>> = rhs
+                    .iter()
+                    .map(|rhs_v| self.evaluate_binary_expression_subtract_number_value(lhs, rhs_v))
+                    .collect();
+                Ok(Value::Vector { items: items? })
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_multiply(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => self.evaluate_binary_expression_multiply_number_value(*lhs, rhs),
+            Value::Vector { items: lhs } => {
+                self.evaluate_binary_expression_vector_value(&BinaryOperator::Multiply, lhs, rhs)
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_multiply_number_value(
+        &self,
+        lhs: f64,
+        rhs: &Value,
+    ) -> Result<Value> {
+        match rhs {
+            Value::Number(rhs) => Ok(Value::Number(lhs * rhs)),
+            Value::Vector { items: rhs } => {
+                let items: Result<Vec<Value>> = rhs
+                    .iter()
+                    .map(|rhs_v| self.evaluate_binary_expression_multiply_number_value(lhs, rhs_v))
+                    .collect();
+                Ok(Value::Vector { items: items? })
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_divide(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => self.evaluate_binary_expression_divide_number_value(*lhs, rhs),
+            Value::Vector { items: lhs } => {
+                self.evaluate_binary_expression_vector_value(&BinaryOperator::Divide, lhs, rhs)
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_divide_number_value(
+        &self,
+        lhs: f64,
+        rhs: &Value,
+    ) -> Result<Value> {
+        match rhs {
+            Value::Number(rhs) => Ok(Value::Number(lhs / rhs)),
+            Value::Vector { items: rhs } => {
+                let items: Result<Vec<Value>> = rhs
+                    .iter()
+                    .map(|rhs_v| self.evaluate_binary_expression_divide_number_value(lhs, rhs_v))
+                    .collect();
+                Ok(Value::Vector { items: items? })
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_vector_value(
+        &self,
+        operator: &BinaryOperator,
+        lhs_items: &[Value],
+        rhs: &Value,
+    ) -> Result<Value> {
+        match rhs {
+            Value::Number(rhs) => {
+                let items: Result<Vec<Value>> = lhs_items
+                    .iter()
+                    .map(|lhs_v| {
+                        self.evaluate_binary_expression_values(
+                            operator,
+                            lhs_v,
+                            &Value::Number(*rhs),
+                        )
+                    })
+                    .collect();
+                Ok(Value::Vector { items: items? })
+            }
+            Value::Vector { items: rhs_items } => {
+                self.eval_vector_vector(operator, lhs_items, rhs_items)
+            }
+            _ => todo!("unsupported"),
+        }
+    }
+
+    fn evaluate_binary_expression_less_than(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => {
+                if let Value::Number(rhs) = rhs {
+                    Ok(Value::Boolean(lhs < rhs))
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::String(lhs) => todo!("{lhs} < {rhs}"),
+            Value::Vector { items: lhs_items } => {
+                if let Value::Vector { items: rhs_items } = rhs {
+                    self.eval_vector_vector(&BinaryOperator::LessThan, lhs_items, rhs_items)
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::Boolean(lhs) => todo!("{lhs} < {rhs}"),
+            Value::Texture(lhs) => todo!("{lhs:?} < {rhs}"),
+            Value::Range {
+                start: lhs_start,
+                end: lhs_end,
+                increment: lhs_increment,
+            } => todo!("{lhs_start} {lhs_end} {lhs_increment:?} < {rhs}"),
+            Value::Undef => todo!("{lhs} < {rhs}"),
+        }
+    }
+
+    fn evaluate_binary_expression_less_than_equal(
+        &self,
+        lhs: &Value,
+        rhs: &Value,
+    ) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => {
+                if let Value::Number(rhs) = rhs {
+                    Ok(Value::Boolean(lhs <= rhs))
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::String(lhs) => todo!("{lhs} <= {rhs}"),
+            Value::Vector { items: lhs_items } => {
+                if let Value::Vector { items: rhs_items } = rhs {
+                    self.eval_vector_vector(&BinaryOperator::LessThanEqual, lhs_items, rhs_items)
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::Boolean(lhs) => todo!("{lhs} <= {rhs}"),
+            Value::Texture(lhs) => todo!("{lhs:?} <= {rhs}"),
+            Value::Range {
+                start: lhs_start,
+                end: lhs_end,
+                increment: lhs_increment,
+            } => todo!("{lhs_start} {lhs_end} {lhs_increment:?} <= {rhs}"),
+            Value::Undef => todo!("{lhs} <= {rhs}"),
+        }
+    }
+
+    fn evaluate_binary_expression_greater_than(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => {
+                if let Value::Number(rhs) = rhs {
+                    Ok(Value::Boolean(lhs > rhs))
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::String(lhs) => todo!("{lhs} > {rhs}"),
+            Value::Vector { items: lhs_items } => {
+                if let Value::Vector { items: rhs_items } = rhs {
+                    self.eval_vector_vector(&BinaryOperator::GreaterThan, lhs_items, rhs_items)
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::Boolean(lhs) => todo!("{lhs} > {rhs}"),
+            Value::Texture(lhs) => todo!("{lhs:?} > {rhs}"),
+            Value::Range {
+                start: lhs_start,
+                end: lhs_end,
+                increment: lhs_increment,
+            } => todo!("{lhs_start} {lhs_end} {lhs_increment:?} > {rhs}"),
+            Value::Undef => todo!("{lhs} > {rhs}"),
+        }
+    }
+
+    fn evaluate_binary_expression_greater_than_equal(
+        &self,
+        lhs: &Value,
+        rhs: &Value,
+    ) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => {
+                if let Value::Number(rhs) = rhs {
+                    Ok(Value::Boolean(lhs >= rhs))
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::String(lhs) => todo!("{lhs} >= {rhs}"),
+            Value::Vector { items: lhs_items } => {
+                if let Value::Vector { items: rhs_items } = rhs {
+                    self.eval_vector_vector(&BinaryOperator::GreaterThanEqual, lhs_items, rhs_items)
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::Boolean(lhs) => todo!("{lhs} >= {rhs}"),
+            Value::Texture(lhs) => todo!("{lhs:?} >= {rhs}"),
+            Value::Range {
+                start: lhs_start,
+                end: lhs_end,
+                increment: lhs_increment,
+            } => todo!("{lhs_start} {lhs_end} {lhs_increment:?} >= {rhs}"),
+            Value::Undef => todo!("{lhs} >= {rhs}"),
+        }
+    }
+
+    fn evaluate_binary_expression_equal_equal(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => {
+                if let Value::Number(rhs) = rhs {
+                    Ok(Value::Boolean(lhs == rhs))
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::String(lhs) => todo!("{lhs} == {rhs}"),
+            Value::Vector { items: lhs_items } => {
+                if let Value::Vector { items: rhs_items } = rhs {
+                    self.eval_vector_vector(&BinaryOperator::EqualEqual, lhs_items, rhs_items)
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::Boolean(lhs) => todo!("{lhs} == {rhs}"),
+            Value::Texture(lhs) => todo!("{lhs:?} == {rhs}"),
+            Value::Range {
+                start: lhs_start,
+                end: lhs_end,
+                increment: lhs_increment,
+            } => todo!("{lhs_start} {lhs_end} {lhs_increment:?} == {rhs}"),
+            Value::Undef => todo!("{lhs} == {rhs}"),
+        }
+    }
+
+    fn evaluate_binary_expression_not_equals(&self, lhs: &Value, rhs: &Value) -> Result<Value> {
+        match lhs {
+            Value::Number(lhs) => {
+                if let Value::Number(rhs) = rhs {
+                    Ok(Value::Boolean(lhs != rhs))
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::String(lhs) => todo!("{lhs} != {rhs}"),
+            Value::Vector { items: lhs_items } => {
+                if let Value::Vector { items: rhs_items } = rhs {
+                    self.eval_vector_vector(&BinaryOperator::NotEqual, lhs_items, rhs_items)
+                } else {
+                    Ok(Value::Boolean(false))
+                }
+            }
+            Value::Boolean(lhs) => todo!("{lhs} != {rhs}"),
+            Value::Texture(lhs) => todo!("{lhs:?} != {rhs}"),
+            Value::Range {
+                start: lhs_start,
+                end: lhs_end,
+                increment: lhs_increment,
+            } => todo!("{lhs_start} {lhs_end} {lhs_increment:?} != {rhs}"),
+            Value::Undef => todo!("{lhs} != {rhs}"),
         }
     }
 

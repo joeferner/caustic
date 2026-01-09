@@ -57,6 +57,10 @@ pub enum Token {
     QuestionMark,
     /// '%'
     Percent,
+    /// '&&'
+    AmpersandAmpersand,
+    /// '||'
+    PipePipe,
     /// '^'
     Caret,
     /// '<'
@@ -367,6 +371,48 @@ impl Tokenizer {
             Some('^') => {
                 self.advance();
                 Token::Caret
+            }
+            Some('&') => {
+                self.advance();
+                if let Some(ch) = self.current() {
+                    if ch == '&' {
+                        self.advance();
+                        Token::AmpersandAmpersand
+                    } else {
+                        return Err(TokenizerError {
+                            message: format!("Invalid character '{ch}'"),
+                            start,
+                            end: start + 1,
+                        });
+                    }
+                } else {
+                    return Err(TokenizerError {
+                        message: "Invalid end of file".to_string(),
+                        start,
+                        end: start + 1,
+                    });
+                }
+            }
+            Some('|') => {
+                self.advance();
+                if let Some(ch) = self.current() {
+                    if ch == '|' {
+                        self.advance();
+                        Token::PipePipe
+                    } else {
+                        return Err(TokenizerError {
+                            message: format!("Invalid character '{ch}'"),
+                            start,
+                            end: start + 1,
+                        });
+                    }
+                } else {
+                    return Err(TokenizerError {
+                        message: "Invalid end of file".to_string(),
+                        start,
+                        end: start + 1,
+                    });
+                }
             }
             Some('!') => {
                 self.advance();
