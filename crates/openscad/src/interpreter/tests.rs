@@ -85,6 +85,23 @@ mod tests {
         assert_eq!(result.output, "[1.25, 2, -3]\n");
     }
 
+    // -- multiplication ----------------------------
+
+    #[test]
+    fn test_binary_expression_scalar_multiplication() {
+        let result = interpret("echo(20 * 4);");
+        assert_eq!(result.output, "80\n");
+    }
+
+    #[test]
+    fn test_binary_expression_multiply_vector_by_scaler() {
+        let result = interpret("echo([5, 8, -12] * 4);");
+        assert_eq!(result.output, "[20, 32, -48]\n");
+
+        let result = interpret("echo(4 * [5, 8, -12]);");
+        assert_eq!(result.output, "[20, 32, -48]\n");
+    }
+
     // -- negation ----------------------------
 
     #[test]

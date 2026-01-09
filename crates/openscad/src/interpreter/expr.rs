@@ -80,7 +80,7 @@ impl Interpreter {
         Ok(match lhs {
             Value::Number(left) => match rhs {
                 Value::Number(right) => self.eval_number_number(operator, *left, *right),
-                Value::Vector { items } => todo!("{left:?} {operator:?} {items:?}"),
+                Value::Vector { items } => self.eval_vector_number(operator, items, *left),
                 Value::String(str) => todo!("{left:?} {operator:?} {str}"),
                 Value::Boolean(b) => todo!("{left:?} {operator:?} {b}"),
                 Value::Texture(texture) => todo!("{left:?} {operator:?} {texture:?}"),
@@ -140,7 +140,7 @@ impl Interpreter {
                         BinaryOperator::Subtract => Value::Number(v - rhs),
                         BinaryOperator::Divide => Value::Number(v / rhs),
                         BinaryOperator::Add => todo!(),
-                        BinaryOperator::Multiply => todo!(),
+                        BinaryOperator::Multiply => Value::Number(v * rhs),
                         BinaryOperator::LessThan => todo!(),
                         BinaryOperator::LessThanEqual => todo!(),
                         BinaryOperator::GreaterThan => todo!(),
