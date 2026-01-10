@@ -390,6 +390,27 @@ mod tests {
     }
 
     #[test]
+    fn test_asin() {
+        assert_output(r#"echo(asin(x=0.57357643635));"#, "35\n");
+    }
+
+    #[test]
+    fn test_acos() {
+        assert_output(r#"echo(acos(x=0.81915204428));"#, "35\n");
+    }
+
+    #[test]
+    fn test_atan() {
+        assert_output(r#"echo(atan(x=0.70020753821));"#, "35\n");
+        assert_output(r#"echo(atan(-1));"#, "-45\n");
+    }
+
+    #[test]
+    fn test_atan2() {
+        assert_output(r#"echo(atan2(y=5.0,x=-5.0));"#, "135\n");
+    }
+
+    #[test]
     fn test_pow() {
         assert_output(r#"echo(pow(base=2,exponent=3));"#, "8\n");
     }

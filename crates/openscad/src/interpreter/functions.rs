@@ -25,6 +25,10 @@ impl Interpreter {
             "sin" => self.evaluate_sin(arguments),
             "cos" => self.evaluate_cos(arguments),
             "tan" => self.evaluate_tan(arguments),
+            "asin" => self.evaluate_asin(arguments),
+            "acos" => self.evaluate_acos(arguments),
+            "atan" => self.evaluate_atan(arguments),
+            "atan2" => self.evaluate_atan2(arguments),
             "pow" => self.evaluate_pow(arguments),
             "sqrt" => self.evaluate_sqrt(arguments),
             "rands" => self.evaluate_rands(arguments),
@@ -57,6 +61,22 @@ impl Interpreter {
 
     fn evaluate_tan(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
         self.evaluate_math_func1(arguments, "degrees", |v| v.to_radians().tan())
+    }
+
+    fn evaluate_asin(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, "x", |v| v.asin().to_degrees())
+    }
+
+    fn evaluate_acos(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, "x", |v| v.acos().to_degrees())
+    }
+
+    fn evaluate_atan(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, "x", |v| v.atan().to_degrees())
+    }
+
+    fn evaluate_atan2(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func2(arguments, "y", "x", |y, x| y.atan2(x).to_degrees())
     }
 
     fn evaluate_pow(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
