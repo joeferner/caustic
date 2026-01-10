@@ -29,6 +29,9 @@ impl Interpreter {
             "acos" => self.evaluate_acos(arguments),
             "atan" => self.evaluate_atan(arguments),
             "atan2" => self.evaluate_atan2(arguments),
+            "floor" => self.evaluate_floor(arguments),
+            "round" => self.evaluate_round(arguments),
+            "ceil" => self.evaluate_ceil(arguments),
             "pow" => self.evaluate_pow(arguments),
             "sqrt" => self.evaluate_sqrt(arguments),
             "rands" => self.evaluate_rands(arguments),
@@ -77,6 +80,18 @@ impl Interpreter {
 
     fn evaluate_atan2(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
         self.evaluate_math_func2(arguments, "y", "x", |y, x| y.atan2(x).to_degrees())
+    }
+
+    fn evaluate_floor(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, "x", |v| v.floor())
+    }
+
+    fn evaluate_round(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, "x", |v| v.round())
+    }
+
+    fn evaluate_ceil(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, "x", |v| v.ceil())
     }
 
     fn evaluate_pow(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {

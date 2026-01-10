@@ -411,6 +411,22 @@ mod tests {
     }
 
     #[test]
+    fn test_floor() {
+        assert_output(r#"echo(floor(1.9));"#, "1\n");
+    }
+
+    #[test]
+    fn test_round() {
+        assert_output(r#"echo(round(1.1));"#, "1\n");
+        assert_output(r#"echo(round(1.5));"#, "2\n");
+    }
+
+    #[test]
+    fn test_ceil() {
+        assert_output(r#"echo(ceil(1.2));"#, "2\n");
+    }
+
+    #[test]
     fn test_pow() {
         assert_output(r#"echo(pow(base=2,exponent=3));"#, "8\n");
     }
