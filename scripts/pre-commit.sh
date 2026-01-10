@@ -46,6 +46,9 @@ cd "${SCRIPT_DIR}/../webapp/frontend"
 banner "nvm install"
 nvm install
 
+banner "generate api"
+./scripts/generate-api.sh
+
 banner "npm format"
 npm run format
 
