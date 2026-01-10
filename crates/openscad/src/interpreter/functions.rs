@@ -21,6 +21,8 @@ impl Interpreter {
             self.evaluate_checker(arguments)
         } else if name == "perlin_turbulence" {
             self.evaluate_perlin_turbulence(arguments)
+        } else if name == "abs" {
+            self.evaluate_abs(arguments)
         } else if name == "pow" {
             self.evaluate_pow(arguments)
         } else if name == "sqrt" {
@@ -44,6 +46,10 @@ impl Interpreter {
         } else {
             self.evaluate_non_built_in(name, arguments)
         }
+    }
+
+    fn evaluate_abs(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, |v| v.abs())
     }
 
     fn evaluate_pow(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {

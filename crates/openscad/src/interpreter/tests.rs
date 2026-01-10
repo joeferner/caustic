@@ -484,4 +484,27 @@ mod tests {
         let result = interpret(s);
         assert_eq!(result.output, "undef\n");
     }
+
+    // -- math ----------------------------
+
+    #[test]
+    fn test_abs() {
+        let s = r#"echo(abs(-1));"#;
+        let result = interpret(s);
+        assert_eq!(result.output, "1\n");
+    }
+
+    #[test]
+    fn test_pow() {
+        let s = r#"echo(pow(2,3));"#;
+        let result = interpret(s);
+        assert_eq!(result.output, "8\n");
+    }
+
+    #[test]
+    fn test_sqrt() {
+        let s = r#"echo(sqrt(9));"#;
+        let result = interpret(s);
+        assert_eq!(result.output, "3\n");
+    }
 }

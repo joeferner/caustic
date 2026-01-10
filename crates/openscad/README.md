@@ -183,7 +183,7 @@
 
 ## Mathematical Functions
 
-- :x: [`abs`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#abs)
+- :white_check_mark: [`abs`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#abs)
 - :x: [`sign`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#sign)
 - :x: [`sin`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#sin)
 - :x: [`cos`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#cos)
