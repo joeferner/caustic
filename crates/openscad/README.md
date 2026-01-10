@@ -205,5 +205,5 @@
 - :white_check_mark: [`rands`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#rands)
 - :white_check_mark: [`min`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#min)
 - :white_check_mark: [`max`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#max)
-- :x: [`norm`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#norm)
-- :x: [`cross`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#cross)
+- :white_check_mark: [`norm`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#norm)
+- :white_check_mark: [`cross`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#cross)
