@@ -36,6 +36,7 @@ impl Interpreter {
             "log" => self.evaluate_log(arguments),
             "pow" => self.evaluate_pow(arguments),
             "sqrt" => self.evaluate_sqrt(arguments),
+            "exp" => self.evaluate_exp(arguments),
             "rands" => self.evaluate_rands(arguments),
             "image" => self.evaluate_image(arguments),
             "is_undef" => self.evaluate_is_undef(arguments),
@@ -112,6 +113,10 @@ impl Interpreter {
 
     fn evaluate_sqrt(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
         self.evaluate_math_func1(arguments, "x", |v| v.sqrt())
+    }
+
+    fn evaluate_exp(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {
+        self.evaluate_math_func1(arguments, "x", |v| v.exp())
     }
 
     fn evaluate_is_undef(&mut self, arguments: &[CallArgumentWithPosition]) -> Result<Value> {

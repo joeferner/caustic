@@ -442,6 +442,11 @@ mod tests {
     }
 
     #[test]
+    fn test_exp() {
+        assert_output(r#"echo(exp(4.2));"#, "66.686331\n");
+    }
+
+    #[test]
     fn test_sqrt() {
         assert_output(r#"echo(sqrt(9));"#, "3\n");
     }

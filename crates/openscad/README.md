@@ -201,7 +201,7 @@
 - :white_check_mark: [`log`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#log)
 - :white_check_mark: [`pow`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#pow)
 - :white_check_mark: [`sqrt`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#sqrt)
-- :x: [`exp`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#exp)
+- :white_check_mark: [`exp`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#exp)
 - :white_check_mark: [`rands`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#rands)
 - :x: [`min`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#min)
 - :x: [`max`](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Mathematical_Functions#max)
