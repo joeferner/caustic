@@ -11,6 +11,7 @@ use caustic_core::Random;
 use thiserror::Error;
 
 use crate::interpreter::InterpreterError;
+use crate::parser::ParserError;
 use crate::source::Source;
 use crate::{
     interpreter::{InterpreterResults, openscad_interpret},
@@ -61,8 +62,12 @@ impl<T: PartialEq> PartialEq for WithPosition<T> {
 
 #[derive(Error, Debug)]
 pub enum OpenscadError {
+    #[error("Source error: {0}")]
+    SourceError(String),
     #[error("Tokenizer error: {0:?}")]
     TokenizerError(#[from] TokenizerError),
+    #[error("Parser error: {errors:?}")]
+    ParserErrors { errors: Vec<ParserError> },
     #[error("Tokenizer error: {errors:?}")]
     InterpreterErrors { errors: Vec<InterpreterError> },
 }
@@ -75,7 +80,9 @@ pub fn run_openscad(
     let parse_results = openscad_parse(tokens, source);
 
     if !parse_results.errors.is_empty() {
-        todo!("{:?}", parse_results.errors);
+        return Err(OpenscadError::ParserErrors {
+            errors: parse_results.errors,
+        });
     }
 
     let interpret_results = openscad_interpret(parse_results.statements, random);

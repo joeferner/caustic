@@ -484,7 +484,14 @@ impl Parser {
             let module_id = match &current.item {
                 Token::For => "for".to_owned(),
                 Token::Identifier(identifier) => identifier.to_owned(),
-                _ => todo!("throw error {:?}", current.item),
+                other => {
+                    let other = other.clone();
+                    self.advance();
+                    return Err(ParserError {
+                        message: format!("Expected for or identifier but found: {other:?}"),
+                        position: pos,
+                    });
+                }
             };
             self.advance();
             return Ok(ModuleIdWithPosition::new(
@@ -508,12 +515,12 @@ impl Parser {
 
         let mut argument_calls: Vec<CallArgumentWithPosition> = vec![];
         loop {
-            let argument_call = self.parse_argument_call()?;
-            argument_calls.push(argument_call);
-
             if self.current_matches(Token::RightParen) {
                 break;
             }
+
+            let argument_call = self.parse_argument_call()?;
+            argument_calls.push(argument_call);
 
             // ',' <optional_commas>
             while self.current_matches(Token::Comma) {
@@ -868,7 +875,10 @@ impl Parser {
 
             other => {
                 // TODO "let" <call_arguments> <expr>
-                todo!("{:?}", other);
+                return Err(ParserError {
+                    message: format!("unhandled: {other:?}"),
+                    position: pos,
+                });
             }
         };
 
@@ -1397,6 +1407,21 @@ mod tests {
         )));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
+        assert_eq!(1, result.statements.len());
+    }
+
+    #[test]
+    fn test_unexpected_identifier() {
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(
+            r#"
+            union() {
+                circle(r=15);
+                translate([12, 0, 0]) circle(r=15);
+            }
+            "#,
+        )));
+        let result = parse(source);
+        assert_eq!(0, result.errors.len());
         assert_eq!(1, result.statements.len());
     }
 }

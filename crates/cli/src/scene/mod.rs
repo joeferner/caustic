@@ -15,7 +15,7 @@ use std::{path::Path, sync::Arc};
 
 use caustic_core::{RenderContext, SceneData};
 use caustic_openscad::{
-    run_openscad,
+    OpenscadError, run_openscad,
     source::{FileSource, Source},
 };
 
@@ -43,7 +43,7 @@ pub enum Scene {
     OpenScad(String),
 }
 
-pub fn get_scene(ctx: &RenderContext, scene: Scene) -> Result<SceneData, String> {
+pub fn get_scene(ctx: &RenderContext, scene: Scene) -> Result<SceneData, OpenscadError> {
     match scene {
         Scene::ThreeSpheres => Ok(create_three_spheres_scene(ctx)),
         Scene::RandomSpheres => Ok(create_random_spheres_scene(ctx)),
@@ -58,19 +58,15 @@ pub fn get_scene(ctx: &RenderContext, scene: Scene) -> Result<SceneData, String>
         Scene::Final => Ok(create_final_scene(ctx)),
         Scene::OpenScad(filename) => {
             let source: Arc<Box<dyn Source>> = Arc::new(Box::new(
-                FileSource::new(Path::new(&filename)).map_err(|err| format!("{err:?}"))?,
+                FileSource::new(Path::new(&filename)).map_err(|err| {
+                    OpenscadError::SourceError(format!("failed to read \"{filename}\": {err}"))
+                })?,
             ));
-            let results =
-                run_openscad(source, ctx.random.clone()).map_err(|err| format!("{err:?}"));
-            match results {
-                Ok(results) => {
-                    if !results.output.is_empty() {
-                        println!("{}", results.output);
-                    }
-                    Ok(results.scene_data)
-                }
-                Err(err) => Err(err),
+            let results = run_openscad(source, ctx.random.clone())?;
+            if !results.output.is_empty() {
+                println!("{}", results.output);
             }
+            Ok(results.scene_data)
         }
     }
 }

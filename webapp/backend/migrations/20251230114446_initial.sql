@@ -85,3 +85,14 @@ INSERT INTO caustic_project_file
     (project_id, content_type, filename, sort, created, last_modified)
 VALUES
     ('55a3544e-cc0d-4b3e-a967-3a0cab61a3da', 'application/x-openscad', 'lighted-sphere.scad', 1, '2025-12-30T22:31:50.922Z', '2025-12-30T22:31:50.922Z');
+
+-- Example: 2d shapes
+INSERT INTO caustic_project
+    (project_id, name, owner_user_id, created, last_modified)
+VALUES
+    ('95601cff-6559-4dd3-9148-a0ba4b2bac12', 'Example: 2D Shapes', 'examples', '2025-12-30T22:31:50.922Z', '2025-12-30T22:31:50.922Z');
+
+INSERT INTO caustic_project_file
+    (project_id, content_type, filename, sort, created, last_modified)
+VALUES
+    ('95601cff-6559-4dd3-9148-a0ba4b2bac12', 'application/x-openscad', '2d-shapes.scad', 1, '2025-12-30T22:31:50.922Z', '2025-12-30T22:31:50.922Z');

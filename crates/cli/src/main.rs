@@ -1,3 +1,4 @@
+use caustic_openscad::OpenscadError;
 use thread_priority::ThreadBuilderExt;
 use thread_priority::*;
 
@@ -59,7 +60,22 @@ fn main() -> ExitCode {
     let scene = match get_scene(&ctx, scene) {
         Ok(scene) => scene,
         Err(err) => {
-            eprintln!("failed to get scene: {err}");
+            match err {
+                OpenscadError::SourceError(err) => eprintln!("failed to get scene: {err}"),
+                OpenscadError::TokenizerError(err) => eprintln!("Tokenization error: {err}"),
+                OpenscadError::ParserErrors { errors } => {
+                    eprintln!("Parsing errors");
+                    for err in errors {
+                        eprintln!("{}: {}", err.message, err.position);
+                    }
+                }
+                OpenscadError::InterpreterErrors { errors } => {
+                    eprintln!("Interpreter errors");
+                    for err in errors {
+                        eprintln!("{}: {}", err.message, err.position);
+                    }
+                }
+            }
             return ExitCode::from(1);
         }
     };

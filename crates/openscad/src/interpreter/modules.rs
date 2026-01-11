@@ -6,7 +6,7 @@ use caustic_core::{
 };
 
 use crate::{
-    interpreter::{Interpreter, Result},
+    interpreter::{Interpreter, InterpreterError, Result},
     parser::{CallArgument, CallArgumentWithPosition, ModuleIdWithPosition, StatementWithPosition},
     value::Value,
 };
@@ -59,7 +59,10 @@ impl Interpreter {
             "for" => panic!("already handled"),
             "echo" => self.evaluate_echo(arguments, child_nodes).map(|_| vec![]),
             other => {
-                todo!("identifier {other}")
+                return Err(InterpreterError {
+                    message: format!("unknown identifier \"{other}\""),
+                    position: module_id.position.clone(),
+                });
             }
         }
     }
