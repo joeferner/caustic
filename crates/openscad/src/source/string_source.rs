@@ -29,4 +29,8 @@ impl Source for StringSource {
     fn get_image(&self, filename: &str) -> Result<Arc<dyn Image>, ImageError> {
         todo!("get_image {filename}")
     }
+
+    fn get_filename(&self) -> &str {
+        "string"
+    }
 }

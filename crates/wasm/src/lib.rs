@@ -17,6 +17,7 @@ static LOADED_SCENE_DATA: RefCell<Option<SceneData>> = const { RefCell::new(None
 #[wasm_bindgen(typescript_custom_section)]
 const WASM_CODE_RESOURCE_INTERFACE: &'static str = r#"
 export interface WasmSource {
+    get_filename(): string;
     get_code(): string;
     get_image(filename: string): WasmImage;
 }
@@ -25,6 +26,9 @@ export interface WasmSource {
 #[wasm_bindgen]
 extern "C" {
     pub type WasmSource;
+
+    #[wasm_bindgen(method, catch)]
+    pub fn get_filename(this: &WasmSource) -> Result<String, JsValue>;
 
     #[wasm_bindgen(method, catch)]
     pub fn get_code(this: &WasmSource) -> Result<String, JsValue>;
@@ -50,6 +54,7 @@ impl std::ops::Deref for SendSyncWasmSource {
 }
 
 struct WasmSourceAdapter {
+    filename: String,
     wasm_source: SendSyncWasmSource,
     code: String,
 }
@@ -58,6 +63,7 @@ impl WasmSourceAdapter {
     pub fn new(wasm_source: WasmSource) -> Result<Self, JsValue> {
         let code = wasm_source.get_code()?;
         Ok(Self {
+            filename: wasm_source.get_filename()?,
             wasm_source: SendSyncWasmSource(wasm_source),
             code,
         })
@@ -81,6 +87,10 @@ impl Source for WasmSourceAdapter {
             ImageError::Other(format!("converting image from JavaScript failed: {err:?}"))
         })?;
         Ok(Arc::new(image_adapter))
+    }
+
+    fn get_filename(&self) -> &str {
+        &self.filename
     }
 }
 
@@ -164,7 +174,7 @@ impl Debug for WasmImageAdapter {
 
 #[wasm_bindgen]
 pub fn load_openscad(wasm_source: WasmSource) -> Result<LoadResults, JsValue> {
-    let source = Arc::new(WasmSourceAdapter::new(wasm_source)?);
+    let source: Arc<Box<dyn Source>> = Arc::new(Box::new(WasmSourceAdapter::new(wasm_source)?));
     let random = random_new();
     let results =
         run_openscad(source, random).map_err(|e| JsValue::from_str(&format!("{:?}", e)))?;

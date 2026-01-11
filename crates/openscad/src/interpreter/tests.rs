@@ -7,13 +7,13 @@ mod tests {
     use crate::{
         interpreter::{InterpreterError, InterpreterResults, openscad_interpret},
         parser::openscad_parse,
-        source::StringSource,
+        source::{Source, StringSource},
         tokenizer::openscad_tokenize,
     };
 
     fn interpret(expr: &str) -> InterpreterResults {
-        let source = Arc::new(StringSource::new(expr));
-        let result = openscad_parse(openscad_tokenize(source).unwrap());
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(expr)));
+        let result = openscad_parse(openscad_tokenize(source.clone()).unwrap(), source);
         let random = random_new();
         openscad_interpret(result.statements, random)
     }
@@ -26,6 +26,22 @@ mod tests {
     fn assert_output_trim(expr: &str, expected: &str) {
         let result = interpret(expr);
         assert_eq!(result.output.trim(), expected);
+    }
+
+    // -- special variables ----------------------------
+
+    #[test]
+    fn test_special_variables_defaults() {
+        assert_output_trim("echo($fa);", "12");
+        assert_output_trim("echo($fs);", "2");
+        assert_output_trim("echo($fn);", "0");
+        assert_output_trim("echo($t);", "0");
+        assert_output_trim("echo($vpr);", "[55, 0, 25]");
+        assert_output_trim("echo($vpt);", "[0, 0, 0]");
+        assert_output_trim("echo($vpd);", "140");
+        assert_output_trim("echo($vpf);", "22.5");
+        assert_output_trim("echo($children);", "undef");
+        assert_output_trim("echo($preview);", "true");
     }
 
     // -- addition ----------------------------

@@ -41,3 +41,7 @@ pub struct SceneData {
     pub world: Arc<dyn Node>,
     pub lights: Option<Arc<dyn Node>>,
 }
+
+pub fn line_number_at_offset(text: &str, offset: usize) -> usize {
+    text[..offset].chars().filter(|&c| c == '\n').count() + 1
+}

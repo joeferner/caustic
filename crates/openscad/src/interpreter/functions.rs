@@ -6,6 +6,7 @@ use caustic_core::{
 };
 
 use crate::{
+    Position,
     interpreter::{Interpreter, InterpreterError, Result},
     parser::CallArgumentWithPosition,
     value::{Value, values_to_numbers},
@@ -16,8 +17,7 @@ impl Interpreter {
         &mut self,
         name: &str,
         arguments: &[CallArgumentWithPosition],
-        start: usize,
-        end: usize,
+        position: &Position,
     ) -> Result<Value> {
         match name {
             "checker" => self.evaluate_checker(arguments),
@@ -44,7 +44,7 @@ impl Interpreter {
             "min" => self.evaluate_min(arguments),
             "max" => self.evaluate_max(arguments),
             "norm" => self.evaluate_norm(arguments),
-            "cross" => self.evaluate_cross(arguments, start, end),
+            "cross" => self.evaluate_cross(arguments, position),
             "rands" => self.evaluate_rands(arguments),
             "image" => self.evaluate_image(arguments),
             "is_undef" => self.evaluate_is_undef(arguments),
@@ -83,8 +83,8 @@ impl Interpreter {
 
         let key = key.to_number()?;
 
-        let (table, table_start, table_end) = if let Some(table) = args.get("table") {
-            (&table.item, table.start, table.end)
+        let (table, table_position) = if let Some(table) = args.get("table") {
+            (&table.item, &table.position)
         } else {
             todo!("missing table");
         };
@@ -101,9 +101,8 @@ impl Interpreter {
                 if let Value::Vector { items } = row {
                     if items.len() != 2 {
                         Err(InterpreterError {
-                            start: table_start,
-                            end: table_end,
                             message: "table row must be list of 2 elements".to_string(),
+                            position: table_position.clone(),
                         })
                     } else {
                         let key = items[0].to_number()?;
@@ -112,9 +111,8 @@ impl Interpreter {
                     }
                 } else {
                     Err(InterpreterError {
-                        start: table_start,
-                        end: table_end,
                         message: "table must be a list of lists".to_string(),
+                        position: table_position.clone(),
                     })
                 }
             })
@@ -124,9 +122,8 @@ impl Interpreter {
 
         if table.is_empty() {
             Err(InterpreterError {
-                start: table_start,
-                end: table_end,
                 message: "table must have at least 1 row".to_string(),
+                position: table_position.clone(),
             })
         } else if key <= table[0].0 {
             Ok(Value::Number(table[0].1))
@@ -277,9 +274,8 @@ impl Interpreter {
                     return Ok(Value::Number(0.0));
                 }
                 let numbers = values_to_numbers(items).map_err(|err| InterpreterError {
-                    start: arguments[0].start,
-                    end: arguments[0].end,
                     message: format!("failed to convert vector element to number: {err:?}"),
+                    position: arguments[0].position.clone(),
                 })?;
                 let sum_squared: f64 = numbers.iter().map(|n| n.powf(2.0)).sum();
                 Ok(Value::Number(sum_squared.sqrt()))
@@ -294,15 +290,13 @@ impl Interpreter {
     fn evaluate_cross(
         &mut self,
         arguments: &[CallArgumentWithPosition],
-        start: usize,
-        end: usize,
+        position: &Position,
     ) -> Result<Value> {
         let arguments = self.convert_args(&["v1", "v2"], arguments)?;
 
         let v1 = arguments.get("v1").ok_or_else(|| InterpreterError {
-            start,
-            end,
             message: "missing 1st argument".to_string(),
+            position: position.clone(),
         })?;
 
         let v1 = if let Value::Vector { items } = &v1.item {
@@ -313,9 +307,8 @@ impl Interpreter {
         };
 
         let v2 = arguments.get("v2").ok_or_else(|| InterpreterError {
-            start,
-            end,
             message: "missing 2nd argument".to_string(),
+            position: position.clone(),
         })?;
 
         let v2 = if let Value::Vector { items } = &v2.item {
@@ -515,15 +508,14 @@ impl Interpreter {
         let arguments = self.convert_args(&["filename"], arguments)?;
 
         let image = if let Some(arg) = arguments.get("filename") {
-            let start = arg.start;
-            let end = arg.end;
+            let position = &arg.position;
             let filename = arg.item.to_unescaped_string()?;
-            arg.source
+            arg.position
+                .source
                 .get_image(&filename)
                 .map_err(|err| InterpreterError {
-                    start,
-                    end,
                     message: format!("failed to get image \"{filename}\": {err:?}"),
+                    position: position.clone(),
                 })?
         } else {
             todo!("filename required");

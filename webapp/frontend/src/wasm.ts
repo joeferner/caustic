@@ -26,6 +26,10 @@ export class Source implements WasmSource {
         private readonly files: WorkingFile[]
     ) {}
 
+    public get_filename(): string {
+        return this.main.filename;
+    }
+
     public get_code(): string {
         return this.main.contents;
     }

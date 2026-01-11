@@ -3,17 +3,16 @@ use std::{sync::Arc, vec};
 use thiserror::Error;
 
 use crate::{
-    WithPosition,
+    Position, WithPosition,
     source::Source,
     tokenizer::{Token, TokenWithPosition},
 };
 
 #[derive(Error, Debug, PartialEq)]
-#[error("Tokenizer error: {message} [{start}:{end}]")]
+#[error("Tokenizer error: {message} {position}")]
 pub struct ParserError {
     pub message: String,
-    pub start: usize,
-    pub end: usize,
+    pub position: Position,
 }
 
 pub type Result<T> = std::result::Result<T, ParserError>;
@@ -222,14 +221,16 @@ pub struct ParseResult {
 struct Parser {
     tokens: Vec<TokenWithPosition>,
     pos: usize,
+    source: Arc<Box<dyn Source>>,
     errors: Vec<ParserError>,
 }
 
 impl Parser {
-    pub fn new(tokens: Vec<TokenWithPosition>) -> Self {
+    pub fn new(tokens: Vec<TokenWithPosition>, source: Arc<Box<dyn Source>>) -> Self {
         Self {
             tokens,
             pos: 0,
+            source,
             errors: vec![],
         }
     }
@@ -242,19 +243,22 @@ impl Parser {
         self.tokens.get(self.pos + n)
     }
 
-    fn get_current(&self) -> Result<(usize, Arc<dyn Source>)> {
+    fn get_current(&self) -> Result<Position> {
         match self.current() {
-            Some(current) => Ok((current.start, current.source.clone())),
+            Some(current) => Ok(current.position.clone()),
             None => Err(ParserError {
-                start: 0,
-                end: 0,
                 message: "no current token".to_owned(),
+                position: Position {
+                    start: 0,
+                    end: 0,
+                    source: self.source.clone(),
+                },
             }),
         }
     }
 
     fn current_token_start(&self) -> usize {
-        self.current().map(|t| t.start).unwrap_or(0)
+        self.current().map(|t| t.position.start).unwrap_or(0)
     }
 
     fn advance(&mut self) {
@@ -288,8 +292,11 @@ impl Parser {
         match self.current() {
             None => Err(ParserError {
                 message: format!("Expected {:?}, found EOF", expected),
-                start: 0,
-                end: 0,
+                position: Position {
+                    start: 0,
+                    end: 0,
+                    source: self.source.clone(),
+                },
             }),
             Some(tok) => {
                 if tok.item == expected {
@@ -298,8 +305,7 @@ impl Parser {
                 } else {
                     Err(ParserError {
                         message: format!("Expected {:?}, found {:?}", expected, tok.item),
-                        start: tok.start,
-                        end: tok.end,
+                        position: tok.position.clone(),
                     })
                 }
             }
@@ -310,8 +316,11 @@ impl Parser {
         match self.current() {
             None => Err(ParserError {
                 message: "Expected identifier, found EOF".to_string(),
-                start: 0,
-                end: 0,
+                position: Position {
+                    start: 0,
+                    end: 0,
+                    source: self.source.clone(),
+                },
             }),
             Some(tok) => {
                 if let Token::Identifier(identifier) = &tok.item {
@@ -321,8 +330,7 @@ impl Parser {
                 } else {
                     Err(ParserError {
                         message: format!("Expected identifier, found {:?}", tok.item),
-                        start: tok.start,
-                        end: tok.end,
+                        position: tok.position.clone(),
                     })
                 }
             }
@@ -339,16 +347,18 @@ impl Parser {
     ///   <assignment>
     ///   <module_instantiation>
     fn parse_statement(&mut self) -> Result<StatementWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         // ';'
         if self.current_matches(Token::Semicolon) {
             self.advance();
             return Ok(StatementWithPosition::new(
                 Statement::Empty,
-                start,
-                self.current_token_start(),
-                source,
+                Position {
+                    start: pos.start,
+                    end: self.current_token_start(),
+                    source: pos.source.clone(),
+                },
             ));
         }
 
@@ -363,9 +373,11 @@ impl Parser {
             self.advance();
             return Ok(StatementWithPosition::new(
                 Statement::Include { filename },
-                start,
-                self.current_token_start(),
-                source,
+                Position {
+                    start: pos.start,
+                    end: self.current_token_start(),
+                    source: pos.source.clone(),
+                },
             ));
         }
 
@@ -414,7 +426,7 @@ impl Parser {
     /// <single_module_instantiation> ::=
     ///   <module_id> '(' <call_arguments> ')'
     fn parse_single_module_instantiation(&mut self) -> Result<StatementWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         // <module_id> '(' <call_arguments> ')'
         let module_id = self.parse_module_id()?;
@@ -427,9 +439,11 @@ impl Parser {
                 call_arguments,
                 child_statements,
             },
-            start,
-            self.current_token_start(),
-            source,
+            Position {
+                start: pos.start,
+                end: self.current_token_start(),
+                source: pos.source,
+            },
         ))
     }
 
@@ -464,7 +478,7 @@ impl Parser {
     ///   "for"
     ///   <identifier>
     fn parse_module_id(&mut self) -> Result<ModuleIdWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         if let Some(current) = self.current() {
             let module_id = match &current.item {
@@ -475,9 +489,11 @@ impl Parser {
             self.advance();
             return Ok(ModuleIdWithPosition::new(
                 module_id,
-                start,
-                self.current_token_start(),
-                source,
+                Position {
+                    start: pos.start,
+                    end: self.current_token_start(),
+                    source: pos.source,
+                },
             ));
         }
 
@@ -514,7 +530,7 @@ impl Parser {
     ///   <identifier> '=' <expr>
     ///   <expr>
     fn parse_argument_call(&mut self) -> Result<CallArgumentWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         // <identifier> '=' <expr>
         if let Some(identifier) = self.current_matches_identifier()
@@ -527,9 +543,11 @@ impl Parser {
             let expr = self.parse_expr()?;
             return Ok(CallArgumentWithPosition::new(
                 CallArgument::NamedArgument { identifier, expr },
-                start,
-                self.current_token_start(),
-                source,
+                Position {
+                    start: pos.start,
+                    end: self.current_token_start(),
+                    source: pos.source,
+                },
             ));
         }
 
@@ -537,9 +555,11 @@ impl Parser {
         let expr = self.parse_expr()?;
         Ok(CallArgumentWithPosition::new(
             CallArgument::Expr { expr },
-            start,
-            self.current_token_start(),
-            source,
+            Position {
+                start: pos.start,
+                end: self.current_token_start(),
+                source: pos.source,
+            },
         ))
     }
 
@@ -548,7 +568,7 @@ impl Parser {
     /// <expr> '[' <expr> ']'
     /// <binary expression>
     fn parse_expr(&mut self) -> Result<ExprWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
         let lhs = self.parse_binary_expr(0)?;
 
         // <expr> '?' <expr> ':' <expr>
@@ -563,9 +583,11 @@ impl Parser {
                     true_expr: Box::new(true_expr),
                     false_expr: Box::new(false_expr),
                 },
-                start,
-                self.current_token_start(),
-                source,
+                Position {
+                    start: pos.start,
+                    end: self.current_token_start(),
+                    source: pos.source,
+                },
             ));
         }
 
@@ -587,7 +609,7 @@ impl Parser {
     /// <expr> "||" <expr>
     /// <unary expression>
     fn parse_binary_expr(&mut self, min_precedence: u8) -> Result<ExprWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         let mut lhs = self.parse_unary_expr()?;
 
@@ -605,9 +627,11 @@ impl Parser {
                     lhs: Box::new(lhs),
                     rhs: Box::new(rhs),
                 },
-                start,
-                self.current_token_start(),
-                source.clone(),
+                Position {
+                    start: pos.start,
+                    end: self.current_token_start(),
+                    source: pos.source.clone(),
+                },
             );
         }
 
@@ -634,7 +658,7 @@ impl Parser {
     /// '(' <expr> ')'
     /// <identifier> <call_arguments>
     fn parse_unary_expr(&mut self) -> Result<ExprWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         // TODO '+' <expr>
         // TODO '!' <expr>
@@ -698,16 +722,20 @@ impl Parser {
                             end: end_expr,
                             increment: increment_expr,
                         },
-                        start,
-                        self.current_token_start(),
-                        source.clone(),
+                        Position {
+                            start: pos.start,
+                            end: self.current_token_start(),
+                            source: pos.source.clone(),
+                        },
                     )
                 } else {
                     ExprWithPosition::new(
                         Expr::Vector { items: expressions },
-                        start,
-                        self.current_token_start(),
-                        source.clone(),
+                        Position {
+                            start: pos.start,
+                            end: self.current_token_start(),
+                            source: pos.source.clone(),
+                        },
                     )
                 }
             }
@@ -717,9 +745,11 @@ impl Parser {
                 self.advance();
                 ExprWithPosition::new(
                     Expr::True,
-                    start,
-                    self.current_token_start(),
-                    source.clone(),
+                    Position {
+                        start: pos.start,
+                        end: self.current_token_start(),
+                        source: pos.source.clone(),
+                    },
                 )
             }
 
@@ -728,9 +758,11 @@ impl Parser {
                 self.advance();
                 ExprWithPosition::new(
                     Expr::False,
-                    start,
-                    self.current_token_start(),
-                    source.clone(),
+                    Position {
+                        start: pos.start,
+                        end: self.current_token_start(),
+                        source: pos.source.clone(),
+                    },
                 )
             }
 
@@ -743,9 +775,11 @@ impl Parser {
                     let arguments = self.parse_call_arguments()?;
                     ExprWithPosition::new(
                         Expr::FunctionCall { name, arguments },
-                        start,
-                        self.current_token_start(),
-                        source.clone(),
+                        Position {
+                            start: pos.start,
+                            end: self.current_token_start(),
+                            source: pos.source.clone(),
+                        },
                     )
                 } else {
                     // <identifier>
@@ -753,9 +787,11 @@ impl Parser {
                     self.advance(); // identifier
                     ExprWithPosition::new(
                         Expr::Identifier { name },
-                        start,
-                        self.current_token_start(),
-                        source.clone(),
+                        Position {
+                            start: pos.start,
+                            end: self.current_token_start(),
+                            source: pos.source.clone(),
+                        },
                     )
                 }
             }
@@ -766,9 +802,11 @@ impl Parser {
                 self.advance();
                 ExprWithPosition::new(
                     Expr::Number(number),
-                    start,
-                    self.current_token_start(),
-                    source.clone(),
+                    Position {
+                        start: pos.start,
+                        end: self.current_token_start(),
+                        source: pos.source.clone(),
+                    },
                 )
             }
 
@@ -778,9 +816,11 @@ impl Parser {
                 self.advance();
                 ExprWithPosition::new(
                     Expr::String(str),
-                    start,
-                    self.current_token_start(),
-                    source.clone(),
+                    Position {
+                        start: pos.start,
+                        end: self.current_token_start(),
+                        source: pos.source.clone(),
+                    },
                 )
             }
 
@@ -793,9 +833,11 @@ impl Parser {
                         operator: UnaryOperator::Minus,
                         rhs: Box::new(rhs),
                     },
-                    start,
-                    self.current_token_start(),
-                    source.clone(),
+                    Position {
+                        start: pos.start,
+                        end: self.current_token_start(),
+                        source: pos.source.clone(),
+                    },
                 )
             }
 
@@ -808,9 +850,11 @@ impl Parser {
                         operator: UnaryOperator::Negation,
                         rhs: Box::new(rhs),
                     },
-                    start,
-                    self.current_token_start(),
-                    source.clone(),
+                    Position {
+                        start: pos.start,
+                        end: self.current_token_start(),
+                        source: pos.source.clone(),
+                    },
                 )
             }
 
@@ -843,9 +887,11 @@ impl Parser {
                         lhs: Box::new(lhs),
                         index: Box::new(index),
                     },
-                    start,
-                    self.current_token_start(),
-                    source.clone(),
+                    Position {
+                        start: pos.start,
+                        end: self.current_token_start(),
+                        source: pos.source.clone(),
+                    },
                 );
             } else if self.current_matches(Token::Period) {
                 self.expect(Token::Period)?;
@@ -858,9 +904,11 @@ impl Parser {
                             lhs: Box::new(lhs),
                             field: identifier,
                         },
-                        start,
-                        self.current_token_start(),
-                        source.clone(),
+                        Position {
+                            start: pos.start,
+                            end: self.current_token_start(),
+                            source: pos.source.clone(),
+                        },
                     );
                 } else {
                     todo!("expected identifier");
@@ -895,7 +943,7 @@ impl Parser {
     /// <assignment> ::=
     ///   <identifier> '=' <expr> ';'
     fn parse_assignment(&mut self) -> Result<StatementWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         // <identifier>
         let identifier = if let Some(identifier) = self.current_matches_identifier() {
@@ -916,9 +964,11 @@ impl Parser {
 
         Ok(StatementWithPosition::new(
             Statement::Assignment { identifier, expr },
-            start,
-            self.current_token_start(),
-            source,
+            Position {
+                start: pos.start,
+                end: self.current_token_start(),
+                source: pos.source,
+            },
         ))
     }
 
@@ -948,7 +998,7 @@ impl Parser {
 
     /// <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
     fn parse_function_decl(&mut self) -> Result<StatementWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         let function_name = self.expect_identifier()?;
 
@@ -966,9 +1016,11 @@ impl Parser {
                 arguments,
                 expr,
             },
-            start,
-            self.current_token_start(),
-            source,
+            Position {
+                start: pos.start,
+                end: self.current_token_start(),
+                source: pos.source,
+            },
         ))
     }
 
@@ -1001,7 +1053,7 @@ impl Parser {
     /// <identifier>
     /// <identifier> '=' <expr>
     fn parse_decl_argument(&mut self) -> Result<Option<DeclArgumentWithPosition>> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         let identifier = if let Some(identifier) = self.current_matches_identifier() {
             self.advance();
@@ -1015,9 +1067,11 @@ impl Parser {
         } else {
             Ok(Some(DeclArgumentWithPosition::new(
                 DeclArgument::Identifier { identifier },
-                start,
-                self.current_token_start(),
-                source,
+                Position {
+                    start: pos.start,
+                    end: self.current_token_start(),
+                    source: pos.source,
+                },
             )))
         }
     }
@@ -1028,7 +1082,7 @@ impl Parser {
     /// <if_statement> ::=
     ///   "if" '(' <expr> ')' <child_statement>
     fn parse_ifelse_statement(&mut self) -> Result<StatementWithPosition> {
-        let (start, source) = self.get_current()?;
+        let pos = self.get_current()?;
 
         self.expect(Token::If)?;
         self.expect(Token::LeftParen)?;
@@ -1053,69 +1107,102 @@ impl Parser {
         };
         Ok(StatementWithPosition::new(
             stmt,
-            start,
-            self.current_token_start(),
-            source,
+            Position {
+                start: pos.start,
+                end: self.current_token_start(),
+                source: pos.source,
+            },
         ))
     }
 }
 
-pub fn openscad_parse(tokens: Vec<TokenWithPosition>) -> ParseResult {
-    let parser = Parser::new(tokens);
+pub fn openscad_parse(tokens: Vec<TokenWithPosition>, source: Arc<Box<dyn Source>>) -> ParseResult {
+    let parser = Parser::new(tokens, source);
     parser.parse()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{source::StringSource, tokenizer::openscad_tokenize};
+    use std::sync::Arc;
+
+    use crate::{
+        source::{Source, StringSource},
+        tokenizer::openscad_tokenize,
+    };
 
     use super::*;
 
-    fn parse(source: Arc<dyn Source>) -> ParseResult {
-        openscad_parse(openscad_tokenize(source).unwrap())
+    fn parse(source: Arc<Box<dyn Source>>) -> ParseResult {
+        openscad_parse(openscad_tokenize(source.clone()).unwrap(), source)
     }
 
     #[test]
     fn test_empty_statement() {
-        let source = Arc::new(StringSource::new(";"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(";")));
         let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(
             result.statements,
-            vec![StatementWithPosition::new(Statement::Empty, 0, 1, source)]
+            vec![StatementWithPosition::new(
+                Statement::Empty,
+                Position {
+                    start: 0,
+                    end: 1,
+                    source
+                }
+            )]
         );
     }
 
     #[test]
     fn test_cube() {
-        let source = Arc::new(StringSource::new("cube(10);"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("cube(10);")));
         let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(
             result.statements,
             vec![StatementWithPosition::new(
                 Statement::ModuleInstantiation {
-                    module_id: ModuleIdWithPosition::new("cube".to_string(), 0, 4, source.clone()),
+                    module_id: ModuleIdWithPosition::new(
+                        "cube".to_string(),
+                        Position {
+                            start: 0,
+                            end: 4,
+                            source: source.clone()
+                        }
+                    ),
                     call_arguments: vec![CallArgumentWithPosition::new(
                         CallArgument::Expr {
-                            expr: ExprWithPosition::new(Expr::Number(10.0), 5, 7, source.clone())
+                            expr: ExprWithPosition::new(
+                                Expr::Number(10.0),
+                                Position {
+                                    start: 5,
+                                    end: 7,
+                                    source: source.clone()
+                                }
+                            )
                         },
-                        5,
-                        7,
-                        source.clone()
+                        Position {
+                            start: 5,
+                            end: 7,
+                            source: source.clone()
+                        }
                     )],
                     child_statements: vec![]
                 },
-                0,
-                9,
-                source.clone()
+                Position {
+                    start: 0,
+                    end: 9,
+                    source: source.clone()
+                }
             )]
         );
     }
 
     #[test]
     fn test_cube_vector() {
-        let source = Arc::new(StringSource::new("cube([20,30,50]);"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("cube([20,30,50]);")));
         let result = parse(source.clone());
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1160,7 +1247,8 @@ mod tests {
 
     #[test]
     fn test_cube_vector_and_named_parameter() {
-        let source = Arc::new(StringSource::new("cube([20,30,50],center=true);"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("cube([20,30,50],center=true);")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1168,9 +1256,9 @@ mod tests {
 
     #[test]
     fn test_translate_cube_vector_and_named_parameter() {
-        let source = Arc::new(StringSource::new(
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(
             "translate([0,0,5]) cube([20,30,50],center=true);",
-        ));
+        )));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1178,7 +1266,7 @@ mod tests {
 
     #[test]
     fn test_binary_expression() {
-        let source = Arc::new(StringSource::new("cube(20 - 0.1);"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("cube(20 - 0.1);")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1186,7 +1274,8 @@ mod tests {
 
     #[test]
     fn test_binary_expression_divide() {
-        let source = Arc::new(StringSource::new("color([0,125,255]/255);"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("color([0,125,255]/255);")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1194,7 +1283,7 @@ mod tests {
 
     #[test]
     fn test_unary_expression() {
-        let source = Arc::new(StringSource::new("cube(-20);"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("cube(-20);")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1202,7 +1291,8 @@ mod tests {
 
     #[test]
     fn test_negate_parens() {
-        let source = Arc::new(StringSource::new("echo(-(20 + 3));"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("echo(-(20 + 3));")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1210,7 +1300,7 @@ mod tests {
 
     #[test]
     fn test_set_fa() {
-        let source = Arc::new(StringSource::new("$fa = 1;"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("$fa = 1;")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1218,7 +1308,8 @@ mod tests {
 
     #[test]
     fn test_include() {
-        let source = Arc::new(StringSource::new("include <caustic.scad>"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("include <caustic.scad>")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1226,13 +1317,13 @@ mod tests {
 
     #[test]
     fn test_function_call() {
-        let source = Arc::new(StringSource::new(
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(
             "
             lambertian(checker(scale=0.32, even=[0.2, 0.3, 0.1], odd=[0.9, 0.9, 0.9]))
                 translate([0.0, -1.0, -100.5])
                     sphere(r=100);
             ",
-        ));
+        )));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1240,7 +1331,8 @@ mod tests {
 
     #[test]
     fn test_for_loop() {
-        let source = Arc::new(StringSource::new("for(a=[0:10]) sphere(r=a);"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("for(a=[0:10]) sphere(r=a);")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1248,7 +1340,8 @@ mod tests {
 
     #[test]
     fn test_for_loop_increment() {
-        let source = Arc::new(StringSource::new("for(a=[0:2:10]) sphere(r=a);"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("for(a=[0:2:10]) sphere(r=a);")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1256,7 +1349,7 @@ mod tests {
 
     #[test]
     fn test_variable_assignment() {
-        let source = Arc::new(StringSource::new("a = 1;"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("a = 1;")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1264,7 +1357,8 @@ mod tests {
 
     #[test]
     fn test_rands() {
-        let source = Arc::new(StringSource::new("choose_mat = rands(0,1,1)[0];"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("choose_mat = rands(0,1,1)[0];")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1272,7 +1366,8 @@ mod tests {
 
     #[test]
     fn test_subtract_indexed() {
-        let source = Arc::new(StringSource::new("v = pt2[0][1] - pt1[0];"));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("v = pt2[0][1] - pt1[0];")));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1281,7 +1376,7 @@ mod tests {
     #[test]
     fn test_function_decl() {
         let s = "function distance(pt1, pt2) = sqrt(pow(pt2[0]-pt1[0], 2) + pow(pt2[1]-pt1[1], 2) + pow(pt2[2]-pt1[2], 2));";
-        let source = Arc::new(StringSource::new(s));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(s)));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());
@@ -1289,7 +1384,7 @@ mod tests {
 
     #[test]
     fn test_if_else() {
-        let source = Arc::new(StringSource::new(
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(
             r#"
             if (1 > 2) {
               echo("false");
@@ -1299,7 +1394,7 @@ mod tests {
               echo("fail");
             }
         "#,
-        ));
+        )));
         let result = parse(source);
         assert_eq!(Vec::<ParserError>::new(), result.errors);
         assert_eq!(1, result.statements.len());

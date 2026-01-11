@@ -15,6 +15,7 @@ use caustic_core::{
 use rand_mt::Mt64;
 
 use crate::{
+    Position,
     parser::{
         CallArgument, CallArgumentWithPosition, DeclArgument, DeclArgumentWithPosition,
         ExprWithPosition, Statement, StatementWithPosition,
@@ -62,8 +63,7 @@ pub enum ModuleArgument {
 #[derive(Debug, PartialEq)]
 pub struct InterpreterError {
     pub message: String,
-    pub start: usize,
-    pub end: usize,
+    pub position: Position,
 }
 
 impl From<ValueConversionError> for InterpreterError {
@@ -78,6 +78,7 @@ type Result<T> = std::result::Result<T, InterpreterError>;
 pub struct InterpreterResults {
     pub scene_data: SceneData,
     pub output: String,
+    pub warnings: Vec<InterpreterError>,
     pub errors: Vec<InterpreterError>,
 }
 
@@ -124,6 +125,7 @@ struct Interpreter {
     output: String,
     random: Arc<dyn Random>,
     rng: Mt64,
+    warnings: Vec<InterpreterError>,
 }
 
 impl Interpreter {
@@ -135,6 +137,21 @@ impl Interpreter {
             variables.insert("$fs".to_owned(), Value::Number(2.0));
             variables.insert("$fa".to_owned(), Value::Number(12.0));
             variables.insert("$t".to_owned(), Value::Number(0.0));
+            variables.insert(
+                "$vpr".to_owned(),
+                Value::Vector {
+                    items: vec![Value::Number(55.0), Value::Number(0.0), Value::Number(25.0)],
+                },
+            );
+            variables.insert(
+                "$vpt".to_owned(),
+                Value::Vector {
+                    items: vec![Value::Number(0.0), Value::Number(0.0), Value::Number(0.0)],
+                },
+            );
+            variables.insert("$vpd".to_owned(), Value::Number(140.0));
+            variables.insert("$vpf".to_owned(), Value::Number(22.5));
+            variables.insert("$preview".to_owned(), Value::Boolean(true));
 
             variables
         };
@@ -150,6 +167,7 @@ impl Interpreter {
             output: String::new(),
             random,
             rng: Mt64::new_unseeded(),
+            warnings: vec![],
         }
     }
 
@@ -195,6 +213,7 @@ impl Interpreter {
             scene_data,
             output: self.output,
             errors,
+            warnings: self.warnings,
         }
     }
 
@@ -434,8 +453,7 @@ impl Interpreter {
 
         let mut found_named_arg = false;
         for (pos, arg) in arguments.iter().enumerate() {
-            let start = arg.start;
-            let end = arg.end;
+            let position = &arg.position;
             match &arg.item {
                 CallArgument::Expr { expr } => {
                     if found_named_arg {
@@ -445,7 +463,7 @@ impl Interpreter {
                         let value = self.expr_to_value(expr)?;
                         results.insert(
                             arg_name.to_string(),
-                            ValueWithPosition::new(value, start, end, arg.source.clone()),
+                            ValueWithPosition::new(value, position.clone()),
                         );
                     } else {
                         todo!(
@@ -460,7 +478,7 @@ impl Interpreter {
                         let value = self.expr_to_value(expr)?;
                         results.insert(
                             identifier.to_string(),
-                            ValueWithPosition::new(value, start, end, arg.source.clone()),
+                            ValueWithPosition::new(value, position.clone()),
                         );
                     } else {
                         todo!("unknown arg name: {identifier}");
@@ -479,29 +497,18 @@ impl Interpreter {
         let mut results: Vec<ValueWithPosition> = vec![];
 
         for arg in arguments.iter() {
-            let start = arg.start;
-            let end = arg.end;
+            let position = &arg.position;
             match &arg.item {
                 CallArgument::Expr { expr } => {
                     let value = self.expr_to_value(expr)?;
-                    results.push(ValueWithPosition::new(
-                        value,
-                        start,
-                        end,
-                        arg.source.clone(),
-                    ));
+                    results.push(ValueWithPosition::new(value, position.clone()));
                 }
                 CallArgument::NamedArgument {
                     identifier: _,
                     expr,
                 } => {
                     let value = self.expr_to_value(expr)?;
-                    results.push(ValueWithPosition::new(
-                        value,
-                        start,
-                        end,
-                        arg.source.clone(),
-                    ));
+                    results.push(ValueWithPosition::new(value, position.clone()));
                 }
             }
         }
@@ -509,7 +516,7 @@ impl Interpreter {
         Ok(results)
     }
 
-    fn evaluate_identifier(&self, name: &str) -> Result<Value> {
+    fn evaluate_identifier(&mut self, name: &str, position: &Position) -> Result<Value> {
         if name == "PI" {
             Ok(Value::Number(f64::consts::PI))
         } else if name == "undef" {
@@ -521,7 +528,11 @@ impl Interpreter {
                 function_name: name.to_owned(),
             })
         } else {
-            todo!("missing variable {name}");
+            self.warnings.push(InterpreterError {
+                message: format!("Ignoring unknown variable '${name}'"),
+                position: position.clone(),
+            });
+            Ok(Value::Undef)
         }
     }
 

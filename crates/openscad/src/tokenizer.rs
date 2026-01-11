@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use thiserror::Error;
 
-use crate::{WithPosition, source::Source};
+use crate::{Position, WithPosition, source::Source};
 
 #[derive(Error, Debug, PartialEq)]
 #[error("Tokenizer error: {message} [{start}:{end}]")]
@@ -111,15 +111,15 @@ pub type TokenWithPosition = WithPosition<Token>;
 struct Tokenizer {
     input: Vec<char>,
     pos: usize,
-    source: Arc<dyn Source>,
+    source: Arc<Box<dyn Source>>,
 }
 
 impl Tokenizer {
-    pub fn new(source: Arc<dyn Source>) -> Self {
+    pub fn new(source: Arc<Box<dyn Source>>) -> Self {
         Self {
             input: source.get_code().chars().collect(),
             pos: 0,
-            source,
+            source: source.clone(),
         }
     }
 
@@ -130,9 +130,11 @@ impl Tokenizer {
         }
         tokens.push(TokenWithPosition::new(
             Token::Eof,
-            self.pos,
-            self.pos,
-            self.source.clone(),
+            Position {
+                start: self.pos,
+                end: self.pos,
+                source: self.source,
+            },
         ));
         Ok(tokens)
     }
@@ -505,9 +507,11 @@ impl Tokenizer {
 
         Ok(Some(TokenWithPosition::new(
             token,
-            start,
-            self.pos,
-            self.source.clone(),
+            Position {
+                start,
+                end: self.pos,
+                source: self.source.clone(),
+            },
         )))
     }
 
@@ -574,7 +578,7 @@ impl Tokenizer {
     }
 }
 
-pub fn openscad_tokenize(source: Arc<dyn Source>) -> Result<Vec<TokenWithPosition>> {
+pub fn openscad_tokenize(source: Arc<Box<dyn Source>>) -> Result<Vec<TokenWithPosition>> {
     let tokenizer = Tokenizer::new(source);
     tokenizer.tokenize()
 }
@@ -585,25 +589,39 @@ mod tests {
 
     use super::*;
 
-    fn assert_tokens_with_pos(source: Arc<dyn Source>, expected: &[TokenWithPosition]) {
+    fn assert_tokens_with_pos(source: Arc<Box<dyn Source>>, expected: &[TokenWithPosition]) {
         let found = openscad_tokenize(source).unwrap();
         assert_eq!(found, expected);
     }
 
     fn assert_tokens(input: &str, expected: &[Token]) {
-        let source = Arc::new(StringSource::new(input));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(input)));
         let found = openscad_tokenize(source).unwrap();
         let found_without_pos: Vec<Token> = found.iter().map(|tok| tok.item.clone()).collect();
         assert_eq!(found_without_pos, expected);
     }
 
     fn assert_token_with_pos(input: &str, token: Token, start: usize, end: usize) {
-        let source = Arc::new(StringSource::new(input));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(input)));
         assert_tokens_with_pos(
             source.clone(),
             &vec![
-                TokenWithPosition::new(token, start, end, source.clone()),
-                TokenWithPosition::new(Token::Eof, end, end, source),
+                TokenWithPosition::new(
+                    token,
+                    Position {
+                        start,
+                        end,
+                        source: source.clone(),
+                    },
+                ),
+                TokenWithPosition::new(
+                    Token::Eof,
+                    Position {
+                        start: end,
+                        end,
+                        source,
+                    },
+                ),
             ],
         )
     }
@@ -616,13 +634,34 @@ mod tests {
         assert_token_with_pos("42.34e11", Token::Number(42.34e11), 0, 8);
         assert_token_with_pos("42.34E-11", Token::Number(42.34e-11), 0, 9);
 
-        let source = Arc::new(StringSource::new("42.34a"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("42.34a")));
         assert_tokens_with_pos(
             source.clone(),
             &vec![
-                TokenWithPosition::new(Token::Number(42.34), 0, 5, source.clone()),
-                TokenWithPosition::new(Token::Identifier("a".to_string()), 5, 6, source.clone()),
-                TokenWithPosition::new(Token::Eof, 6, 6, source),
+                TokenWithPosition::new(
+                    Token::Number(42.34),
+                    Position {
+                        start: 0,
+                        end: 5,
+                        source: source.clone(),
+                    },
+                ),
+                TokenWithPosition::new(
+                    Token::Identifier("a".to_string()),
+                    Position {
+                        start: 5,
+                        end: 6,
+                        source: source.clone(),
+                    },
+                ),
+                TokenWithPosition::new(
+                    Token::Eof,
+                    Position {
+                        start: 6,
+                        end: 6,
+                        source,
+                    },
+                ),
             ],
         );
     }
@@ -632,58 +671,91 @@ mod tests {
         assert_token_with_pos("a", Token::Identifier("a".to_string()), 0, 1);
         assert_token_with_pos("cube_2", Token::Identifier("cube_2".to_string()), 0, 6);
 
-        let source = Arc::new(StringSource::new("cube("));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("cube(")));
         assert_tokens_with_pos(
             source.clone(),
             &vec![
-                TokenWithPosition::new(Token::Identifier("cube".to_string()), 0, 4, source.clone()),
-                TokenWithPosition::new(Token::LeftParen, 4, 5, source.clone()),
-                TokenWithPosition::new(Token::Eof, 5, 5, source),
+                TokenWithPosition::new(
+                    Token::Identifier("cube".to_string()),
+                    Position {
+                        start: 0,
+                        end: 4,
+                        source: source.clone(),
+                    },
+                ),
+                TokenWithPosition::new(
+                    Token::LeftParen,
+                    Position {
+                        start: 4,
+                        end: 5,
+                        source: source.clone(),
+                    },
+                ),
+                TokenWithPosition::new(
+                    Token::Eof,
+                    Position {
+                        start: 5,
+                        end: 5,
+                        source,
+                    },
+                ),
             ],
         );
     }
 
     #[test]
     fn test_cube() {
-        let source = Arc::new(StringSource::new("cube(10);"));
+        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("cube(10);")));
         assert_tokens_with_pos(
             source.clone(),
             &vec![
                 TokenWithPosition {
                     item: Token::Identifier("cube".to_string()),
-                    start: 0,
-                    end: 4,
-                    source: source.clone(),
+                    position: Position {
+                        start: 0,
+                        end: 4,
+                        source: source.clone(),
+                    },
                 },
                 TokenWithPosition {
                     item: Token::LeftParen,
-                    start: 4,
-                    end: 5,
-                    source: source.clone(),
+                    position: Position {
+                        start: 4,
+                        end: 5,
+                        source: source.clone(),
+                    },
                 },
                 TokenWithPosition {
                     item: Token::Number(10.0),
-                    start: 5,
-                    end: 7,
-                    source: source.clone(),
+                    position: Position {
+                        start: 5,
+                        end: 7,
+                        source: source.clone(),
+                    },
                 },
                 TokenWithPosition {
                     item: Token::RightParen,
-                    start: 7,
-                    end: 8,
-                    source: source.clone(),
+                    position: Position {
+                        start: 7,
+                        end: 8,
+                        source: source.clone(),
+                    },
                 },
                 TokenWithPosition {
                     item: Token::Semicolon,
-                    start: 8,
-                    end: 9,
-                    source: source.clone(),
+                    position: Position {
+                        start: 8,
+                        end: 9,
+                        source: source.clone(),
+                    },
                 },
                 TokenWithPosition {
                     item: Token::Eof,
-                    start: 9,
-                    end: 9,
-                    source: source.clone(),
+                    position: Position {
+                        start: 9,
+                        end: 9,
+                        source: source.clone(),
+                    },
                 },
             ],
         );

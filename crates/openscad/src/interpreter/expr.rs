@@ -7,8 +7,7 @@ use crate::{
 
 impl Interpreter {
     pub(super) fn expr_to_value(&mut self, expr: &ExprWithPosition) -> Result<Value> {
-        let start = expr.start;
-        let end = expr.end;
+        let position = &expr.position;
         Ok(match &expr.item {
             Expr::Number(number) => Value::Number(*number),
             Expr::String(str) => Value::String(str.clone()),
@@ -24,14 +23,14 @@ impl Interpreter {
             }
             Expr::Unary { operator, rhs } => self.evaluate_unary_expression(operator, rhs)?,
             Expr::FunctionCall { name, arguments } => {
-                self.evaluate_function_call(name, arguments, start, end)?
+                self.evaluate_function_call(name, arguments, position)?
             }
             Expr::Range {
                 start,
                 end,
                 increment,
             } => self.evaluate_range_expression(start, end, increment)?,
-            Expr::Identifier { name } => self.evaluate_identifier(name)?,
+            Expr::Identifier { name } => self.evaluate_identifier(name, position)?,
             Expr::Index { lhs, index } => self.evaluate_index(lhs, index)?,
             Expr::Ternary {
                 condition,
