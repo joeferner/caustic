@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Node, Ray, RenderContext, Vector3,
@@ -81,5 +81,9 @@ impl Node for BoxPrimitive {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         self.group.bounding_box()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

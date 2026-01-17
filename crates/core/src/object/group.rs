@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Ray, RenderContext, Vector3,
@@ -75,5 +75,9 @@ impl Node for Group {
             let r = ctx.random.rand_int_interval(0, self.nodes.len() as i64) as usize;
             self.nodes[r].random(ctx, origin)
         }
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

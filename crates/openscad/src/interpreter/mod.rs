@@ -160,14 +160,12 @@ impl Interpreter {
     }
 
     fn interpret(mut self, statements: Vec<StatementWithPosition>) -> InterpreterResults {
-        let mut messages: Vec<Message> = vec![];
-
         for statement in statements {
             match self.process_statement(&statement) {
                 Ok(mut nodes) => {
                     self.world.append(&mut nodes);
                 }
-                Err(err) => messages.push(err),
+                Err(err) => self.messages.push(err),
             }
         }
 

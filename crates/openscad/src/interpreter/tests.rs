@@ -2,7 +2,7 @@
 mod tests {
     use std::sync::Arc;
 
-    use caustic_core::random_new;
+    use caustic_core::{object::Disc, random_new};
 
     use crate::{
         interpreter::{InterpreterResults, openscad_interpret},
@@ -37,6 +37,18 @@ mod tests {
     fn assert_output_trim(expr: &str, expected: &str) {
         let output = get_output(expr);
         assert_eq!(output.trim(), expected);
+    }
+
+    // -- s3 shapes ----------------------------
+
+    #[test]
+    fn test_2s_circle() {
+        let results = interpret("circle(r=20);");
+        assert_eq!(results.messages.len(), 0);
+
+        let scene_data = results.scene_data.unwrap();
+        let disc = scene_data.world.as_any().downcast_ref::<Disc>().unwrap();
+        assert_eq!(disc.get_radius(), 20.0);
     }
 
     // -- special variables ----------------------------

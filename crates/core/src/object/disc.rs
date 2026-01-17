@@ -1,5 +1,5 @@
 use core::f64;
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Random, RenderContext, Vector3,
@@ -86,6 +86,18 @@ impl Disc {
 
         // 4. Translate to the disc's actual center.
         center + random_local_pt
+    }
+
+    pub fn get_center(&self) -> &Vector3 {
+        &self.center
+    }
+
+    pub fn get_radius(&self) -> f64 {
+        self.radius
+    }
+
+    pub fn get_normal(&self) -> &Vector3 {
+        &self.normal
     }
 }
 
@@ -181,5 +193,9 @@ impl Node for Disc {
 
         // Return the direction vector from the origin to that random point
         target - *origin
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

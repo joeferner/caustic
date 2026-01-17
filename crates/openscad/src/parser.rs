@@ -1409,7 +1409,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unexpected_identifier() {
+    fn test_module_groups() {
         let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new(
             r#"
             union() {

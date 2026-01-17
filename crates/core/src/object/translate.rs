@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Node, Ray, RenderContext, Vector3, object::HitRecord,
@@ -38,5 +38,9 @@ impl Node for Translate {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         &self.bbox
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

@@ -1,5 +1,5 @@
 use core::f64;
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Color, Interval, Node, Ray, RenderContext, Vector3,
@@ -81,5 +81,9 @@ impl Node for ConstantMedium {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         self.boundary.bounding_box()
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

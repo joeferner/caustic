@@ -1,5 +1,5 @@
 use core::f64;
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Node, Ray, RenderContext, Vector3, material::Material,
@@ -126,5 +126,9 @@ impl Node for Quad {
     fn random(&self, ctx: &RenderContext, origin: &Vector3) -> Vector3 {
         let p = self.q + (ctx.random.rand() * self.u) + (ctx.random.rand() * self.v);
         p - *origin
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

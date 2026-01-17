@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, sync::Arc};
+use std::{any::Any, cmp::Ordering, sync::Arc};
 
 use crate::{
     Axis, AxisAlignedBoundingBox, Interval, Ray, RenderContext,
@@ -69,6 +69,10 @@ impl Node for BoundingVolumeHierarchy {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         &self.bbox
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

@@ -1,5 +1,5 @@
 use core::f64;
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Node, Ray, RenderContext, Vector3,
@@ -84,6 +84,10 @@ impl Node for ConeFrustum {
 
     fn random(&self, ctx: &RenderContext, origin: &Vector3) -> Vector3 {
         self.object_node.random(ctx, origin)
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -340,5 +344,9 @@ impl Node for ConeFrustumWall {
 
         // 4. Translate back to Global Space
         p_local + self.base
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

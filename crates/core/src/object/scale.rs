@@ -1,5 +1,5 @@
 use core::f64;
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use crate::{
     Axis, AxisAlignedBoundingBox, Interval, Matrix3x3, Node, Ray, RenderContext, object::HitRecord,
@@ -118,5 +118,9 @@ impl Node for Scale {
 
     fn bounding_box(&self) -> &AxisAlignedBoundingBox {
         &self.bbox
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

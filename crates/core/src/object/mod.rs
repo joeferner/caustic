@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{any::Any, fmt::Debug, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, RenderContext, material::Material, ray::Ray, vector::Vector3,
@@ -63,4 +63,6 @@ pub trait Node: Send + Sync + Debug {
     fn random(&self, _ctx: &RenderContext, _origin: &Vector3) -> Vector3 {
         Vector3::new(1.0, 0.0, 0.0)
     }
+
+    fn as_any(&self) -> &dyn Any;
 }

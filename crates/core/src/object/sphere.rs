@@ -1,5 +1,5 @@
 use core::f64;
-use std::{f64::consts::PI, sync::Arc};
+use std::{any::Any, f64::consts::PI, sync::Arc};
 
 use crate::{
     AxisAlignedBoundingBox, Interval, Random, RenderContext, Vector3,
@@ -167,5 +167,9 @@ impl Node for Sphere {
             self.radius,
             distance_squared,
         ))
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
