@@ -1,9 +1,12 @@
 use caustic_openscad::{Message, MessageLevel};
 use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 
 use crate::types::position::WasmPosition;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Tsify, Serialize, Deserialize)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub enum WasmMessageLevel {
     Echo,
     Warning,
@@ -20,7 +23,9 @@ impl From<&MessageLevel> for WasmMessageLevel {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Tsify, Serialize, Deserialize)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct WasmMessage {
     pub level: WasmMessageLevel,
     pub message: String,

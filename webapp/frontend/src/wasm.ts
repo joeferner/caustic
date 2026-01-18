@@ -1,8 +1,16 @@
 import type { ImageWorkingFile, TextWorkingFile, WorkingFile } from './types.js';
-import type { CameraInfo, Color, InitOutput, LoadResults, WasmImage, WasmSource } from './wasm/release/caustic_wasm';
+import type {
+    CameraInfo,
+    Color,
+    InitOutput,
+    LoadResults,
+    WasmImage,
+    WasmSource,
+    WasmMessage,
+} from './wasm/release/caustic_wasm';
 import init, { load_openscad, get_camera_info, render } from './wasm/release/caustic_wasm.js';
 
-export type { CameraInfo, Color };
+export type { CameraInfo, Color, WasmMessage };
 
 export function initWasm(): Promise<InitOutput> {
     return init();

@@ -240,6 +240,7 @@ pub fn render(xmin: u32, xmax: u32, ymin: u32, ymax: u32) -> Result<Vec<Color>, 
 
 #[derive(Tsify, Serialize, Deserialize)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct LoadResults {
     pub messages: Vec<WasmMessage>,
     pub loaded: bool,
@@ -247,6 +248,7 @@ pub struct LoadResults {
 
 #[derive(Tsify, Serialize, Deserialize)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct CameraInfo {
     pub width: u32,
     pub height: u32,
@@ -254,6 +256,7 @@ pub struct CameraInfo {
 
 #[derive(Tsify, Serialize, Deserialize)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "camelCase")]
 pub struct Color {
     pub r: u8,
     pub g: u8,

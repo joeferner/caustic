@@ -1,0 +1,32 @@
+.messages {
+    :global(.mantine-Accordion-label) {
+        padding-top: 2px;
+        padding-bottom: 2px;
+    }
+}
+
+.message {
+    display: flex;
+    flex-direction: row;
+    gap: 5px;
+
+    .level {
+        &:global(.ERROR) {
+            color: red;
+        }
+
+        &:global(.WARNING) {
+            color: yellow;
+        }
+
+        &:global(.ECHO) {
+            color: white;
+        }
+    }
+
+    .description {
+    }
+
+    .position {
+    }
+}

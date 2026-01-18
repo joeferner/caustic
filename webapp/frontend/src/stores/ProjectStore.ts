@@ -1,4 +1,4 @@
-import { getCameraInfo, initWasm, loadOpenscad, Source, type CameraInfo } from '../wasm';
+import { getCameraInfo, initWasm, loadOpenscad, Source, type CameraInfo, type WasmMessage } from '../wasm';
 import { RenderWorkerPool, type RenderCallbackFn } from '../RenderWorkerPool';
 import type { ImageWorkingFile, TextWorkingFile, WorkingFile } from '../types';
 import { type Project } from '../api';
@@ -14,11 +14,15 @@ import {
     type UnsubscribeFn,
 } from './store';
 import { getImageDataFromBlob } from '../utils/canvas';
+import type { WasmPosition } from '../wasm/release/caustic_wasm';
+import type { editor } from 'monaco-editor';
+import * as R from 'radash';
 
 const renderWorkerPool = new RenderWorkerPool();
 
 export class ProjectStore {
     private readonly drawEventListeners = new Set<RenderCallbackFn>();
+    private editors: Record<string, editor.IStandaloneCodeEditor> = {};
 
     public readonly files = signal<WorkingFile[]>([]);
     public readonly cameraInfo = signal<CameraInfo | undefined>(undefined);
@@ -31,6 +35,7 @@ export class ProjectStore {
     private readonly _project = signal<StoreProject | undefined>(undefined);
     // expose a read only copy of project, projects must be changed via setProject
     public readonly project = computed(() => this._project.value);
+    public readonly messages = signal<Message[]>([]);
 
     public async loadLastProject(): Promise<void> {
         const lastLoadedProjectId = projectsStore.lastLoadedProjectId;
@@ -59,7 +64,9 @@ export class ProjectStore {
         if (this._project.value?.id !== newProject?.id && newProject?.id) {
             const files = await this.loadProjectFiles(newProject);
             document.title = `Caustic: ${newProject.name}`;
+            this.editors = {};
             this.files.value = files;
+            this.messages.value = [];
             projectsStore.lastLoadedProjectId = newProject.id;
             this.selectedTab.value = files[0].filename;
         }
@@ -77,6 +84,8 @@ export class ProjectStore {
     }
 
     public async render(): Promise<void> {
+        this.messages.value = [];
+
         // TODO handle multiple openscad files
         const main = this.files.value.find((f) => f.type === 'text');
         if (!main) {
@@ -86,7 +95,10 @@ export class ProjectStore {
         await initWasm();
         try {
             const results = loadOpenscad(new Source(main, this.files.value));
-            console.log('loadOpenscad results', results);
+            const messageIdPrefix = Date.now().toString(36) + Math.random().toString(36).substring(0, 2);
+            this.messages.value = results.messages.map((message, i) => {
+                return { id: `${messageIdPrefix}-${i}`, ...message };
+            });
             if (!results.loaded) {
                 throw new Error('failed to load');
             }
@@ -145,8 +157,29 @@ export class ProjectStore {
         return files.sort((a, b) => a.sort - b.sort);
     }
 
+    public goto(position: WasmPosition): void {
+        console.log('goto', position);
+        this.selectedTab.value = position.filename;
+        if (R.isInt(position.startLine)) {
+            const editor = this.editors[position.filename];
+            if (editor) {
+                editor.revealLineInCenter(position.startLine + 1);
+                editor.setPosition({ lineNumber: position.startLine + 1, column: (position.startColumn ?? 0) + 1 });
+                editor.focus();
+            }
+        }
+    }
+
+    public registerEditor(filename: string, monaco: editor.IStandaloneCodeEditor): void {
+        this.editors[filename] = monaco;
+    }
+
     public subscribeToDrawEvents(listener: RenderCallbackFn): UnsubscribeFn {
         this.drawEventListeners.add(listener);
         return () => this.drawEventListeners.delete(listener);
     }
+}
+
+export interface Message extends WasmMessage {
+    id: string;
 }

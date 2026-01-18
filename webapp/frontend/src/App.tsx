@@ -10,6 +10,7 @@ import { MantineProvider } from '@mantine/core';
 import { projectsStore, projectStore, userStore } from './stores/store';
 import '@mantine/notifications/styles.css';
 import { Notifications } from '@mantine/notifications';
+import { Messages } from './components/Messages';
 
 export function App(): JSX.Element {
     return (
@@ -43,7 +44,10 @@ function InnerApp(): JSX.Element {
                     </Panel>
                     <PanelResizeHandle className="resizeHandle" />
                     <Panel>
-                        <Render />
+                        <div className={classes.rightPanel}>
+                            <Render />
+                            <Messages />
+                        </div>
                     </Panel>
                 </PanelGroup>
             </div>
