@@ -1,5 +1,6 @@
 #![allow(clippy::vec_init_then_push)]
 
+pub mod language_server;
 pub mod types;
 
 use std::{any::Any, cell::RefCell, fmt::Debug, sync::Arc};
@@ -14,6 +15,8 @@ use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use crate::types::message::WasmMessage;
+
+pub use language_server::WasmLspServer;
 
 thread_local! {
 static LOADED_SCENE_DATA: RefCell<Option<SceneData>> = const { RefCell::new(None) };
@@ -271,4 +274,10 @@ impl Color {
             b: (color.b * 255.0) as u8,
         }
     }
+}
+
+// Initialize WASM module
+#[wasm_bindgen(start)]
+pub fn main() {
+    console_error_panic_hook::set_once();
 }

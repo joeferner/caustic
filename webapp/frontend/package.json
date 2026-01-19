@@ -19,13 +19,16 @@
     "@mantine/notifications": "^8.3.11",
     "@monaco-editor/react": "^4.7.0",
     "@preact/signals-react": "^3.6.1",
+    "monaco-languageclient": "^10.6.0",
     "prettier": "^3.7.4",
     "radash": "^12.1.1",
     "react": "^19.2.0",
     "react-bootstrap-icons": "^1.11.6",
     "react-dom": "^19.2.0",
     "react-resizable-panels": "^3.0.6",
-    "react-zoom-pan-pinch": "^3.7.0"
+    "react-zoom-pan-pinch": "^3.7.0",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -46,5 +49,8 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4"
+  },
+  "overrides": {
+    "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@^25.0.0"
   }
 }

@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 rand_mt = "5.0.0"
 caustic-core = { path = "../core" }
+tower-lsp = "0.20.0"
 
 [dev-dependencies]
 assert-eq-float = { workspace = true }

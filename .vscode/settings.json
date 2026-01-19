@@ -5,6 +5,7 @@
         "bindgen",
         "chrono",
         "clippy",
+        "codingame",
         "defocus",
         "dotenv",
         "dotenvy",

@@ -1,4 +1,5 @@
 pub mod interpreter;
+pub mod language_server;
 pub mod parser;
 pub mod source;
 pub mod tokenizer;
