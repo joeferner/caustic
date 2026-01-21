@@ -225,8 +225,9 @@ pub mod test {
         let hover = backend.hover(params).await.unwrap().unwrap();
 
         match hover.contents {
-            HoverContents::Scalar(MarkedString::String(s)) => {
-                assert_eq!(s, "Creates a circle at the origin");
+            HoverContents::Markup(MarkupContent { kind, value }) => {
+                assert_eq!(kind, MarkupKind::Markdown);
+                assert_eq!(value, "Creates a circle at the origin");
             }
             _ => panic!("Expected scalar string"),
         }

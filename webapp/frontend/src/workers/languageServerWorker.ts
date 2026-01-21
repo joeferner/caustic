@@ -1,8 +1,4 @@
-import {
-    BrowserMessageReader,
-    BrowserMessageWriter,
-    Message
-} from 'vscode-languageserver/browser';
+import { BrowserMessageReader, BrowserMessageWriter, Message } from 'vscode-languageserver/browser';
 import { initWasm, WasmLspServer } from '../wasm';
 
 const reader = new BrowserMessageReader(self);
@@ -23,11 +19,7 @@ const lspServerPromise = new Promise<WasmLspServer>((resolve, reject) => {
 });
 
 reader.listen((msg: Message | string) => {
-    if (
-        typeof msg === 'object' &&
-        msg !== null &&
-        'jsonrpc' in msg
-    ) {
+    if (typeof msg === 'object' && msg !== null && 'jsonrpc' in msg) {
         void processMessage(msg);
     }
 });

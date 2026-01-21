@@ -7,6 +7,7 @@ pub enum Token {
     Identifier(String),
     Number(f64),
     String(String),
+    Comment(String),
     /// '('
     LeftParen,
     /// ')'
@@ -89,6 +90,8 @@ impl PartialEq for Token {
         match (self, other) {
             (Self::Identifier(l0), Self::Identifier(r0)) => l0 == r0,
             (Self::Number(l0), Self::Number(r0)) => (l0 - r0).abs() < EPSILON,
+            (Self::String(s0), Self::String(s1)) => s0 == s1,
+            (Self::Comment(s0), Self::Comment(s1)) => s0 == s1,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
@@ -201,41 +204,6 @@ impl Tokenizer {
         }
     }
 
-    fn skip_whitespace_and_comments(&mut self) {
-        loop {
-            self.skip_whitespace();
-            if !self.skip_comment() {
-                break;
-            }
-        }
-    }
-
-    fn skip_comment(&mut self) -> bool {
-        if self.current() == Some('/') {
-            if self.peek(1) == Some('/') {
-                // Line comment
-                while self.current().is_some() && self.current() != Some('\n') {
-                    self.advance();
-                }
-                return true;
-            } else if self.peek(1) == Some('*') {
-                // Block comment
-                self.advance(); // /
-                self.advance(); // *
-                while self.current().is_some() {
-                    if self.current() == Some('*') && self.peek(1) == Some('/') {
-                        self.advance(); // *
-                        self.advance(); // /
-                        break;
-                    }
-                    self.advance();
-                }
-                return true;
-            }
-        }
-        false
-    }
-
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.current() {
             if ch.is_whitespace() {
@@ -319,7 +287,7 @@ impl Tokenizer {
     }
 
     fn next(&mut self) -> Result<Option<TokenWithPosition>> {
-        self.skip_whitespace_and_comments();
+        self.skip_whitespace();
 
         let start = self.pos;
 
@@ -381,7 +349,19 @@ impl Tokenizer {
             }
             Some('/') => {
                 self.advance();
-                Token::ForwardSlash
+                if let Some(ch) = self.current() {
+                    if ch == '*' {
+                        self.advance();
+                        self.read_block_comment()
+                    } else if ch == '/' {
+                        self.advance();
+                        self.read_line_comment()
+                    } else {
+                        Token::ForwardSlash
+                    }
+                } else {
+                    Token::ForwardSlash
+                }
             }
             Some('?') => {
                 self.advance();
@@ -614,6 +594,50 @@ impl Tokenizer {
         self.expect('"')?;
 
         Ok(Token::String(result))
+    }
+
+    fn read_block_comment(&mut self) -> Token {
+        let mut result = String::new();
+        while let Some(ch) = self.current() {
+            if ch == '*' && self.peek(1).unwrap_or(' ') == '/' {
+                self.advance(); // *
+                self.advance(); // /
+                break;
+            } else {
+                self.advance();
+                result += &format!("{}", ch);
+            }
+        }
+        let result = result
+            .trim()
+            .lines()
+            .map(|line| line.trim().trim_start_matches("* "))
+            .collect::<Vec<_>>()
+            .join("\n");
+        Token::Comment(result)
+    }
+
+    fn read_line_comment(&mut self) -> Token {
+        let mut result = String::new();
+        while let Some(ch) = self.current() {
+            if ch == '\n' {
+                self.skip_whitespace();
+                if self.current().unwrap_or(' ') == '/' && self.peek(1).unwrap_or(' ') == '/' {
+                    result += "\n";
+                    self.advance();
+                    self.advance();
+                    if self.current().unwrap_or('z') == ' ' {
+                        self.advance();
+                    }
+                } else {
+                    break;
+                }
+            } else {
+                self.advance();
+                result += &format!("{}", ch);
+            }
+        }
+        Token::Comment(result.trim().to_string())
     }
 }
 
@@ -875,6 +899,50 @@ mod tests {
         assert_tokens(
             r#" "Test \"quotes\"" "#,
             &vec![Token::String("Test \"quotes\"".to_owned()), Token::Eof],
+        );
+    }
+
+    #[test]
+    fn test_block_comment() {
+        assert_tokens(
+            "/* this is a multi-line\nblock comment */",
+            &vec![
+                Token::Comment("this is a multi-line\nblock comment".to_owned()),
+                Token::Eof,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_block_comment_leading_asterisk() {
+        assert_tokens(
+            "/* this is a multi-line\n * block comment */",
+            &vec![
+                Token::Comment("this is a multi-line\nblock comment".to_owned()),
+                Token::Eof,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_line_comment() {
+        assert_tokens(
+            "// this is a line comment\n",
+            &vec![
+                Token::Comment("this is a line comment".to_owned()),
+                Token::Eof,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_line_comment_combine() {
+        assert_tokens(
+            "  // this is a line comment\n  // next line\n",
+            &vec![
+                Token::Comment("this is a line comment\nnext line".to_owned()),
+                Token::Eof,
+            ],
         );
     }
 }

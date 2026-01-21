@@ -34,15 +34,13 @@ export async function initializeMonaco(): Promise<void> {
             // Handle Monaco's built-in workers
             switch (label) {
                 case 'editorWorkerService':
-                    return new Worker(
-                        new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url),
-                        { type: 'module' }
-                    );
+                    return new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url), {
+                        type: 'module',
+                    });
                 default:
-                    return new Worker(
-                        new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url),
-                        { type: 'module' }
-                    );
+                    return new Worker(new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url), {
+                        type: 'module',
+                    });
             }
         },
     };

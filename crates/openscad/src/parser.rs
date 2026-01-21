@@ -224,15 +224,27 @@ impl Parser {
         }
     }
 
-    fn current(&self) -> Option<&TokenWithPosition> {
+    fn current(&mut self) -> Option<&TokenWithPosition> {
         self.peek(0)
     }
 
-    fn peek(&self, n: usize) -> Option<&TokenWithPosition> {
+    fn peek(&mut self, n: usize) -> Option<&TokenWithPosition> {
+        self.skip_comments();
         self.tokens.get(self.pos + n)
     }
 
-    fn get_current(&self) -> Result<Position> {
+    fn skip_comments(&mut self) {
+        while let Some(token) = self.tokens.get(self.pos) {
+            if matches!(token.item, Token::Comment(_)) {
+                self.pos += 1;
+                continue;
+            } else {
+                break;
+            }
+        }
+    }
+
+    fn get_current_pos(&mut self) -> Result<Position> {
         match self.current() {
             Some(current) => Ok(current.position.clone()),
             None => Err(Message {
@@ -247,7 +259,7 @@ impl Parser {
         }
     }
 
-    fn current_token_start(&self) -> usize {
+    fn current_token_start(&mut self) -> usize {
         self.current().map(|t| t.position.start).unwrap_or(0)
     }
 
@@ -257,11 +269,11 @@ impl Parser {
         }
     }
 
-    fn current_matches(&self, expected: Token) -> bool {
+    fn current_matches(&mut self, expected: Token) -> bool {
         self.peek_matches(0, expected)
     }
 
-    fn current_matches_identifier(&self) -> Option<String> {
+    fn current_matches_identifier(&mut self) -> Option<String> {
         if let Some(tok) = self.current()
             && let Token::Identifier(identifier) = &tok.item
         {
@@ -271,7 +283,7 @@ impl Parser {
         }
     }
 
-    fn peek_matches(&self, n: usize, expected: Token) -> bool {
+    fn peek_matches(&mut self, n: usize, expected: Token) -> bool {
         match self.peek(n) {
             None => false,
             Some(tok) => tok.item == expected,
@@ -341,7 +353,7 @@ impl Parser {
     ///   <assignment>
     ///   <module_instantiation>
     fn parse_statement(&mut self) -> Result<StatementWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         // ';'
         if self.current_matches(Token::Semicolon) {
@@ -420,7 +432,7 @@ impl Parser {
     /// <single_module_instantiation> ::=
     ///   <module_id> '(' <call_arguments> ')'
     fn parse_single_module_instantiation(&mut self) -> Result<StatementWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         // <module_id> '(' <call_arguments> ')'
         let module_id = self.parse_module_id()?;
@@ -472,7 +484,7 @@ impl Parser {
     ///   "for"
     ///   <identifier>
     fn parse_module_id(&mut self) -> Result<ModuleIdWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         if let Some(current) = self.current() {
             let module_id = match &current.item {
@@ -532,7 +544,7 @@ impl Parser {
     ///   <identifier> '=' <expr>
     ///   <expr>
     fn parse_argument_call(&mut self) -> Result<CallArgumentWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         // <identifier> '=' <expr>
         if let Some(identifier) = self.current_matches_identifier()
@@ -570,7 +582,7 @@ impl Parser {
     /// <expr> '[' <expr> ']'
     /// <binary expression>
     fn parse_expr(&mut self) -> Result<ExprWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
         let lhs = self.parse_binary_expr(0)?;
 
         // <expr> '?' <expr> ':' <expr>
@@ -611,7 +623,7 @@ impl Parser {
     /// <expr> "||" <expr>
     /// <unary expression>
     fn parse_binary_expr(&mut self, min_precedence: u8) -> Result<ExprWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         let mut lhs = self.parse_unary_expr()?;
 
@@ -660,13 +672,13 @@ impl Parser {
     /// '(' <expr> ')'
     /// <identifier> <call_arguments>
     fn parse_unary_expr(&mut self) -> Result<ExprWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         // TODO '+' <expr>
         // TODO '!' <expr>
 
         let token = if let Some(token) = self.current() {
-            token
+            token.clone()
         } else {
             todo!("error missing token");
         };
@@ -949,7 +961,7 @@ impl Parser {
     /// <assignment> ::=
     ///   <identifier> '=' <expr> ';'
     fn parse_assignment(&mut self) -> Result<StatementWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         // <identifier>
         let identifier = if let Some(identifier) = self.current_matches_identifier() {
@@ -978,7 +990,7 @@ impl Parser {
         ))
     }
 
-    fn current_to_binary_operator(&self) -> Option<BinaryOperator> {
+    fn current_to_binary_operator(&mut self) -> Option<BinaryOperator> {
         if let Some(current) = self.current() {
             match current.item {
                 Token::Caret => Some(BinaryOperator::Exponentiation),
@@ -1004,7 +1016,7 @@ impl Parser {
 
     /// <identifier> '(' <arguments_decl> <optional_commas> ')' '=' <expr> ';'
     fn parse_function_decl(&mut self) -> Result<StatementWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         let function_name = self.expect_identifier()?;
 
@@ -1059,7 +1071,7 @@ impl Parser {
     /// <identifier>
     /// <identifier> '=' <expr>
     fn parse_decl_argument(&mut self) -> Result<Option<DeclArgumentWithPosition>> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         let identifier = if let Some(identifier) = self.current_matches_identifier() {
             self.advance();
@@ -1088,7 +1100,7 @@ impl Parser {
     /// <if_statement> ::=
     ///   "if" '(' <expr> ')' <child_statement>
     fn parse_ifelse_statement(&mut self) -> Result<StatementWithPosition> {
-        let pos = self.get_current()?;
+        let pos = self.get_current_pos()?;
 
         self.expect(Token::If)?;
         self.expect(Token::LeftParen)?;
@@ -1163,7 +1175,8 @@ mod tests {
 
     #[test]
     fn test_cube() {
-        let source: Arc<Box<dyn Source>> = Arc::new(Box::new(StringSource::new("cube(10);")));
+        let source: Arc<Box<dyn Source>> =
+            Arc::new(Box::new(StringSource::new("// test cube\ncube(10);")));
         let result = parse(source.clone());
         assert_eq!(Vec::<Message>::new(), result.messages);
         assert_eq!(
@@ -1173,8 +1186,8 @@ mod tests {
                     module_id: ModuleIdWithPosition::new(
                         "cube".to_string(),
                         Position {
-                            start: 0,
-                            end: 4,
+                            start: 13,
+                            end: 17,
                             source: source.clone()
                         }
                     ),
@@ -1183,23 +1196,23 @@ mod tests {
                             expr: ExprWithPosition::new(
                                 Expr::Number(10.0),
                                 Position {
-                                    start: 5,
-                                    end: 7,
+                                    start: 18,
+                                    end: 20,
                                     source: source.clone()
                                 }
                             )
                         },
                         Position {
-                            start: 5,
-                            end: 7,
+                            start: 18,
+                            end: 20,
                             source: source.clone()
                         }
                     )],
                     child_statements: vec![]
                 },
                 Position {
-                    start: 0,
-                    end: 9,
+                    start: 13,
+                    end: 22,
                     source: source.clone()
                 }
             )]
