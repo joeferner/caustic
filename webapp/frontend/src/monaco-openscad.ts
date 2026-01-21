@@ -28,9 +28,22 @@ export async function initializeMonaco(): Promise<void> {
     const worker = new LanguageServerWorker();
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
     (self as any).MonacoEnvironment = {
-        getWorker: (): Worker => {
-            return worker;
+        getWorker(_: string, label: string): Worker {
+            // Handle Monaco's built-in workers
+            switch (label) {
+                case 'editorWorkerService':
+                    return new Worker(
+                        new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url),
+                        { type: 'module' }
+                    );
+                default:
+                    return new Worker(
+                        new URL('monaco-editor/esm/vs/editor/editor.worker.js', import.meta.url),
+                        { type: 'module' }
+                    );
+            }
         },
     };
 

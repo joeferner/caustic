@@ -13,8 +13,8 @@ const lspServerPromise = new Promise<WasmLspServer>((resolve, reject) => {
         await initWasm();
 
         return new WasmLspServer((msg: string) => {
-            console.log('LSP', msg);
             const json = JSON.parse(msg) as Message;
+            console.log('LSP', json);
             void writer.write(json);
         });
     }
@@ -34,12 +34,12 @@ reader.listen((msg: Message | string) => {
 
 async function processMessage(msg: Message): Promise<void> {
     try {
-        console.log('LSP request', JSON.stringify(msg));
+        console.log('LSP request', msg);
         const lspServer = await lspServerPromise;
         const resultStr = await lspServer.notify_client_message(JSON.stringify(msg));
         if (resultStr) {
             const result = JSON.parse(resultStr) as Message;
-            console.log('LSP result', JSON.stringify(result));
+            console.log('LSP result', result);
             await writer.write(result);
         }
     } catch (err: unknown) {
