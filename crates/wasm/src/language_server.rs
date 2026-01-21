@@ -1,6 +1,6 @@
 use caustic_openscad::language_server::LanguageServerBackend;
 use futures::StreamExt;
-use tokio::sync::Mutex;
+use futures::lock::Mutex;
 use tower;
 use tower_lsp::LspService;
 use tower_lsp::jsonrpc::Request;

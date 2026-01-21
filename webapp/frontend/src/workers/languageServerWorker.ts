@@ -22,8 +22,14 @@ const lspServerPromise = new Promise<WasmLspServer>((resolve, reject) => {
     startServer().then(resolve).catch(reject);
 });
 
-reader.listen((msg: Message) => {
-    void processMessage(msg);
+reader.listen((msg: Message | string) => {
+    if (
+        typeof msg === 'object' &&
+        msg !== null &&
+        'jsonrpc' in msg
+    ) {
+        void processMessage(msg);
+    }
 });
 
 async function processMessage(msg: Message): Promise<void> {
