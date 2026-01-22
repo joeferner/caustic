@@ -14,50 +14,55 @@ impl LanguageServerBackend {
         pos: usize,
     ) -> Result<Option<Hover>> {
         for statement in statements {
-            if statement.position.contains_pos(pos) {
-                let result = match statement.item {
-                    Statement::Empty => None,
-                    Statement::Assignment {
-                        identifier: _,
-                        expr: _,
-                    } => None,
-                    Statement::Include { filename: _ } => None,
-                    Statement::FunctionDecl {
-                        function_name: _,
-                        arguments: _,
-                        expr: _,
-                    } => None,
-                    Statement::If {
-                        expr: _,
-                        true_statements: _,
-                        false_statements: _,
-                    } => None,
-                    Statement::ModuleInstantiation {
-                        module_id,
-                        call_arguments,
-                        child_statements,
-                    } => self.hover_module_instantiation(
-                        pos,
-                        module_id,
-                        call_arguments,
-                        child_statements,
-                    ),
-                };
-                if let Some(result) = result {
-                    return Ok(Some(result));
-                }
+            if let Some(result) = self.hover_statement(&statement, pos) {
+                return Ok(Some(result));
             }
         }
 
         Ok(None)
     }
 
+    fn hover_statement(&self, statement: &StatementWithPosition, pos: usize) -> Option<Hover> {
+        if statement.position.contains_pos(pos) {
+            match &statement.item {
+                Statement::Empty => None,
+                Statement::Assignment {
+                    identifier: _,
+                    expr: _,
+                } => None,
+                Statement::Include { filename: _ } => None,
+                Statement::FunctionDecl {
+                    function_name: _,
+                    arguments: _,
+                    expr: _,
+                } => None,
+                Statement::If {
+                    expr: _,
+                    true_statements: _,
+                    false_statements: _,
+                } => None,
+                Statement::ModuleInstantiation {
+                    module_id,
+                    call_arguments,
+                    child_statements,
+                } => self.hover_module_instantiation(
+                    pos,
+                    module_id,
+                    call_arguments,
+                    child_statements,
+                ),
+            }
+        } else {
+            None
+        }
+    }
+
     fn hover_module_instantiation(
         &self,
         pos: usize,
-        module_id: ModuleIdWithPosition,
-        call_arguments: Vec<CallArgumentWithPosition>,
-        child_statements: Vec<StatementWithPosition>,
+        module_id: &ModuleIdWithPosition,
+        call_arguments: &Vec<CallArgumentWithPosition>,
+        child_statements: &Vec<StatementWithPosition>,
     ) -> Option<Hover> {
         if module_id.position.contains_pos(pos) {
             let module_docs = get_builtin_module_docs(&module_id.item);
@@ -80,8 +85,8 @@ impl LanguageServerBackend {
         }
 
         for child_statement in child_statements {
-            if child_statement.position.contains_pos(pos) {
-                // TODO
+            if let Some(result) = self.hover_statement(&child_statement, pos) {
+                return Some(result);
             }
         }
 
